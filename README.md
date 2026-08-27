@@ -1,343 +1,137 @@
-# CivicSight: Smart Road Damage Detection and Municipal Repair Management System
+# CivicSight 🏛️🛣️
 
-CivicSight is a web-based road infrastructure management platform
-designed to connect citizen road-damage reporting with municipal
-maintenance workflows. It transforms a road-damage complaint into a
-traceable maintenance case containing the reported location, damage
-assessment, priority, responsible team, repair progress, and final
-resolution.
+> **Smart Road Damage Detection and Municipal Repair Management System**
 
-> **Project:** UCS503 Software Engineering\
-> **Institution:** Thapar Institute of Engineering and Technology
+CivicSight is an intelligent civic-tech platform bridging the gap between citizen road hazard reporting, AI-driven computer vision damage triage, and municipal maintenance dispatch.
 
-## Overview
+---
 
-Road damage such as potholes and pavement cracks can cause accidents,
-vehicle damage, traffic disruption, and increased maintenance costs.
-CivicSight aims to make the reporting and repair process more organized,
-transparent, and data-driven.
+## 🔄 End-to-End Workflow
 
-Instead of treating every pothole report as an isolated complaint,
-CivicSight provides an end-to-end workflow:
-
-**Citizen Report → Image & Location → Damage Assessment → Priority
-Scoring → Municipal Verification → Assignment → Repair → Verification →
-Closure**
-
-## Key Features
-
-### Citizen Reporting
-
--   Citizen registration and login
--   Upload photographs of road damage
--   Capture location using browser geolocation
--   Select a location manually on a map when GPS is unavailable
--   Generate a unique road-damage report
-
-### Road-Damage Assessment
-
--   Computer-vision-assisted assessment of road images
--   Initial focus on potholes and pavement cracks
--   Detection confidence recorded with the report
--   Automated results serve as decision-support and can be verified or
-    rejected by authorized municipal users
-
-### Priority Management
-
-Reports can receive a priority level based on predefined business rules,
-considering factors such as: - Type and severity of damage - Multiple
-detected damage types - Confidence of automated assessment - Importance
-of the reported location - Previous unresolved reports from the same
-location
-
-### Municipal Dashboard
-
-Authorized municipal personnel can: - View submitted reports - View
-reports on a map - Filter and review reports - Verify or reject
-reports - Mark duplicate reports - Assign reports to maintenance teams -
-Track report status
-
-### Repair Tracking
-
--   Maintenance teams can update repair progress
--   Upload after-repair photographs
--   Maintain assignment and repair history
--   Allow authorized personnel to verify completed repairs
--   Close reports after successful verification
-
-### Analytics
-
-The system is designed to provide visibility into: - Pending repairs -
-High-priority locations - Repair progress - Historical road-damage
-trends - Report and workflow status
-
-## System Workflow
-
-``` text
-Citizen
-   |
-   v
-Submit Road-Damage Report
-   |
-   +---- Upload Photo
-   |
-   +---- GPS / Map Location
-   |
-   v
-Validate Submission
-   |
-   v
-Create Unique Report
-   |
-   v
-Central Database
-   |
-   v
-Computer Vision
-(Damage Detection)
-   |
-   v
-Priority / Severity Score
-   |
-   v
-Municipal Dashboard
-   |
-   +---- Reject / Duplicate
-   |
-   +---- Verify
-           |
-           v
-   Assign Maintenance Team
-           |
-           v
-        Repair
-           |
-           v
-   Upload Repair Evidence
-           |
-           v
-      Verify Repair
-           |
-           v
-       Close Report
+```text
+[ Citizen ] ──> Report (Road Hazard / Damage)
+                     │
+                     ▼
+[ ML Engine ] ─> Detect (YOLO Damage Classification: D00, D10, D20, D40)
+                     │
+                     ▼
+[ Backend ] ───> Prioritize (Severity Scoring & Location Clustering)
+                     │
+                     ▼
+[ Municipal ] ─> Verify (Official Inspection & Validation)
+                     │
+                     ▼
+[ Ops Hub ] ───> Assign (Contractor / Work Order Dispatch)
+                     │
+                     ▼
+[ Field Crew ] ─> Repair (Maintenance Execution)
+                     │
+                     ▼
+[ System ] ────> Close (Resolution Verification & Citizen Notification)
 ```
 
-## Architecture
+---
 
-CivicSight follows a three-tier architecture:
+## 📁 Repository Structure (Week 1 Foundation)
 
-``` text
-+------------------------------+
-|          Frontend            |
-| Citizens | Municipal | Teams |
-+--------------+---------------+
-               |
-               v
-+------------------------------+
-|           Backend            |
-| Authentication               |
-| Report Management            |
-| Image Analysis Requests      |
-| Location Handling            |
-| Priority Calculation         |
-| Assignment & Status          |
-+--------------+---------------+
-               |
-               v
-+------------------------------+
-|     Database & Storage       |
-| Users | Reports | Locations  |
-| Assessments | Repairs        |
-| Assignments | Status History |
-+------------------------------+
+This repository is structured as a modular monorepo:
 
-          +----------------+
-          | Computer Vision|
-          | Damage Model   |
-          +----------------+
-```
-
-## Technology Direction
-
-The project is designed around open-source and freely available
-technologies. The proposed implementation includes:
-
--   Web application and REST API development
--   Relational database
--   Browser-based geolocation
--   Map visualization
--   Open-source computer-vision libraries and models
--   Local or free storage during development
--   Authentication and role-based access control
--   Automated testing
--   Source control with Git
-
-The specific implementation technologies can be selected according to
-project requirements and development constraints.
-
-## Project Scope
-
-### Initial Deliverables
-
--   Citizen registration and login
--   Road-damage reporting
--   Image upload
--   Location capture
--   Unique report creation
--   Database storage
--   Basic municipal dashboard
--   Report verification and assignment
--   Testing of validation, authorization, report creation, and status
-    transitions
-
-### Subsequent Deliverables
-
--   Fine-tuned road-damage detection model
--   Backend integration of the detection model
--   Automated damage classification
--   Confidence recording
--   Severity and priority scoring
--   Map-based dashboard with filters
--   Maintenance-team assignment
--   Repair tracking
--   Before/after repair evidence
--   Final repair verification
--   Analytics and administrative reports
--   Deployment-ready documentation
-
-## Evaluation
-
-CivicSight will be evaluated using both system-level and computer-vision
-metrics.
-
-### Primary Metrics
-
-**Report Processing Success Rate** - Target: at least 95% successful
-processing for valid test submissions - Measures successful image
-upload, location capture, report creation, and database storage
-
-**Road-Damage Detection Performance** - Precision - Recall - Mean
-Average Precision (mAP)
-
-### Secondary Metrics
-
--   Workflow correctness
--   Priority consistency
--   System response time
--   Report traceability
--   Interface usability
--   Database consistency
--   Role and authorization correctness
-
-## Testing Strategy
-
-Testing will cover individual components as well as complete workflows:
-
--   Unit testing for validation and priority logic
--   API and integration testing
--   Database consistency testing
--   Role and authorization testing
--   Report lifecycle testing
--   Image-upload validation
--   Location validation
--   Computer-vision performance evaluation
-
-## Scalability and Future Scope
-
-Although CivicSight is designed as a student prototype, its architecture
-allows future expansion.
-
-Potential future enhancements include:
-
--   Additional road-damage categories
--   Dedicated mobile applications
--   Vehicle or dashcam-based reporting
--   Historical road-condition analysis
--   Integration with municipal systems
--   Database indexing and pagination for larger datasets
--   Asynchronous image processing
--   Expanded analytics and reporting
-
-## Privacy and Security
-
-CivicSight is designed to collect only information required for
-reporting and workflow management. Role-based access control can be used
-to restrict access to sensitive information.
-
-The system also provides alternatives when users do not grant GPS
-permission by allowing map-based location selection.
-
-## Risks and Mitigation
-
-  -----------------------------------------------------------------------
-  Risk                                Mitigation
-  ----------------------------------- -----------------------------------
-  Model accuracy                      Evaluate on held-out data and keep
-                                      final decisions with authorized
-                                      users
-
-  GPS unavailable                     Provide manual map-based location
-                                      selection
-
-  Duplicate reports                   Use location and time information
-                                      to identify possible duplicates
-
-  Privacy concerns                    Collect necessary information only
-                                      and use role-based access
-
-  Scope expansion                     Prioritize the core
-                                      reporting-to-resolution workflow
-
-  Computing limitations               Use transfer learning and
-                                      appropriately sized models
-
-  External dependencies               Prefer open-source and local
-                                      alternatives
-  -----------------------------------------------------------------------
-
-## Project Structure
-
-The exact implementation structure may evolve as development progresses.
-A suggested organization is:
-
-``` text
+```text
 CivicSight/
+├── frontend/             # Citizen portal & municipal interface placeholders (Vanilla HTML/CSS/JS)
+│   ├── assets/           # Logos, icons, and media
+│   ├── css/              # Design tokens and stylesheets
+│   ├── js/               # Core vanilla UI interactivity
+│   ├── pages/            # Application views and sub-pages
+│   └── index.html        # Main landing page
 │
-├── frontend/          # Citizen and municipal interfaces
-├── backend/           # APIs and business logic
-├── model/             # Computer-vision model and inference code
-├── database/          # Database schema and related scripts
-├── tests/             # Unit, integration, and workflow tests
-├── docs/              # Project documentation
-├── assets/            # Project images and other resources
-└── README.md
+├── backend/              # FastAPI REST API & Database engine
+│   ├── app/
+│   │   ├── core/         # Configuration & environment settings
+│   │   ├── db/           # SQLAlchemy engine & session lifecycle
+│   │   ├── models/       # Database entities (prepared for Week 2)
+│   │   └── main.py       # FastAPI application entrypoint & health endpoints
+│   ├── .env.example      # Environment variables template
+│   └── requirements.txt  # Backend dependencies
+│
+├── ml/                   # Computer Vision & Damage Detection subsystem
+│   ├── samples/          # Validation road image samples
+│   ├── scripts/          # Model inference and verification scripts
+│   ├── README.md         # RDD2022 dataset specifications and class taxonomy
+│   └── requirements.txt  # PyTorch, Ultralytics YOLO & CV dependencies
+│
+├── Dataset/              # Local dataset resources
+└── README.md             # Project documentation (this file)
 ```
 
-## Core Objective
+---
 
-The primary objective of CivicSight is not simply to detect potholes. It
-is to connect:
+## 🚀 Getting Started
 
-**Reporting + Location + Assessment + Prioritization + Assignment +
-Repair Tracking + Verification**
+### 1. Frontend Subsystem
+The frontend uses pure Vanilla web technologies with no build steps required for Week 1.
 
-into one reliable and traceable workflow.
+- **Option A (Direct)**: Open `frontend/index.html` directly in any modern web browser.
+- **Option B (Local HTTP Server)**:
+  ```bash
+  # From workspace root
+  python -m http.server 3000 --directory frontend
+  # Open in browser: http://localhost:3000
+  ```
 
-This makes CivicSight primarily a software engineering system, with
-computer vision serving as an intelligent component within the overall
-platform.
+### 2. Backend Subsystem
+Powered by FastAPI and SQLAlchemy with PostgreSQL.
 
-## Team
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   # Windows:
+   .\venv\Scripts\activate
+   # Linux/macOS:
+   source venv/bin/activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Configure environment variables:
+   ```bash
+   copy .env.example .env
+   # Update DATABASE_URL with your PostgreSQL credentials
+   ```
+5. Start the FastAPI development server:
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+6. Access interactive API documentation:
+   - Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+   - Health Check: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
 
--   **Laksh Garg** --- Roll No. 1024030156
--   **Pranay Mittal** --- Roll No. 1024030159
--   **Devansh Thapar** --- Roll No. 1024030154
+### 3. ML Subsystem
+Powered by Ultralytics YOLO and PyTorch.
 
-**Thapar Institute of Engineering and Technology**
+1. Navigate to the ML directory:
+   ```bash
+   cd ml
+   ```
+2. Activate your Python environment and install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the baseline inference test:
+   ```bash
+   python scripts/test_inference.py
+   ```
 
-## Status
+---
 
-**Project Stage:** Development / Prototype
+## 📌 Development Roadmap
 
-The system is intended to be developed incrementally, with each
-development stage producing a working and testable part of the platform.
+- [x] **Week 1**: Monorepo Scaffolding, Landing Page, FastAPI + PostgreSQL Health Check, ML Environment Verification
+- [ ] **Week 2**: Citizen Reporting Interface (Camera/GPS), Backend Models & CRUD, RDD2022 Training Pipeline Scaffolding
+- [ ] **Week 3**: AI Inference Service Integration, Priority Scoring Algorithm, Municipal Map View
+- [ ] **Week 4**: Work Order Dispatch, Repair Status Tracking, Verification & Notification Workflows
