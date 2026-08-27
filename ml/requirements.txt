@@ -1,1 +1,9 @@
-
+# CivicSight Machine Learning & Computer Vision Subsystem Requirements
+ultralytics>=8.1.0
+opencv-python>=4.9.0
+torch>=2.2.0
+torchvision>=0.17.0
+pillow>=10.2.0
+numpy>=1.24.0
+matplotlib>=3.8.0
+pyyaml>=6.0.1
