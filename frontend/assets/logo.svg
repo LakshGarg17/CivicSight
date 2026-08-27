@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+    <linearGradient id="road-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#2dd4bf" />
+    </linearGradient>
+  </defs>
+  <!-- Outer Shield / Hex Ring -->
+  <rect x="4" y="4" width="40" height="40" rx="10" fill="url(#logo-grad)" opacity="0.12" stroke="url(#logo-grad)" stroke-width="2.5"/>
+  
+  <!-- Stylized Road Perspective -->
+  <path d="M16 38L20 16H28L32 38H16Z" fill="url(#logo-grad)" opacity="0.25"/>
+  <line x1="24" y1="18" x2="24" y2="24" stroke="url(#road-grad)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="24" y1="28" x2="24" y2="36" stroke="url(#road-grad)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Tech Aperture / Sight Arc -->
+  <circle cx="24" cy="24" r="14" stroke="url(#logo-grad)" stroke-width="2" stroke-dasharray="4 3" opacity="0.8"/>
+  <circle cx="24" cy="24" r="4" fill="#0284c7"/>
+</svg>
