@@ -104,8 +104,15 @@ body {
 }
 
 .brand img, .brand svg {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.25));
+  transition: transform var(--transition-fast);
+}
+
+.brand:hover img {
+  transform: scale(1.05);
 }
 
 .brand-text span {
@@ -523,3 +530,376 @@ body {
     display: none;
   }
 }
+
+/* ==========================================================================
+   Report Road Damage Page Styles (Week 2)
+   ========================================================================== */
+
+.report-main {
+  padding: 3rem 0 5rem;
+  flex: 1;
+}
+
+.report-container {
+  max-width: 840px;
+}
+
+.report-header {
+  margin-bottom: 2.5rem;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-primary-light);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  transition: color var(--transition-fast);
+}
+
+.back-link:hover {
+  color: var(--color-text-main);
+}
+
+.report-title {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 0.75rem;
+}
+
+.report-subtitle {
+  color: var(--color-text-muted);
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+/* Form Card Scaffolding */
+.report-form-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.section-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.section-step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background-color: rgba(2, 132, 199, 0.2);
+  color: var(--color-primary-light);
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.form-section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 0.25rem;
+}
+
+.form-section-desc {
+  color: var(--color-text-dim);
+  font-size: 0.9rem;
+}
+
+/* Upload Dropzone */
+.upload-dropzone {
+  border: 2px dashed rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-md);
+  background-color: rgba(17, 24, 39, 0.6);
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-dropzone:hover, .upload-dropzone.drag-active {
+  border-color: var(--color-primary-light);
+  background-color: rgba(2, 132, 199, 0.08);
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.upload-icon-wrapper {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-full);
+  background-color: rgba(2, 132, 199, 0.15);
+  color: var(--color-primary-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.dropzone-text {
+  font-size: 1rem;
+  color: var(--color-text-main);
+  margin-bottom: 0.35rem;
+}
+
+.dropzone-hint {
+  font-size: 0.825rem;
+  color: var(--color-text-dim);
+}
+
+/* Image Preview Container */
+.preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.preview-image {
+  max-height: 280px;
+  width: auto;
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  object-fit: cover;
+}
+
+.preview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 480px;
+  padding: 0.75rem 1rem;
+  background-color: var(--color-surface-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.preview-filename {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  text-align: left;
+}
+
+.preview-filesize {
+  font-size: 0.775rem;
+  color: var(--color-text-dim);
+  text-align: left;
+}
+
+/* Form Controls */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+}
+
+.label-optional {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--color-text-dim);
+}
+
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-main);
+  font-family: var(--font-primary);
+  font-size: 0.95rem;
+  transition: border-color var(--transition-fast);
+}
+
+.form-input:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-light);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* Damage Category Chips */
+.damage-category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.chip-option input {
+  display: none;
+}
+
+.chip-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chip-option input:checked + .chip-label {
+  background-color: rgba(2, 132, 199, 0.2);
+  border-color: var(--color-primary-light);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.chip-label:hover {
+  border-color: var(--color-border-hover);
+}
+
+/* Location Selector Module */
+.location-mode-toggle {
+  display: inline-flex;
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.mode-tab.active {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  color: #ffffff;
+}
+
+.coord-inputs-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.location-placeholder-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background-color: rgba(15, 118, 110, 0.12);
+  border: 1px dashed rgba(45, 212, 191, 0.3);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+}
+
+.placeholder-icon {
+  color: var(--color-accent-light);
+  margin-top: 2px;
+}
+
+.placeholder-text h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-accent-light);
+  margin-bottom: 0.25rem;
+}
+
+.placeholder-text p {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* Form Action Bar */
+.form-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.form-footer-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .report-form-card {
+    padding: 1.5rem;
+  }
+  
+  .coord-inputs-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions-bar {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .form-actions-bar .btn {
+    width: 100%;
+  }
+}
+

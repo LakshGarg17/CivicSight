@@ -9,15 +9,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
 </head>
 <body>
 
   <!-- Navigation Bar -->
   <header class="navbar">
     <div class="container navbar-inner">
-      <a href="#" class="brand" aria-label="CivicSight Home">
-        <img src="assets/logo.svg" alt="CivicSight Logo">
+      <a href="index.html" class="brand" aria-label="CivicSight Home">
+        <img src="assets/logo-icon.png" alt="CivicSight Logo">
         <span class="brand-text">Civic<span>Sight</span></span>
       </a>
 
@@ -25,14 +25,14 @@
         <ul class="nav-links" id="navLinks">
           <li><a href="#about" class="nav-link">About CivicSight</a></li>
           <li><a href="#workflow" class="nav-link">How It Works</a></li>
-          <li><a href="#portals" class="nav-link" data-placeholder="Citizen Reporting Portal">Report Road Damage</a></li>
+          <li><a href="pages/report.html" class="nav-link active">Report Road Damage</a></li>
           <li><a href="#portals" class="nav-link" data-placeholder="Track Reports Portal">Track Reports</a></li>
           <li><a href="#portals" class="nav-link" data-placeholder="Municipal Dashboard">Municipal Dashboard</a></li>
         </ul>
       </nav>
 
       <div class="nav-actions">
-        <button class="btn btn-secondary btn-sm" data-placeholder="Citizen Login">Citizen Portal</button>
+        <a href="pages/report.html" class="btn btn-secondary btn-sm">Report Damage</a>
         <button class="btn btn-primary btn-sm" data-placeholder="Municipal Admin Portal">Municipal Login</button>
       </div>
 
@@ -48,7 +48,7 @@
       <div class="container">
         <div class="badge-pill">
           <span class="badge-dot"></span>
-          <span>Week 1 Foundation Scaffolding</span>
+          <span>Week 2 Active: Citizen Reporting & Schema</span>
         </div>
         <h1 class="hero-title">
           Empowering Communities with <span class="gradient-text">Intelligent Road Infrastructure</span>
@@ -57,13 +57,13 @@
           CivicSight connects citizens directly with municipal repair teams using computer vision AI to detect, prioritize, and accelerate road damage remediation.
         </p>
         <div class="hero-cta">
-          <button class="btn btn-primary" data-placeholder="Report Damage Workflow">
+          <a href="pages/report.html" class="btn btn-primary" id="heroReportBtn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
               <circle cx="12" cy="13" r="4"></circle>
             </svg>
             Report Road Damage
-          </button>
+          </a>
           <button class="btn btn-secondary" data-placeholder="Municipal Dashboard">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="7" height="7"></rect>
@@ -136,15 +136,14 @@
         <div class="portals-grid">
           <div class="portal-card">
             <div>
-              <span class="portal-tag">Citizen Interface</span>
+              <span class="portal-tag" style="background-color: rgba(2, 132, 199, 0.2); color: var(--color-primary-light);">Active in Week 2</span>
               <h3>Citizen Damage Reporting</h3>
-              <p>An intuitive interface for quick road hazard submission with GPS geolocation and instant image upload capabilities.</p>
+              <p>An intuitive interface for quick road hazard submission with photo upload, detailed descriptions, and structured location placeholders.</p>
             </div>
             <div>
-              <span class="placeholder-badge">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                Scheduled for Week 2 implementation
-              </span>
+              <a href="pages/report.html" class="btn btn-primary btn-sm" style="width: fit-content;">
+                Launch Reporting Tool &rarr;
+              </a>
             </div>
           </div>
 
@@ -157,14 +156,12 @@
             <div>
               <span class="placeholder-badge">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                Scheduled for Week 2-3 implementation
+                Scheduled for Week 3-4 implementation
               </span>
             </div>
           </div>
         </div>
       </div>
-    </section>
-
     <!-- Tech Specs Footer Banner -->
     <section class="tech-spec-bar">
       <div class="container">
@@ -185,10 +182,10 @@
     <div class="container">
       <div class="footer-inner">
         <div class="brand">
-          <img src="assets/logo.svg" alt="CivicSight Logo">
+          <img src="assets/logo-icon.png" alt="CivicSight Logo">
           <span class="brand-text">Civic<span>Sight</span></span>
         </div>
-        <p class="footer-note">&copy; 2026 CivicSight Project. Week 1 Foundation Scaffolding.</p>
+        <p class="footer-note">&copy; 2026 CivicSight Project. Week 2 Active Phase.</p>
       </div>
     </div>
   </footer>
