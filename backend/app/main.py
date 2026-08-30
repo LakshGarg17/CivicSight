@@ -1,17 +1,32 @@
-from fastapi import FastAPI, status
+"""CivicSight Backend Main Application (Week 2)"""
+
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.database import check_db_connection
+from app.db.init_db import init_db
+from app.api.v1.router import api_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan context manager for startup and shutdown routines."""
+    # Initialize database tables on application launch
+    init_db()
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Backend API for CivicSight - Smart Road Damage Detection & Municipal Repair System",
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
-# Enable CORS for local frontend development
+# Enable CORS for frontend integration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,6 +35,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount Versioned API Routes
+app.include_router(api_router)
+
 
 @app.get("/", tags=["System"])
 def read_root():
@@ -27,10 +45,16 @@ def read_root():
     return {
         "project": "CivicSight",
         "service": "CivicSight Backend Core API",
-        "version": "0.1.0",
-        "phase": "Week 1 Foundation",
+        "version": "0.2.0",
+        "phase": "Week 2 - Database Schema & CRUD",
         "workflow": "Report -> Detect -> Prioritize -> Verify -> Assign -> Repair -> Close",
-        "status": "online"
+        "status": "online",
+        "endpoints": {
+            "docs": "/docs",
+            "health": "/health",
+            "users": "/api/v1/users",
+            "reports": "/api/v1/reports",
+        },
     }
 
 
@@ -43,5 +67,5 @@ def health_check():
     return {
         "status": "ok",
         "system_health": overall_status,
-        "database": db_status
+        "database": db_status,
     }

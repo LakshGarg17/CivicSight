@@ -1,9 +1,6 @@
-"""CivicSight Database Models Package
-
-Week 1: Initial empty package.
-Week 2: RoadDamageReport, User, WorkOrder, and DamageClassification models will be registered here.
-"""
+"""CivicSight Database Models Package (Week 2)"""
 
 from app.db.database import Base
+from app.models.models import User, Report, ReportStatus
 
-__all__ = ["Base"]
+__all__ = ["Base", "User", "Report", "ReportStatus"]
