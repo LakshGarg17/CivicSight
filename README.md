@@ -1,13 +1,11 @@
 # CivicSight 🏛️🛣️
-
 > **Smart Road Damage Detection and Municipal Repair Management System**
 
-CivicSight is an intelligent civic-tech platform bridging the gap between citizen road hazard reporting, AI-driven computer vision damage triage, and municipal maintenance dispatch.
+CivicSight is an intelligent civic-tech platform bridging the gap between citizen road hazard reporting, AI-driven computer vision damage triage, and municipal maintenance dispatch system.
 
 ---
 
 ## 🔄 End-to-End Workflow
-
 ```text
 [ Citizen ] ──> Report (Road Hazard / Damage)
                      │
@@ -33,7 +31,6 @@ CivicSight is an intelligent civic-tech platform bridging the gap between citize
 ---
 
 ## 📁 Repository Structure (Week 2 Architecture)
-
 This repository is structured as a modular monorepo:
 
 ```text
