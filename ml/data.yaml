@@ -1,0 +1,22 @@
+# CivicSight — Road Damage Detection YOLO Dataset Configuration (Week 3)
+# RDD2022 (Road Damage Dataset 2022) Standard Split Configuration
+
+# Dataset Root & Partitions
+path: ../Dataset/RDD_SPLIT   # Dataset root directory relative to this config or runs
+train: train/images          # Train split images directory
+val: val/images              # Validation split images directory
+test: test/images            # Test split images directory
+
+# Classes Specification
+nc: 4
+
+# Class ID to Damage Category Mapping
+# Index 0 -> D00: Longitudinal Crack
+# Index 1 -> D10: Transverse Crack
+# Index 2 -> D20: Alligator Crack (Fatigue Mesh)
+# Index 3 -> D40: Pothole / Road Bowl Defect
+names:
+  0: D00
+  1: D10
+  2: D20
+  3: D40
