@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — CivicSight</title>
+  <meta name="description" content="Sign in to CivicSight to submit road damage reports, review triage queues, or coordinate maintenance assignments.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="container navbar-inner">
+      <a href="../index.html" class="brand" aria-label="CivicSight Home">
+        <img src="../assets/logo-icon.png" alt="CivicSight Logo">
+        <span class="brand-text">Civic<span>Sight</span></span>
+      </a>
+
+      <nav>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="../index.html" class="nav-link">&larr; Back to Home</a></li>
+          <li><a href="../index.html#workflow" class="nav-link">Workflow</a></li>
+          <li><a href="report.html" class="nav-link">Report Damage</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="register.html" class="btn btn-primary btn-sm">Register</a>
+      </div>
+
+      <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
+        &#9776;
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Login Container -->
+  <main class="auth-main">
+    <div class="container auth-container">
+      
+      <!-- Page Header -->
+      <div class="auth-header text-center">
+        <div class="badge-pill">
+          <span class="badge-dot"></span>
+          <span>Week 3 Active: Secure JWT Authentication</span>
+        </div>
+        <h1 class="auth-title">Welcome to <span class="gradient-text">CivicSight</span></h1>
+        <p class="auth-subtitle">
+          Sign in with your email and password to access citizen reporting or municipal management tools.
+        </p>
+      </div>
+
+      <!-- Login Card -->
+      <div class="auth-card">
+        
+        <!-- Error Alert Banner -->
+        <div class="auth-alert alert-error" id="loginErrorBanner" style="display: none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span id="loginErrorMessage">Invalid email or password.</span>
+        </div>
+
+        <!-- Success Alert Banner -->
+        <div class="auth-alert alert-success" id="loginSuccessBanner" style="display: none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <span id="loginSuccessMessage">Authentication successful! Redirecting...</span>
+        </div>
+
+        <form id="loginForm" novalidate>
+          
+          <!-- Email Address -->
+          <div class="form-group">
+            <label for="loginEmail" class="form-label">Email Address <span class="label-required">*</span></label>
+            <input 
+              type="email" 
+              id="loginEmail" 
+              name="email" 
+              class="form-input" 
+              placeholder="name@example.com" 
+              required
+              autocomplete="email"
+            >
+            <span class="input-error-text" id="loginEmailError"></span>
+          </div>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label for="loginPassword" class="form-label">Password <span class="label-required">*</span></label>
+            <input 
+              type="password" 
+              id="loginPassword" 
+              name="password" 
+              class="form-input" 
+              placeholder="••••••••" 
+              required
+              autocomplete="current-password"
+            >
+            <span class="input-error-text" id="loginPasswordError"></span>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="auth-actions">
+            <button type="submit" class="btn btn-primary btn-block" id="loginSubmitBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+              </svg>
+              <span>Sign In</span>
+            </button>
+          </div>
+
+        </form>
+
+        <div class="auth-card-footer">
+          <p>Don't have an account yet? <a href="register.html" class="link-highlight">Create an account</a></p>
+        </div>
+
+      </div>
+
+      <!-- Quick Roles Reference helper box -->
+      <div class="auth-roles-guide">
+        <p class="guide-title">Supported System Roles (Week 3 RBAC):</p>
+        <div class="guide-badges">
+          <span class="user-role-badge role-citizen">Citizen</span>
+          <span class="user-role-badge role-municipal-officer">Municipal Officer</span>
+          <span class="user-role-badge role-maintenance-staff">Maintenance Staff</span>
+          <span class="user-role-badge role-admin">Admin</span>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="brand">
+          <img src="../assets/logo-icon.png" alt="CivicSight Logo">
+          <span class="brand-text">Civic<span>Sight</span></span>
+        </div>
+        <p class="footer-note">&copy; 2026 CivicSight Project. Week 3 Active Phase.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="../js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginForm = document.getElementById('loginForm');
+      const submitBtn = document.getElementById('loginSubmitBtn');
+      const errorBanner = document.getElementById('loginErrorBanner');
+      const errorMessage = document.getElementById('loginErrorMessage');
+      const successBanner = document.getElementById('loginSuccessBanner');
+      const successMessage = document.getElementById('loginSuccessMessage');
+
+      const emailInput = document.getElementById('loginEmail');
+      const passwordInput = document.getElementById('loginPassword');
+
+      // Check query params for prefilled email from registration redirect
+      const urlParams = new URLSearchParams(window.location.search);
+      const prefillEmail = urlParams.get('registered_email');
+      if (prefillEmail) {
+        emailInput.value = decodeURIComponent(prefillEmail);
+        passwordInput.focus();
+        CivicSightAuth.showToast('Account created! Please enter your password to sign in.', 'info');
+      }
+
+      function hideAlerts() {
+        errorBanner.style.display = 'none';
+        successBanner.style.display = 'none';
+        document.querySelectorAll('.input-error-text').forEach(el => el.textContent = '');
+        document.querySelectorAll('.form-input').forEach(el => el.classList.remove('input-invalid'));
+      }
+
+      function showError(msg) {
+        errorMessage.textContent = msg;
+        errorBanner.style.display = 'flex';
+      }
+
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideAlerts();
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        // Client-side quick check
+        let hasError = false;
+        if (!email) {
+          document.getElementById('loginEmailError').textContent = 'Please enter your email.';
+          emailInput.classList.add('input-invalid');
+          hasError = true;
+        }
+        if (!password) {
+          document.getElementById('loginPasswordError').textContent = 'Please enter your password.';
+          passwordInput.classList.add('input-invalid');
+          hasError = true;
+        }
+
+        if (hasError) {
+          showError('Please fill in all required fields.');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.classList.add('btn-loading');
+        submitBtn.innerHTML = `<span>Signing in...</span>`;
+
+        try {
+          const authData = await CivicSightAuth.login(email, password);
+          const userName = authData.user?.name || 'User';
+          const userRole = authData.user?.role || 'Citizen';
+
+          successMessage.textContent = `Welcome back, ${userName} (${userRole})!`;
+          successBanner.style.display = 'flex';
+          CivicSightAuth.showToast(`Logged in as ${userName} (${userRole})`, 'success');
+
+          // Redirect to appropriate page
+          setTimeout(() => {
+            window.location.href = 'report.html';
+          }, 1000);
+
+        } catch (err) {
+          showError(err.message || 'Invalid email or password.');
+          CivicSightAuth.showToast(err.message || 'Login failed.', 'error');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('btn-loading');
+          submitBtn.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+              <polyline points="10 17 15 12 10 7"></polyline>
+              <line x1="15" y1="12" x2="3" y2="12"></line>
+            </svg>
+            <span>Sign In</span>
+          `;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
