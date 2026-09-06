@@ -7,6 +7,8 @@ from app.db.database import get_db
 from app.models.models import User
 from app.schemas.schemas import UserCreate, UserUpdate, UserResponse
 
+from app.core.security import get_password_hash
+
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
@@ -26,10 +28,14 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
                 detail=f"User with email '{user_in.email}' already exists.",
             )
 
+    hashed_pwd = get_password_hash(user_in.password) if user_in.password else None
+
     user = User(
         name=user_in.name,
         email=user_in.email,
         phone=user_in.phone,
+        role=user_in.role or "Citizen",
+        hashed_password=hashed_pwd,
     )
     db.add(user)
     db.commit()

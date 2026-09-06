@@ -21,6 +21,14 @@ from sqlalchemy.orm import relationship
 from app.db.database import Base
 
 
+class UserRole(str, enum.Enum):
+    """Supported user roles for RBAC in CivicSight."""
+    CITIZEN = "Citizen"
+    MUNICIPAL_OFFICER = "Municipal Officer"
+    MAINTENANCE_STAFF = "Maintenance Staff"
+    ADMIN = "Admin"
+
+
 class ReportStatus(str, enum.Enum):
     """Lifecycle stages of a road damage report."""
     SUBMITTED = "submitted"
@@ -33,13 +41,20 @@ class ReportStatus(str, enum.Enum):
 
 
 class User(Base):
-    """User entity representing a reporting citizen or municipal contact."""
+    """User entity representing a citizen, municipal officer, maintenance staff, or admin."""
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(120), nullable=False, index=True)
     email = Column(String(255), unique=True, index=True, nullable=True)
     phone = Column(String(30), nullable=True)
+    hashed_password = Column(String(255), nullable=True)
+    role = Column(
+        SQLEnum(UserRole, values_callable=lambda obj: [e.value for e in obj]),
+        default=UserRole.CITIZEN,
+        nullable=False,
+        index=True,
+    )
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime,
@@ -57,7 +72,7 @@ class User(Base):
     )
 
     def __repr__(self):
-        return f"<User id={self.id} name='{self.name}' email='{self.email}'>"
+        return f"<User id={self.id} name='{self.name}' email='{self.email}' role='{self.role}'>"
 
 
 class Report(Base):

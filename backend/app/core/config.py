@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     # Optional direct connection string
     DATABASE_URL: Optional[str] = None
 
+    # Authentication & JWT Configuration
+    SECRET_KEY: str = "civicsight-super-secret-jwt-key-for-development-2026-week3"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
     @computed_field
     @property
     def sync_database_uri(self) -> str:

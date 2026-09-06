@@ -1,40 +1,98 @@
-"""CivicSight Pydantic Schemas (Week 2)
+"""CivicSight Pydantic Schemas (Week 3)
 
-Request and response validation models for User and Report CRUD operations.
+Request and response validation models for Authentication, User, and Report CRUD operations.
 """
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field
-from app.models.models import ReportStatus
+import re
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from app.models.models import ReportStatus, UserRole
 
 
 # ============================================================================
-# User Schemas
+# User & Authentication Schemas
 # ============================================================================
 
 class UserBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=120, description="Full name or identifier")
     email: Optional[str] = Field(None, max_length=255, description="Contact email address")
     phone: Optional[str] = Field(None, max_length=30, description="Contact phone number")
+    role: Optional[UserRole] = Field(default=UserRole.CITIZEN, description="User system role")
 
 
 class UserCreate(UserBase):
-    pass
+    password: Optional[str] = Field(None, min_length=6, max_length=128, description="Optional initial password")
+
+
+class UserRegister(BaseModel):
+    """Schema for POST /auth/register endpoint."""
+    name: str = Field(..., min_length=1, max_length=120, description="Full Name")
+    email: str = Field(..., min_length=3, max_length=255, description="Valid email address")
+    password: str = Field(..., min_length=6, max_length=128, description="Secure password (min 6 characters)")
+    phone: Optional[str] = Field(None, max_length=30, description="Optional phone number")
+    role: Optional[UserRole] = Field(default=UserRole.CITIZEN, description="Assigned role")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_format(cls, v: str) -> str:
+        v = v.strip().lower()
+        email_regex = r"^[^@]+@[^@]+\.[^@]+$"
+        if not re.match(email_regex, v):
+            raise ValueError("Invalid email format")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name cannot be empty or whitespace only")
+        return v
+
+
+class UserLogin(BaseModel):
+    """Schema for POST /auth/login endpoint."""
+    email: str = Field(..., description="Registered user email")
+    password: str = Field(..., description="User password")
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
 
 
 class UserUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=120)
     email: Optional[str] = Field(None, max_length=255)
     phone: Optional[str] = Field(None, max_length=30)
+    role: Optional[UserRole] = None
 
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: int
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: UserRole
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class Token(BaseModel):
+    """JWT response payload returned upon successful login."""
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+class TokenPayload(BaseModel):
+    """Decoded JWT claim payload."""
+    sub: Optional[str] = None
+    role: Optional[str] = None
+    exp: Optional[int] = None
 
 
 # ============================================================================
