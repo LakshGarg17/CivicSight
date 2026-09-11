@@ -938,75 +938,191 @@ body {
   font-weight: 600;
 }
 
-/* Location Selector Module */
-.location-mode-toggle {
-  display: inline-flex;
+/* Submission Status Banners */
+.submission-status-banner {
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.submission-status-banner.status-submitting {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 4px;
-  gap: 4px;
-  width: fit-content;
-  max-width: 100%;
-  flex-wrap: wrap;
-}
-
-.mode-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.mode-tab:hover {
   color: var(--text-primary);
 }
 
-.mode-tab.active {
-  background-color: var(--accent-color);
-  color: #ffffff;
+.submission-status-banner.status-success {
+  background-color: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  color: var(--color-success-text);
+}
+
+.submission-status-banner.status-error {
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger-text);
+}
+
+.status-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.status-icon {
+  flex-shrink: 0;
+}
+
+.status-body {
+  font-size: 0.925rem;
+  line-height: 1.5;
+}
+
+.status-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.825rem;
+  color: var(--text-primary);
+}
+
+.status-details-item strong {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.status-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Location Toolbar */
+.location-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.location-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.status-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-warning);
+  display: inline-block;
+}
+
+.status-indicator-dot.active {
+  background-color: var(--color-success);
+}
+
+/* Leaflet Map Interactive Canvas */
+.report-map {
+  width: 100%;
+  height: 360px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  z-index: 10;
+  overflow: hidden;
+  background-color: var(--bg-secondary);
+}
+
+.map-helper-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+/* Leaflet UI Overrides (Strictly using CSS variables) */
+.leaflet-bar {
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-radius: var(--radius-sm) !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  transition: background-color var(--transition-fast);
+}
+
+.leaflet-bar a:hover {
+  background-color: var(--bg-secondary) !important;
+  color: var(--accent-color) !important;
+}
+
+.leaflet-container .leaflet-control-attribution {
+  background-color: var(--bg-card) !important;
+  color: var(--text-muted) !important;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--accent-color) !important;
+  text-decoration: none;
+}
+
+/* Clean Dark Mode for Leaflet Map Tiles — No Neons, Inverted Greyscale */
+[data-theme="dark"] .leaflet-tile-pane {
+  filter: brightness(0.65) invert(1) contrast(1.6) hue-rotate(180deg) saturate(0.2);
+}
+
+[data-theme="dark"] .leaflet-marker-pane,
+[data-theme="dark"] .leaflet-shadow-pane {
+  filter: none;
+}
+
+/* Leaflet Popups */
+.leaflet-popup-content-wrapper {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.leaflet-popup-tip {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
 }
 
 .coord-inputs-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-}
-
-.location-placeholder-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  background-color: var(--bg-secondary);
-  border: 1px dashed var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-}
-
-.placeholder-icon {
-  color: var(--accent-color);
-  margin-top: 2px;
-}
-
-.placeholder-text h4 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.25rem;
-}
-
-.placeholder-text p {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
 }
 
 /* Form Action Bar */
