@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <script src="../js/theme.js"></script>
 </head>
 <body>
 
@@ -29,16 +30,20 @@
         </ul>
       </nav>
 
-      <div class="nav-actions">
-        <span class="badge-pill" style="margin-bottom: 0;">
-          <span class="badge-dot"></span>
-          <span>Stage 01: Citizen Report</span>
-        </span>
+      <div class="navbar-right">
+        <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme">
+          <!-- Icon injected by theme.js -->
+        </button>
+        <div class="nav-actions">
+          <span class="badge-pill badge-pill-nav">
+            <span class="badge-dot"></span>
+            <span>Stage 01: Citizen Report</span>
+          </span>
+        </div>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
+          &#9776;
+        </button>
       </div>
-
-      <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
-        &#9776;
-      </button>
     </div>
   </header>
 
@@ -54,7 +59,7 @@
           </svg>
           Back to Overview
         </a>
-        <h1 class="report-title">Report <span class="gradient-text">Road Damage</span></h1>
+        <h1 class="report-title">Report <span class="accent-text">Road Damage</span></h1>
         <p class="report-subtitle">
           Upload a clear photograph of the road hazard. Our AI detection pipeline automatically classifies defects and routes them to municipal maintenance teams.
         </p>
@@ -84,7 +89,7 @@
             
             <div class="dropzone-idle" id="dropzoneIdle">
               <div class="upload-icon-wrapper">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                   <circle cx="12" cy="13" r="4"></circle>
                 </svg>
@@ -193,7 +198,7 @@
 
           <!-- Location UI Fields Placeholder -->
           <div class="location-fields-grid">
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 1rem;">
               <label for="addressText" class="form-label">Street / Landmark Address</label>
               <input 
                 type="text" 
@@ -204,7 +209,7 @@
               >
             </div>
 
-            <div class="coord-inputs-row">
+            <div class="coord-inputs-row" style="margin-top: 0.75rem;">
               <div class="form-group">
                 <label for="latitude" class="form-label">Latitude</label>
                 <input 
@@ -231,7 +236,7 @@
           </div>
 
           <!-- Placeholder Notice Card -->
-          <div class="location-placeholder-card">
+          <div class="location-placeholder-card" style="margin-top: 1rem;">
             <div class="placeholder-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>

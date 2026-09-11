@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script src="js/theme.js"></script>
 </head>
 <body>
 
@@ -31,14 +32,18 @@
         </ul>
       </nav>
 
-      <div class="nav-actions">
-        <a href="pages/login.html" class="btn btn-secondary btn-sm">Log In</a>
-        <a href="pages/register.html" class="btn btn-primary btn-sm">Register</a>
+      <div class="navbar-right">
+        <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme">
+          <!-- Icon injected by theme.js -->
+        </button>
+        <div class="nav-actions">
+          <a href="pages/login.html" class="btn btn-secondary btn-sm">Log In</a>
+          <a href="pages/register.html" class="btn btn-primary btn-sm">Register</a>
+        </div>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
+          &#9776;
+        </button>
       </div>
-
-      <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
-        &#9776;
-      </button>
     </div>
   </header>
 
@@ -51,7 +56,7 @@
           <span>Week 3 Active: Auth, Roles & Dataset Prep</span>
         </div>
         <h1 class="hero-title">
-          Empowering Communities with <span class="gradient-text">Intelligent Road Infrastructure</span>
+          Empowering Communities with <span class="accent-text">Intelligent Road Infrastructure</span>
         </h1>
         <p class="hero-subtitle">
           CivicSight connects citizens directly with municipal repair teams using computer vision AI to detect, prioritize, and accelerate road damage remediation.
@@ -136,12 +141,12 @@
         <div class="portals-grid">
           <div class="portal-card">
             <div>
-              <span class="portal-tag" style="background-color: rgba(2, 132, 199, 0.2); color: var(--color-primary-light);">Active in Week 2</span>
+              <span class="portal-tag portal-tag-active">Active in Week 2</span>
               <h3>Citizen Damage Reporting</h3>
               <p>An intuitive interface for quick road hazard submission with photo upload, detailed descriptions, and structured location placeholders.</p>
             </div>
             <div>
-              <a href="pages/report.html" class="btn btn-primary btn-sm" style="width: fit-content;">
+              <a href="pages/report.html" class="btn btn-primary btn-sm">
                 Launch Reporting Tool &rarr;
               </a>
             </div>
@@ -162,10 +167,12 @@
           </div>
         </div>
       </div>
+    </section>
+
     <!-- Tech Specs Footer Banner -->
     <section class="tech-spec-bar">
       <div class="container">
-        <p style="font-size: 0.9rem; color: var(--color-text-muted);">Built with modern, production-grade technologies:</p>
+        <p class="tech-spec-label">Built with modern, production-grade technologies:</p>
         <div class="tech-tags">
           <span class="tech-tag">FastAPI REST Core</span>
           <span class="tech-tag">PostgreSQL + SQLAlchemy</span>

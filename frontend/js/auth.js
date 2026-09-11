@@ -132,7 +132,6 @@ const CivicSightAuth = (() => {
     clearSession();
     updateNavigation();
     showToast('You have been signed out.', 'info');
-    // Refresh page or redirect to index if on protected view
     setTimeout(() => {
       const isSubPage = window.location.pathname.includes('/pages/');
       window.location.href = isSubPage ? '../index.html' : 'index.html';
@@ -169,7 +168,7 @@ const CivicSightAuth = (() => {
       `;
     } else {
       iconSvg = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-primary-light);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-color);">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="16" x2="12" y2="12"></line>
           <line x1="12" y1="8" x2="12.01" y2="8"></line>
@@ -191,7 +190,6 @@ const CivicSightAuth = (() => {
   function updateNavigation() {
     const isSubPage = window.location.pathname.includes('/pages/');
     const basePath = isSubPage ? '' : 'pages/';
-    const homePath = isSubPage ? '../index.html' : 'index.html';
 
     const navActions = document.querySelector('.nav-actions');
     const navLinks = document.getElementById('navLinks');
@@ -212,7 +210,7 @@ const CivicSightAuth = (() => {
               <span class="user-role-badge role-${roleClass}">${user.role}</span>
             </div>
           </div>
-          <button class="btn btn-secondary btn-sm" id="signOutBtn">Sign Out</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="signOutBtn">Sign Out</button>
         `;
 
         const signOutBtn = document.getElementById('signOutBtn');
@@ -229,7 +227,6 @@ const CivicSightAuth = (() => {
 
     // Role-based Nav Links Preparation
     if (navLinks) {
-      // Check existing links and dynamically insert role-specific portal triggers
       const roleSectionContainer = document.getElementById('roleNavItems');
       if (!roleSectionContainer && loggedIn) {
         const roleLi = document.createElement('li');

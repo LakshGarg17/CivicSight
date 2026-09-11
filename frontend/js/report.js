@@ -1,8 +1,8 @@
 /**
- * CivicSight - Report Damage Page Interactivity (Week 2)
+ * CivicSight - Report Damage Page Interactivity
  *
  * Handles client-side photo selection, interactive preview, drag-and-drop feedback,
- * and structured form field interactions. No backend submission logic is wired for Week 2.
+ * and structured form field interactions.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toast.className = 'toast';
     
     let iconSvg = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-primary-light);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-color);">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="16" x2="12" y2="12"></line>
         <line x1="12" y1="8" x2="12.01" y2="8"></line>
@@ -147,11 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
     modeGpsBtn.addEventListener('click', () => {
       modeGpsBtn.classList.add('active');
       modeManualBtn.classList.remove('active');
-      // Populate placeholder coordinates to illustrate GPS readiness
       latitudeInput.value = '37.774929';
       longitudeInput.value = '-122.419416';
       addressTextInput.placeholder = 'GPS coordinates loaded (E.g., 452 Civic Blvd)';
-      showToast('Simulated GPS coordinates populated for UI placeholder.');
+      showToast('Simulated GPS coordinates populated.');
     });
 
     modeManualBtn.addEventListener('click', () => {
@@ -204,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (res.ok) {
           const created = await res.json();
-          showToast(`Report #${created.id} submitted successfully! Triage status: SUBMITTED.`, 'success');
+          showToast(`Report #${created.id} submitted successfully!`, 'success');
           document.getElementById('roadDamageForm').reset();
           clearImageSelection();
         } else {

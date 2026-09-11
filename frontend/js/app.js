@@ -1,5 +1,5 @@
 /**
- * CivicSight - Core Frontend JavaScript (Week 1 Foundation)
+ * CivicSight - Core Frontend JavaScript
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,19 +15,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Toast Notification System for Week 1 placeholders
+  // Toast Notification System
   const toastContainer = document.getElementById('toastContainer');
 
   function showToast(message) {
     if (!toastContainer) return;
     
-    // Remove existing toast if any
     toastContainer.innerHTML = '';
 
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-primary-light);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="16" x2="12" y2="12"></line>
         <line x1="12" y1="8" x2="12.01" y2="8"></line>
@@ -37,12 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toastContainer.appendChild(toast);
 
-    // Trigger animation
     setTimeout(() => {
       toast.classList.add('show');
     }, 10);
 
-    // Auto dismiss
     setTimeout(() => {
       toast.classList.remove('show');
       setTimeout(() => toast.remove(), 300);

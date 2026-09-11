@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <script src="../js/theme.js"></script>
 </head>
 <body>
 
@@ -29,13 +30,17 @@
         </ul>
       </nav>
 
-      <div class="nav-actions">
-        <a href="register.html" class="btn btn-primary btn-sm">Register</a>
+      <div class="navbar-right">
+        <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme">
+          <!-- Icon injected by theme.js -->
+        </button>
+        <div class="nav-actions">
+          <a href="register.html" class="btn btn-primary btn-sm">Register</a>
+        </div>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
+          &#9776;
+        </button>
       </div>
-
-      <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
-        &#9776;
-      </button>
     </div>
   </header>
 
@@ -49,7 +54,7 @@
           <span class="badge-dot"></span>
           <span>Week 3 Active: Secure JWT Authentication</span>
         </div>
-        <h1 class="auth-title">Welcome to <span class="gradient-text">CivicSight</span></h1>
+        <h1 class="auth-title">Welcome to <span class="accent-text">CivicSight</span></h1>
         <p class="auth-subtitle">
           Sign in with your email and password to access citizen reporting or municipal management tools.
         </p>
