@@ -1,0 +1,9 @@
+path: D:/Projects/CivicSight/ml/baseline_subset
+train: train/images
+val: val/images
+nc: 4
+names:
+  0: D00
+  1: D10
+  2: D20
+  3: D40
