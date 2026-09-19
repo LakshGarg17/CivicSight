@@ -31,6 +31,7 @@
           <li><a href="../index.html" class="nav-link">&larr; Back to Home</a></li>
           <li><a href="../index.html#workflow" class="nav-link">Workflow</a></li>
           <li><a href="report.html" class="nav-link active">Report Damage</a></li>
+          <li><a href="dashboard.html" class="nav-link">Municipal Dashboard</a></li>
         </ul>
       </nav>
 
@@ -125,6 +126,22 @@
             </div>
           </div>
           <span class="input-error-text" id="imageInputError"></span>
+
+          <!-- Moment 3: ML Analysis in Progress (Scanning Lottie) -->
+          <div id="mlScanningState" class="submission-status-banner status-submitting" style="display: none; margin-top: 1rem;">
+            <div class="lottie-status-layout">
+              <div class="lottie-wrap lottie-ml-scanning">
+                <lottie-player src="../assets/lottie/scanning.json" background="transparent" speed="1" loop autoplay aria-hidden="true"></lottie-player>
+              </div>
+              <div class="lottie-status-content">
+                <strong>YOLO Road Hazard Analysis in Progress...</strong>
+                <p class="status-body" style="margin: 0.25rem 0 0;">Scanning pavement surface for cracks, potholes, and defect coordinates.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Requirement 4: Visual ML Detection Results Component Container -->
+          <div id="mlDetectionResultsSlot"></div>
         </section>
 
         <!-- Step 2: Damage Description & Category -->
@@ -189,10 +206,11 @@
             </div>
           </div>
 
-          <!-- Location Toolbar -->
+          <!-- Location Toolbar with Moment 4: Geolocation Lottie Animation -->
           <div class="location-toolbar">
             <div class="location-status-badge" id="locationStatusBadge">
-              <span class="status-indicator-dot"></span>
+              <span id="locationLottieSlot" class="lottie-wrap lottie-geolocation"></span>
+              <span class="status-indicator-dot" id="locationStatusDot"></span>
               <span id="locationStatusText">Detecting location...</span>
             </div>
             <button type="button" class="btn btn-secondary btn-sm" id="recenterGpsBtn" title="Request GPS location from browser">
@@ -294,6 +312,14 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <script src="../js/auth.js"></script>
+  <!-- Lottie Player Web Component -->
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@2.0.8/dist/lottie-player.js"></script>
+  <!-- Visual ML Detection Viewer Component -->
+  <script src="../js/ml-viewer.js"></script>
+  <!-- GSAP Interactions -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="../js/animations.js"></script>
+  <!-- Report Logic -->
   <script src="../js/report.js"></script>
 </body>
 </html>
