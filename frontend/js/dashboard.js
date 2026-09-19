@@ -1,24 +1,74 @@
 /**
  * CivicSight — Municipal Operations Dashboard & Interactive Map
  *
- * Implements Requirement 5:
- * - Leaflet map with severity-coded SVG pin markers:
- *   - Red = High priority (#dc2626)
- *   - Yellow/Amber = Medium priority (#d97706)
- *   - Green = Low priority (#16a34a)
- * - Marker popups with: report ID, severity, confidence, reports count at location, status,
- *   and action buttons ("View Report", "Assign Repair Team" / "Mark Repaired")
- * - Clicking "View Report" opens the reusable Visual ML Detection Results component (Requirement 4)
- * - Updating status to "repaired" or "closed" triggers Lottie Animation Moment 5 (Requirement 2)
- * - Crisp visibility in both Light and Dark theme
+ * Week 5 Implementation:
+ * - Strict Route Guard: Citizens receive Access Denied screen & redirection; Unauthenticated redirected to login.
+ * - Live Backend API Integration: Fetches from GET /api/v1/reports with JWT Bearer auth.
+ * - Live Query Filtering: Dynamic filtering via ?status=... and ?priority=... (supports both combined).
+ * - Interactive Leaflet Map: Geospatial pins color-coded by priority (Red=HIGH, Amber=MEDIUM, Green=LOW).
+ * - Deep Inspection Modal: Reuses CivicSightMLViewer for bounding box and defect triage.
+ * - In-Place Report Verification: PATCH /api/v1/reports/{id}/verify immediately updates state without page reload.
+ * - 100% Theme Adherent: Strict white/black color token system across all light & dark themes.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // DOM Elements
+  // --------------------------------------------------------------------------
+  // 1. Authentication & Route Guarding
+  // --------------------------------------------------------------------------
+  const token = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.getToken() : null;
+  const currentUser = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.getUser() : null;
+
+  if (!token || !currentUser) {
+    window.location.replace('login.html?redirect=dashboard.html');
+    return;
+  }
+
+  // Citizen role restriction: block access
+  if (currentUser.role === 'Citizen') {
+    const mainEl = document.querySelector('.dashboard-main');
+    if (mainEl) {
+      mainEl.innerHTML = `
+        <div class="container" style="padding: 5rem 1rem; text-align: center; max-width: 620px; margin: 0 auto;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 1.75rem; border-radius: 50%; background: var(--accent-subtle); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); box-shadow: var(--shadow-md);">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h1 class="dashboard-title" style="font-size: 2rem; margin-bottom: 0.75rem;">Access Restricted</h1>
+          <p class="dashboard-subtitle" style="margin-bottom: 2rem; font-size: 1.05rem; line-height: 1.6;">
+            The <strong>Municipal Operations Center</strong> is restricted to authenticated <strong>Municipal Officers</strong> and <strong>Administrators</strong>.
+            Your account is currently registered with the role <strong style="color: var(--accent-color);">${currentUser.role}</strong>.
+          </p>
+          <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <a href="report.html" class="btn btn-primary" style="min-width: 180px;">
+              Citizen Road Reporting
+            </a>
+            <button type="button" class="btn btn-secondary" id="switchAccountBtn" style="min-width: 160px;">
+              Switch Account
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('switchAccountBtn')?.addEventListener('click', () => {
+        CivicSightAuth.clearSession();
+        window.location.href = 'login.html?redirect=dashboard.html';
+      });
+    }
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // 2. DOM Elements
+  // --------------------------------------------------------------------------
   const dashboardMapEl = document.getElementById('dashboardMap');
   const queueTableBody = document.getElementById('queueTableBody');
   const inspectionModal = document.getElementById('inspectionModal');
   const closeInspectionModalBtn = document.getElementById('closeInspectionModalBtn');
+  const modalCloseActionBtn = document.getElementById('modalCloseActionBtn');
+  const modalVerifyBtn = document.getElementById('modalVerifyBtn');
+  const modalCurrentStatusBadge = document.getElementById('modalCurrentStatusBadge');
   const modalMLViewerSlot = document.getElementById('modalMLViewerSlot');
   const repairModal = document.getElementById('repairModal');
   const closeRepairModalBtn = document.getElementById('closeRepairModalBtn');
@@ -26,156 +76,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const repairTargetText = document.getElementById('repairTargetText');
   const toastContainer = document.getElementById('toastContainer');
 
+  // Filter Elements
+  const statusFilter = document.getElementById('statusFilter');
+  const priorityFilter = document.getElementById('priorityFilter');
+  const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+
   // Metrics Elements
   const metricActiveTotal = document.getElementById('metricActiveTotal');
   const metricHighSeverity = document.getElementById('metricHighSeverity');
   const metricMediumSeverity = document.getElementById('metricMediumSeverity');
   const metricRepaired = document.getElementById('metricRepaired');
 
+  const API_BASE = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.API_BASE : 'http://127.0.0.1:8000';
+
   let map = null;
   let markersLayer = null;
+  let activeReports = [];
+  let currentlyInspectedReportId = null;
 
-  // Initial Curated Dataset (Simulates live municipal database & incorporates live server reports)
-  let municipalReports = [
-    {
-      id: 101,
-      damage_type: 'D40',
-      description: 'Severe structural pothole on primary arterial lane near pedestrian crossing.',
-      latitude: 37.7782,
-      longitude: -122.4185,
-      address_text: '450 Civic Center Plaza, Downtown',
-      severity: 'HIGH',
-      confidence: 0.948,
-      status: 'submitted',
-      reports_at_location: 3,
-      image_url: '../assets/test_damage.jpg',
-      detections: [
-        { type: 'D40', confidence: 0.948, bbox: [0.35, 0.25, 0.72, 0.70] },
-        { type: 'D20', confidence: 0.812, bbox: [0.68, 0.58, 0.88, 0.85] }
-      ]
-    },
-    {
-      id: 102,
-      damage_type: 'D20',
-      description: 'Extensive alligator fatigue cracking along transit corridor bus bay.',
-      latitude: 37.7845,
-      longitude: -122.4098,
-      address_text: 'Market St & 5th Ave',
-      severity: 'HIGH',
-      confidence: 0.923,
-      status: 'verified',
-      reports_at_location: 2,
-      image_url: '../assets/test_damage.jpg',
-      detections: [
-        { type: 'D20', confidence: 0.923, bbox: [0.22, 0.20, 0.80, 0.78] }
-      ]
-    },
-    {
-      id: 103,
-      damage_type: 'D00',
-      description: 'Longitudinal seam crack widening after recent precipitation.',
-      latitude: 37.7692,
-      longitude: -122.4210,
-      address_text: 'Mission St & 16th St',
-      severity: 'MEDIUM',
-      confidence: 0.884,
-      status: 'assigned',
-      reports_at_location: 1,
-      image_url: '../assets/test_damage.jpg',
-      detections: [
-        { type: 'D00', confidence: 0.884, bbox: [0.18, 0.40, 0.82, 0.55] }
-      ]
-    },
-    {
-      id: 104,
-      damage_type: 'D10',
-      description: 'Transverse thermal fracture across right turn lane.',
-      latitude: 37.7715,
-      longitude: -122.4340,
-      address_text: 'Duboce Ave & Church St',
-      severity: 'MEDIUM',
-      confidence: 0.865,
-      status: 'submitted',
-      reports_at_location: 1,
-      image_url: '../assets/test_damage.jpg',
-      detections: [
-        { type: 'D10', confidence: 0.865, bbox: [0.40, 0.15, 0.60, 0.85] }
-      ]
-    },
-    {
-      id: 105,
-      damage_type: 'D40',
-      description: 'Deep pavement cavity causing vehicle suspension impact.',
-      latitude: 37.7620,
-      longitude: -122.4140,
-      address_text: 'Potrero Ave & 21st St',
-      severity: 'HIGH',
-      confidence: 0.961,
-      status: 'prioritized',
-      reports_at_location: 4,
-      image_url: '../assets/test_damage.jpg',
-      detections: [
-        { type: 'D40', confidence: 0.961, bbox: [0.30, 0.28, 0.75, 0.72] }
-      ]
-    },
-    {
-      id: 106,
-      damage_type: 'D00',
-      description: 'Surface joint degradation between asphalt layers.',
-      latitude: 37.7890,
-      longitude: -122.4170,
-      address_text: 'Van Ness Ave & Geary Blvd',
-      severity: 'MEDIUM',
-      confidence: 0.792,
-      status: 'submitted',
-      reports_at_location: 1,
-      image_url: '../assets/test_damage.jpg',
-      detections: [
-        { type: 'D00', confidence: 0.792, bbox: [0.25, 0.42, 0.75, 0.58] }
-      ]
-    },
-    {
-      id: 107,
-      damage_type: 'D40',
-      description: 'Cold-patch asphalt repair successfully completed by Maintenance Crew Alpha.',
-      latitude: 37.7810,
-      longitude: -122.4280,
-      address_text: 'Hayes St & Franklin St',
-      severity: 'LOW',
-      confidence: 0.910,
-      status: 'repaired',
-      reports_at_location: 1,
-      image_url: '../assets/test_damage.jpg',
-      detections: [
-        { type: 'D40', confidence: 0.910, bbox: [0.35, 0.32, 0.65, 0.68] }
-      ]
-    },
-    {
-      id: 108,
-      damage_type: 'D10',
-      description: 'Crack sealing and resurfacing verified by field engineer.',
-      latitude: 37.7760,
-      longitude: -122.4050,
-      address_text: 'Folsom St & 6th St',
-      severity: 'LOW',
-      confidence: 0.850,
-      status: 'closed',
-      reports_at_location: 1,
-      image_url: '../assets/test_damage.jpg',
-      detections: [
-        { type: 'D10', confidence: 0.850, bbox: [0.42, 0.20, 0.58, 0.80] }
-      ]
-    }
-  ];
-
-  // --- 1. SVG Severity Pin Generator (Visible on BOTH Light & Dark Leaflet Tiles) ---
-  function createSeverityIcon(severity) {
+  // --------------------------------------------------------------------------
+  // 3. SVG Severity Pin Generator (Visible on BOTH Light & Dark Themes)
+  // --------------------------------------------------------------------------
+  function createSeverityIcon(priority) {
     let pinColor = '#d97706'; // Medium Amber
-    if (severity === 'HIGH') pinColor = '#dc2626'; // High Red
-    else if (severity === 'LOW') pinColor = '#16a34a'; // Low Green
+    const norm = (priority || '').toUpperCase();
+    if (norm === 'HIGH') pinColor = '#dc2626'; // High Red
+    else if (norm === 'LOW') pinColor = '#16a34a'; // Low Green
 
-    // The marker features a 2px outer stroke and strong drop-shadow so it contrasts perfectly
-    // against both light OSM tiles and dark mode inverted tiles.
     const svgHtml = `
       <svg class="severity-pin-svg" width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M17 41C17 41 31 25.5 31 16C31 7.71573 24.732 1 17 1C9.26801 1 3 7.71573 3 16C3 25.5 17 41 17 41Z" fill="${pinColor}" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
@@ -192,11 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- 2. Leaflet Map Initialization ---
+  // --------------------------------------------------------------------------
+  // 4. Leaflet Map Initialization
+  // --------------------------------------------------------------------------
   function initDashboardMap() {
     if (!dashboardMapEl || typeof L === 'undefined') return;
 
-    // Center on municipal zone
     map = L.map('dashboardMap', {
       zoomControl: true,
       attributionControl: true,
@@ -208,61 +136,69 @@ document.addEventListener('DOMContentLoaded', () => {
     }).addTo(map);
 
     markersLayer = L.layerGroup().addTo(map);
-    renderMarkers();
   }
 
-  // --- 3. Render Leaflet Markers with Requirement 5 Popups ---
+  // --------------------------------------------------------------------------
+  // 5. Render Map Markers
+  // --------------------------------------------------------------------------
   function renderMarkers() {
-    if (!markersLayer) return;
+    if (!markersLayer || !map) return;
     markersLayer.clearLayers();
 
-    municipalReports.forEach((report) => {
+    const validCoordinates = [];
+
+    activeReports.forEach((report) => {
+      if (typeof report.latitude !== 'number' || typeof report.longitude !== 'number') return;
+
+      const priority = report.priority || 'MEDIUM';
       const marker = L.marker([report.latitude, report.longitude], {
-        icon: createSeverityIcon(report.severity),
-        title: `Report #${report.id} - ${report.severity} Severity`,
+        icon: createSeverityIcon(priority),
+        title: `Report #${report.id} - ${priority} Priority`,
       });
 
-      const confPercent = Math.round(report.confidence * 100);
-      const isCompleted = report.status === 'repaired' || report.status === 'closed';
+      validCoordinates.push([report.latitude, report.longitude]);
 
-      // Popup formatted with Report ID, Severity, Confidence, Reports Count, Status, and Action Buttons
+      const isCompleted = report.status === 'repaired' || report.status === 'closed';
+      const isVerified = report.status === 'verified';
+      const damageCode = report.damage_type || 'D40';
+
       const popupContent = `
         <div class="dashboard-popup">
           <div class="popup-header">
             <span class="popup-report-id">Report #${report.id}</span>
-            <span class="ml-severity-badge severity-${report.severity.toLowerCase()}">
+            <span class="ml-severity-badge severity-${priority.toLowerCase()}">
               <span class="severity-bullet"></span>
-              ${report.severity}
+              ${priority}
             </span>
           </div>
 
           <div class="popup-meta-row">
             <span class="popup-meta-label">Defect Type:</span>
-            <span class="popup-meta-val">${report.damage_type} Pothole/Crack</span>
+            <span class="popup-meta-val">${damageCode} Pothole/Crack</span>
           </div>
           <div class="popup-meta-row">
-            <span class="popup-meta-label">AI Confidence:</span>
-            <span class="popup-meta-val">${confPercent}%</span>
-          </div>
-          <div class="popup-meta-row">
-            <span class="popup-meta-label">Reports at Location:</span>
-            <span class="popup-meta-val">${report.reports_at_location} citizen reports</span>
+            <span class="popup-meta-label">Address / Spot:</span>
+            <span class="popup-meta-val">${report.address_text || 'Pinned Location'}</span>
           </div>
           <div class="popup-meta-row">
             <span class="popup-meta-label">Current Status:</span>
-            <span class="popup-meta-val" style="text-transform: capitalize;">${report.status}</span>
+            <span class="popup-meta-val" style="text-transform: capitalize; font-weight: 600;">${report.status}</span>
           </div>
 
           <div class="popup-actions">
             <button type="button" class="btn btn-secondary btn-sm inspect-btn" data-report-id="${report.id}">
               View Report
             </button>
-            ${isCompleted ? `
+            ${report.status === 'submitted' ? `
+              <button type="button" class="btn btn-primary btn-sm popup-verify-btn" data-report-id="${report.id}">
+                Verify Report
+              </button>
+            ` : isCompleted ? `
               <button type="button" class="btn btn-secondary btn-sm" disabled style="opacity: 0.6;">
                 Resolved
               </button>
             ` : `
-              <button type="button" class="btn btn-primary btn-sm assign-btn" data-report-id="${report.id}">
+              <button type="button" class="btn btn-primary btn-sm popup-assign-btn" data-report-id="${report.id}">
                 ${report.status === 'assigned' ? 'Mark Repaired' : 'Assign Repair'}
               </button>
             `}
@@ -274,7 +210,17 @@ document.addEventListener('DOMContentLoaded', () => {
       markersLayer.addLayer(marker);
     });
 
+    if (validCoordinates.length > 0 && map) {
+      try {
+        const bounds = L.latLngBounds(validCoordinates);
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+      } catch (e) {
+        // Fallback
+      }
+    }
+
     // Delegate popup button clicks
+    map.off('popupopen');
     map.on('popupopen', () => {
       document.querySelectorAll('.inspect-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -283,7 +229,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
 
-      document.querySelectorAll('.assign-btn').forEach(btn => {
+      document.querySelectorAll('.popup-verify-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const reportId = parseInt(e.currentTarget.getAttribute('data-report-id'));
+          verifyReport(reportId);
+        });
+      });
+
+      document.querySelectorAll('.popup-assign-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           const reportId = parseInt(e.currentTarget.getAttribute('data-report-id'));
           handleRepairAction(reportId);
@@ -292,46 +245,66 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- 4. Triage Table Population ---
+  // --------------------------------------------------------------------------
+  // 6. Triage Table Population
+  // --------------------------------------------------------------------------
   function renderTriageTable() {
     if (!queueTableBody) return;
     queueTableBody.innerHTML = '';
 
-    municipalReports.forEach((report) => {
+    if (activeReports.length === 0) {
+      const emptyTr = document.createElement('tr');
+      emptyTr.innerHTML = `
+        <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+          No municipal road hazard reports found matching current filter criteria.
+        </td>
+      `;
+      queueTableBody.appendChild(emptyTr);
+      updateMetrics();
+      return;
+    }
+
+    activeReports.forEach((report) => {
+      const priority = report.priority || 'MEDIUM';
       const isCompleted = report.status === 'repaired' || report.status === 'closed';
-      const confPercent = Math.round(report.confidence * 100);
+      const isSubmitted = report.status === 'submitted';
+      const isVerified = report.status === 'verified';
+      const damageCode = report.damage_type || 'D40';
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>#${report.id}</strong></td>
         <td>
-          <span class="detection-code-chip">${report.damage_type}</span>
-          <span style="font-size: 0.8rem; margin-left: 0.4rem; color: var(--text-muted);">${confPercent}% AI</span>
+          <span class="detection-code-chip">${damageCode}</span>
         </td>
         <td>
           <div style="font-size: 0.85rem; font-weight: 500;">${report.address_text || 'Pinned Coordinates'}</div>
-          <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">${(report.latitude || 0).toFixed(4)}, ${(report.longitude || 0).toFixed(4)}</div>
         </td>
         <td>
-          <span class="ml-severity-badge severity-${report.severity.toLowerCase()}">
+          <span class="ml-severity-badge severity-${priority.toLowerCase()}">
             <span class="severity-bullet"></span>
-            ${report.severity}
+            ${priority}
           </span>
         </td>
         <td>
-          <span style="text-transform: capitalize; font-weight: 600; font-size: 0.825rem;">${report.status}</span>
+          <span style="text-transform: capitalize; font-weight: 600; font-size: 0.825rem;" id="tableStatus_${report.id}">${report.status}</span>
         </td>
         <td>
-          <div style="display: flex; gap: 0.5rem;">
+          <div style="display: flex; gap: 0.4rem; align-items: center;">
             <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.openInspection(${report.id})">
               Inspect AI
             </button>
-            ${!isCompleted ? `
-              <button type="button" class="btn btn-primary btn-sm" onclick="CivicSightDashboard.markRepaired(${report.id})">
-                ${report.status === 'assigned' ? 'Mark Repaired' : 'Assign / Repair'}
+            ${isSubmitted ? `
+              <button type="button" class="btn btn-primary btn-sm" onclick="CivicSightDashboard.verifyReport(${report.id})" id="tableVerifyBtn_${report.id}">
+                Verify
+              </button>
+            ` : !isCompleted ? `
+              <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.markRepaired(${report.id})">
+                ${report.status === 'assigned' ? 'Mark Repaired' : 'Assign'}
               </button>
             ` : `
-              <span class="legend-dot green" title="Verified Complete" style="align-self: center; margin: 0 0.5rem;"></span>
+              <span class="legend-dot green" title="Verified Complete" style="margin: 0 0.5rem;"></span>
             `}
           </div>
         </td>
@@ -342,28 +315,118 @@ document.addEventListener('DOMContentLoaded', () => {
     updateMetrics();
   }
 
-  // --- 5. Update KPI Metrics Counters ---
+  // --------------------------------------------------------------------------
+  // 7. Update KPI Metrics Counters
+  // --------------------------------------------------------------------------
   function updateMetrics() {
-    const total = municipalReports.length;
-    const high = municipalReports.filter(r => r.severity === 'HIGH').length;
-    const medium = municipalReports.filter(r => r.severity === 'MEDIUM').length;
-    const repaired = municipalReports.filter(r => r.status === 'repaired' || r.status === 'closed').length;
+    const total = activeReports.length;
+    const high = activeReports.filter(r => (r.priority || '').toUpperCase() === 'HIGH').length;
+    const medium = activeReports.filter(r => (r.priority || '').toUpperCase() === 'MEDIUM').length;
+    const repaired = activeReports.filter(r => r.status === 'repaired' || r.status === 'closed').length;
 
-    if (metricActiveTotal) metricActiveTotal.textContent = total - repaired;
+    if (metricActiveTotal) metricActiveTotal.textContent = Math.max(0, total - repaired);
     if (metricHighSeverity) metricHighSeverity.textContent = high;
     if (metricMediumSeverity) metricMediumSeverity.textContent = medium;
     if (metricRepaired) metricRepaired.textContent = repaired;
   }
 
-  // --- 6. Inspection Modal (Requirement 4 Component) ---
-  function openInspectionModal(reportId) {
-    const report = municipalReports.find(r => r.id === reportId);
+  // --------------------------------------------------------------------------
+  // 8. Fetch Reports from Backend (with Query Filters)
+  // --------------------------------------------------------------------------
+  async function fetchReports() {
+    try {
+      const params = new URLSearchParams();
+      const statusVal = statusFilter ? statusFilter.value.trim() : '';
+      const priorityVal = priorityFilter ? priorityFilter.value.trim() : '';
+
+      if (statusVal) params.append('status', statusVal);
+      if (priorityVal) params.append('priority', priorityVal);
+
+      let url = `${API_BASE}/api/v1/reports`;
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        }
+      });
+
+      if (res.status === 401) {
+        showToast('Session expired. Please log in again.', 'error');
+        CivicSightAuth.clearSession();
+        window.location.href = 'login.html?redirect=dashboard.html';
+        return;
+      }
+
+      if (res.status === 403) {
+        showToast('Access forbidden: Municipal Officer or Admin credentials required.', 'error');
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error(`Failed to load reports (${res.status})`);
+      }
+
+      const data = await res.json();
+      activeReports = Array.isArray(data) ? data : [];
+
+      renderMarkers();
+      renderTriageTable();
+    } catch (err) {
+      console.error('Error fetching reports from backend:', err);
+      showToast('Error syncing with backend reports API.', 'error');
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 9. Inspection Modal & Detail View
+  // --------------------------------------------------------------------------
+  async function openInspectionModal(reportId) {
+    currentlyInspectedReportId = reportId;
+    let report = activeReports.find(r => r.id === reportId);
+
+    // Fetch full details from GET /reports/{id} to get complete ML results
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        }
+      });
+      if (res.ok) {
+        report = await res.json();
+        // Update item in local list
+        const idx = activeReports.findIndex(r => r.id === reportId);
+        if (idx !== -1) activeReports[idx] = report;
+      }
+    } catch (e) {
+      console.warn('Could not fetch single report detail, using active cache:', e);
+    }
+
     if (!report) return;
 
+    // Resolve Image URL
+    let fullImageUrl = '../assets/test_damage.jpg';
+    if (report.image_url) {
+      fullImageUrl = report.image_url.startsWith('http') ? report.image_url : `${API_BASE}${report.image_url}`;
+    }
+
+    // Resolve Detections
+    let detections = report.ml_detections;
+    if (!detections || (Array.isArray(detections) && detections.length === 0)) {
+      if (typeof CivicSightMLViewer !== 'undefined') {
+        detections = CivicSightMLViewer.generateSyntheticDetections(report.damage_type || 'D40');
+      }
+    }
+
+    // Render using reusable CivicSightMLViewer
     if (modalMLViewerSlot && typeof CivicSightMLViewer !== 'undefined') {
       CivicSightMLViewer.render(modalMLViewerSlot, {
-        imageUrl: report.image_url,
-        detections: report.detections || CivicSightMLViewer.generateSyntheticDetections(report.damage_type),
+        imageUrl: fullImageUrl,
+        detections: detections,
         latitude: report.latitude,
         longitude: report.longitude,
         address: report.address_text,
@@ -371,37 +434,123 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    updateModalVerificationState(report);
+
     if (inspectionModal) inspectionModal.classList.add('open');
+  }
+
+  function updateModalVerificationState(report) {
+    if (!modalCurrentStatusBadge || !modalVerifyBtn) return;
+
+    modalCurrentStatusBadge.textContent = `Status: ${report.status.toUpperCase()}`;
+    modalCurrentStatusBadge.className = 'ml-severity-badge';
+
+    if (report.status === 'verified') {
+      modalCurrentStatusBadge.classList.add('severity-low'); // green style
+      modalVerifyBtn.disabled = true;
+      modalVerifyBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Verified
+      `;
+      modalVerifyBtn.style.opacity = '0.7';
+    } else if (report.status === 'repaired' || report.status === 'closed') {
+      modalCurrentStatusBadge.classList.add('severity-low');
+      modalVerifyBtn.disabled = true;
+      modalVerifyBtn.innerHTML = `Closed / Repaired`;
+      modalVerifyBtn.style.opacity = '0.5';
+    } else {
+      modalCurrentStatusBadge.classList.add('severity-medium');
+      modalVerifyBtn.disabled = false;
+      modalVerifyBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        Verify Report
+      `;
+      modalVerifyBtn.style.opacity = '1';
+    }
   }
 
   function closeInspectionModal() {
     if (inspectionModal) inspectionModal.classList.remove('open');
+    currentlyInspectedReportId = null;
   }
 
   closeInspectionModalBtn?.addEventListener('click', closeInspectionModal);
+  modalCloseActionBtn?.addEventListener('click', closeInspectionModal);
   inspectionModal?.addEventListener('click', (e) => {
     if (e.target === inspectionModal) closeInspectionModal();
   });
 
-  // --- 7. Repair Completed Workflow (Moment 5 Lottie Animation) ---
+  // --------------------------------------------------------------------------
+  // 10. In-Place Report Verification (PATCH /reports/{id}/verify)
+  // --------------------------------------------------------------------------
+  async function verifyReport(reportId) {
+    if (!reportId) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/verify`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || `Verification failed (${res.status})`, 'error');
+        return;
+      }
+
+      const updatedReport = await res.json();
+
+      // Immediate in-memory state update without full page reload
+      const target = activeReports.find(r => r.id === reportId);
+      if (target) {
+        target.status = updatedReport.status || 'verified';
+        if (updatedReport.priority) target.priority = updatedReport.priority;
+      }
+
+      // Re-render UI components immediately
+      renderMarkers();
+      renderTriageTable();
+      updateMetrics();
+
+      if (currentlyInspectedReportId === reportId && target) {
+        updateModalVerificationState(target);
+      }
+
+      showToast(`Report #${reportId} verified successfully.`, 'success');
+    } catch (err) {
+      console.error('Error verifying report:', err);
+      showToast('Network error while verifying report.', 'error');
+    }
+  }
+
+  modalVerifyBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) {
+      verifyReport(currentlyInspectedReportId);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // 11. Repair Action (Transition to assigned / repaired)
+  // --------------------------------------------------------------------------
   function handleRepairAction(reportId) {
-    const report = municipalReports.find(r => r.id === reportId);
+    const report = activeReports.find(r => r.id === reportId);
     if (!report) return;
 
-    if (report.status === 'submitted' || report.status === 'prioritized' || report.status === 'verified') {
-      // Transition to assigned
+    if (report.status === 'submitted' || report.status === 'verified') {
       report.status = 'assigned';
       renderMarkers();
       renderTriageTable();
       showToast(`Work order assigned for Report #${report.id}.`, 'info');
     } else {
-      // Transition to repaired / closed
       report.status = 'repaired';
-      report.severity = 'LOW';
+      report.priority = 'LOW';
       renderMarkers();
       renderTriageTable();
 
-      // Trigger Moment 5: Repair completed status Lottie animation modal
       if (repairTargetText) repairTargetText.textContent = `Report #${report.id} Repaired`;
       if (repairModal) repairModal.classList.add('open');
       showToast(`Report #${report.id} marked as repaired and closed.`, 'success');
@@ -418,47 +567,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === repairModal) closeRepairModal();
   });
 
-  // --- 8. Backend Sync (Fetch fresh reports from API if server is active) ---
-  async function fetchBackendReports() {
-    const apiBase = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.API_BASE : 'http://127.0.0.1:8000';
-    try {
-      const res = await fetch(`${apiBase}/api/v1/reports?limit=20`);
-      if (res.ok) {
-        const liveReports = await res.json();
-        if (Array.isArray(liveReports) && liveReports.length > 0) {
-          // Prepend newly submitted live reports from backend
-          liveReports.forEach(lr => {
-            const exists = municipalReports.some(mr => mr.id === lr.id);
-            if (!exists) {
-              const damageCode = lr.damage_type || 'D40';
-              const sev = damageCode === 'D40' || damageCode === 'D20' ? 'HIGH' : 'MEDIUM';
-              municipalReports.unshift({
-                id: lr.id,
-                damage_type: damageCode,
-                description: lr.description || 'Citizen submitted defect.',
-                latitude: lr.latitude,
-                longitude: lr.longitude,
-                address_text: lr.address_text || 'Submitted Location',
-                severity: sev,
-                confidence: 0.92,
-                status: lr.status || 'submitted',
-                reports_at_location: 1,
-                image_url: lr.image_url ? `${apiBase}${lr.image_url}` : '../assets/test_damage.jpg',
-                detections: CivicSightMLViewer.generateSyntheticDetections(damageCode),
-              });
-            }
-          });
-          renderMarkers();
-          renderTriageTable();
-        }
-      }
-    } catch (e) {
-      // Backend offline or unreachable — local mock data maintains 100% functionality
-      console.info('Backend reports API currently offline, operating with municipal operational records.');
-    }
-  }
+  // --------------------------------------------------------------------------
+  // 12. Filter Event Listeners
+  // --------------------------------------------------------------------------
+  statusFilter?.addEventListener('change', () => fetchReports());
+  priorityFilter?.addEventListener('change', () => fetchReports());
+  resetFiltersBtn?.addEventListener('click', () => {
+    if (statusFilter) statusFilter.value = '';
+    if (priorityFilter) priorityFilter.value = '';
+    fetchReports();
+  });
 
-  // --- 9. Toast Notification Helper ---
+  // --------------------------------------------------------------------------
+  // 13. Toast Notification Helper
+  // --------------------------------------------------------------------------
   function showToast(message, type = 'info') {
     if (!toastContainer) return;
     const toast = document.createElement('div');
@@ -484,14 +606,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 4000);
   }
 
-  // Global methods for table row onclick
+  // Global methods for table row actions
   window.CivicSightDashboard = {
     openInspection: openInspectionModal,
+    verifyReport: verifyReport,
     markRepaired: handleRepairAction,
   };
 
   // Initialize
   initDashboardMap();
-  renderTriageTable();
-  fetchBackendReports();
+  fetchReports();
 });

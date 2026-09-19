@@ -146,6 +146,33 @@
           </div>
         </div>
 
+        <!-- Filter Controls (Week 5) -->
+        <div class="dashboard-filter-bar">
+          <div class="filter-group">
+            <label for="statusFilter" class="filter-label">Status:</label>
+            <select id="statusFilter" class="form-select filter-select">
+              <option value="">All Statuses</option>
+              <option value="submitted">Submitted</option>
+              <option value="verified">Verified</option>
+              <option value="assigned">Assigned</option>
+              <option value="repaired">Repaired</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="priorityFilter" class="filter-label">Priority:</label>
+            <select id="priorityFilter" class="form-select filter-select">
+              <option value="">All Priorities</option>
+              <option value="HIGH">High Priority</option>
+              <option value="MEDIUM">Medium Priority</option>
+              <option value="LOW">Low Priority</option>
+            </select>
+          </div>
+          <button type="button" id="resetFiltersBtn" class="btn btn-secondary btn-sm" style="margin-left: auto;">
+            Reset Filters
+          </button>
+        </div>
+
         <div class="queue-table-wrap">
           <table class="queue-table" aria-label="Road Hazard Triage Table">
             <thead>
@@ -153,13 +180,13 @@
                 <th>Report</th>
                 <th>Defect Type</th>
                 <th>Coordinates / Street</th>
-                <th>Severity</th>
+                <th>Priority</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="queueTableBody">
-              <!-- Dynamically populated by dashboard.js -->
+              <!-- Dynamically populated by dashboard.js from live backend API -->
             </tbody>
           </table>
         </div>
@@ -177,6 +204,18 @@
       </div>
       <div id="modalMLViewerSlot">
         <!-- Injected via CivicSightMLViewer.render() -->
+      </div>
+      <div class="modal-footer" id="modalFooter" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+        <div id="modalReportMetaStatus">
+          <span class="ml-severity-badge" id="modalCurrentStatusBadge">Status: submitted</span>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="modalCloseActionBtn">Close</button>
+          <button type="button" class="btn btn-primary btn-sm" id="modalVerifyBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            Verify Report
+          </button>
+        </div>
       </div>
     </div>
   </div>
