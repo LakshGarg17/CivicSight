@@ -345,3 +345,77 @@ Visual verification overlays will be generated in `ml/samples/verified_boxes/`.
     - **D10 (Transverse Cracks)** and **D40 (Potholes)** showed highest relative initial detectability (`mAP50 ~ 0.022-0.046`, recall up to `90.0%` on potholes due to salient shadow boundaries).
     - **D00 (Longitudinal Cracks)** and **D20 (Alligator Cracks)** proved noticeably harder to isolate from background road texture in the initial baseline pass, requiring higher resolution and deeper feature extraction.
   - Documented in `ml/experiments/baseline_results.json` and `ml/experiments/baseline_report.md`.
+
+---
+
+## 🏛️ Week 5 Progress Summary
+
+Week 5 transforms the municipal operations workflow into a fully functional, role-gated platform with live backend report management, dynamic triage filtering, in-place report verification, and an optimized ML baseline model.
+
+### 1. Backend Subsystem: Municipal Report Management & RBAC
+- **Role-Gated Endpoints (`backend/app/api/v1/endpoints/reports.py`)**:
+  - `GET /reports` (and `/api/v1/reports`): Returns road hazard listing with ID, location, priority, status, image URL, and timestamps.
+  - `GET /reports/{id}` (and `/api/v1/reports/{id}`): Returns full report details, reporter profile, and structured ML detection results.
+  - `PATCH /reports/{id}/verify` (and `/api/v1/reports/{id}/verify`): Transitions a report to `verified`. Rejects reports that are already `repaired` or `closed` with `400 Bad Request`.
+- **Strict Role-Based Access Control**:
+  - Restricted to `Municipal Officer` and `Admin` via reusable dependency `require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)`.
+  - Unauthenticated requests receive `401 Unauthorized`.
+  - Authenticated requests with `Citizen` or `Maintenance Staff` roles receive `403 Forbidden`.
+- **Query Parameter Filtering**:
+  - Supports `?status=...` (submitted, verified, assigned, repaired, closed) and `?priority=...` (HIGH, MEDIUM, LOW).
+  - Fully supports combining both query filters simultaneously (e.g., `?status=submitted&priority=HIGH`).
+- **Database Schema Migrations (`backend/app/models/models.py` & `init_db.py`)**:
+  - Added indexed `priority` column (`HIGH`, `MEDIUM`, `LOW`) with intelligent defect-based auto-inferencing (`D40`/`D20` -> `HIGH`, `D00`/`D10` -> `MEDIUM`).
+  - Added `ml_detections` text column storing validated JSON detection bounding boxes.
+- **Automated Test Suites**:
+  - `backend/test_municipal_reports_api.py`: 100% pass across 7 test suites (unauth 401s, citizen 403s, officer 200s, 404s, combined filtering, verification workflow, closed rejection).
+  - `backend/test_auth.py`: 100% pass across user registration, login, JWT validation, and RBAC guards.
+
+---
+
+### 2. Frontend Subsystem: Municipal Operations Center
+- **Route Guarding (`frontend/js/dashboard.js`)**:
+  - Automatically checks active JWT session and role. Unauthenticated visitors are redirected to `login.html`.
+  - Citizen accounts encounter a dedicated **"Access Restricted"** screen explaining the restriction to Municipal Officers/Admins, with single-click navigation back to citizen reporting.
+- **Live Backend Integration (No Mock Data)**:
+  - Fetches live report records from `GET /api/v1/reports` using Bearer authentication.
+  - Dynamic KPI metric counters: Active Hazards, High Severity, Medium Priority, and Repaired/Closed tickets.
+- **Dynamic Query Filtering**:
+  - Interactive status and priority dropdowns wired directly to backend query params.
+  - Updates table and map pins instantaneously upon selection, with a single-click "Reset Filters" action.
+- **Inspection Modal with Visual AI Detection**:
+  - Reuses the `CivicSightMLViewer` component to render defect images, interactive SVG bounding box overlays, confidence chips, and geospatial coordinates.
+- **In-Place Report Verification**:
+  - Modal and triage table feature a **"Verify Report"** action calling `PATCH /api/v1/reports/{id}/verify`.
+  - State updates to `verified` immediately across table badges, modal indicators, and Leaflet map popups **without a full page reload**.
+- **Design & Theme Consistency**:
+  - Strict adherence to the plain white / plain black CSS variable token system (`--bg-primary`, `--bg-secondary`, `--text-primary`, `--border-color`, `--accent-color`).
+  - Tested and visually verified in both Light and Dark modes.
+
+---
+
+### 3. ML Subsystem: Baseline Optimization & Experiment 2
+- **Training Experiment 2 (`ml/scripts/train_experiment2.py`)**:
+  - Implemented deliberate configuration changes:
+    1. Input resolution reduced to `512x512` for CPU inference efficiency and tighter crack receptive fields.
+    2. Training duration increased to `3 epochs` (+50% optimization steps).
+    3. Cosine learning rate scheduling enabled (`cos_lr=True`, `lr0=0.01`).
+- **Comparative Metrics Breakdown**:
+
+| Metric | Experiment 1 (Week 4 Baseline) | Experiment 2 (Week 5 Run) | Delta (Exp 2 vs Exp 1) |
+|:---|:---:|:---:|:---:|
+| **Mean Precision (P)** | `0.0041` | **`0.6541`** | **+0.6500 (+15,853%)** |
+| **Mean Recall (R)** | `0.5024` | `0.1254` | -0.3770 |
+| **Overall mAP@0.5** | `0.0335` | **`0.1176`** | **+0.0841 (+251.0%)** |
+| **Overall mAP@0.5:0.95** | `0.0114` | **`0.0530`** | **+0.0416 (+364.9%)** |
+| **D00 (Longitudinal)** | `0.0002` | **`0.0419`** | +0.0417 |
+| **D10 (Transverse)** | `0.0224` | **`0.0419`** | +0.0195 |
+| **D20 (Alligator)** | `0.0006` | `0.0001` | -0.0005 |
+| **D40 (Pothole)** | `0.0222` | **`0.1281`** | **+0.1059 (+477%)** |
+
+- **Baseline Selection**:
+  - **Experiment 2 (`experiment2_week5`)** selected as canonical baseline model.
+  - Weights preserved in `ml/runs/detect/experiment2_week5/weights/best.pt`.
+  - Comprehensive comparison and technical reasoning documented in `ml/experiments/results.md`.
+  - *Integration Boundary:* Model inference integration into backend endpoint is deferred to Week 6 as scheduled.
+
