@@ -292,8 +292,11 @@ def test_authentication_and_roles_workflow():
     assert new_report.json()["reporter_id"] == citizen_id
     print(f"  [PASS] Created damage report #{report_id} linked to citizen #{citizen_id}")
 
-    # Read back report
-    get_rep = client.get(f"/api/v1/reports/{report_id}")
+    # Read back report (using privileged token per Week 5 RBAC enforcement)
+    get_rep = client.get(
+        f"/api/v1/reports/{report_id}",
+        headers={"Authorization": f"Bearer {token_admin}"},
+    )
     assert get_rep.status_code == 200
     assert get_rep.json()["reporter"]["email"] == citizen_email
     print(f"  [PASS] Report #{report_id} eager-loaded reporter profile with role '{get_rep.json()['reporter']['role']}'")

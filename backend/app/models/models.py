@@ -104,10 +104,10 @@ class Report(Base):
         index=True,
     )
 
-    # Future extensibility fields reserved for upcoming weeks
-    # e.g., damage_type (D00-D40), severity_score, assigned_crew_id, repair_cost
     severity_score = Column(Float, nullable=True)
     damage_type = Column(String(50), nullable=True)
+    priority = Column(String(20), nullable=True, default="MEDIUM", index=True)
+    ml_detections = Column(Text, nullable=True)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

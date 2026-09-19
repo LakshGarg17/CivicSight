@@ -4,7 +4,8 @@ Request and response validation models for Authentication, User, and Report CRUD
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union, Any
+import json
 import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.models.models import ReportStatus, UserRole
@@ -106,6 +107,8 @@ class ReportBase(BaseModel):
     address_text: Optional[str] = Field(None, max_length=255, description="Human-readable address or landmark")
     image_url: Optional[str] = Field(None, max_length=500, description="Path or URL to damage photo")
     damage_type: Optional[str] = Field(None, max_length=50, description="Initial damage type (e.g. D00, D10, D20, D40)")
+    priority: Optional[str] = Field("MEDIUM", description="Assigned priority: HIGH, MEDIUM, LOW")
+    ml_detections: Optional[Union[dict, list, str]] = Field(None, description="Attached ML defect detection data")
 
 
 class ReportCreate(ReportBase):
@@ -122,6 +125,8 @@ class ReportUpdate(BaseModel):
     status: Optional[ReportStatus] = None
     damage_type: Optional[str] = None
     severity_score: Optional[float] = None
+    priority: Optional[str] = None
+    ml_detections: Optional[Union[dict, list, str]] = None
 
 
 class ReportStatusUpdate(BaseModel):
@@ -138,3 +143,14 @@ class ReportResponse(ReportBase):
     reporter: Optional[UserResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("ml_detections", mode="before")
+    @classmethod
+    def parse_ml_detections(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return v
+        return v
+

@@ -56,6 +56,20 @@ def init_db() -> None:
                         )
                         conn.commit()
 
+            # Check and migrate columns for Week 5 reports schema additions (priority, ml_detections)
+            if "reports" in inspector.get_table_names():
+                existing_report_cols = [c["name"] for c in inspector.get_columns("reports")]
+
+                if "priority" not in existing_report_cols:
+                    logger.info("Adding 'priority' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN priority VARCHAR(20) DEFAULT 'MEDIUM';"))
+                    conn.commit()
+
+                if "ml_detections" not in existing_report_cols:
+                    logger.info("Adding 'ml_detections' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN ml_detections TEXT;"))
+                    conn.commit()
+
         logger.info("Database tables verified/created successfully.")
     except Exception as e:
         logger.error(f"Failed to initialize database tables: {e}")
