@@ -312,39 +312,6 @@ Dataset verification:
 python scripts/verify_dataset_and_visualize.py
 ```
 
----
-
-## 📌 Project Status
-
-### Completed
-
-- [x] Citizen registration and login
-- [x] JWT authentication and RBAC
-- [x] Citizen road-damage reporting
-- [x] Image upload and validation
-- [x] GPS and interactive map integration
-- [x] PostgreSQL database integration
-- [x] Report CRUD operations
-- [x] Municipal dashboard
-- [x] Status and priority filtering
-- [x] Report verification workflow
-- [x] RDD2022 dataset preparation
-- [x] YOLOv8 preprocessing and validation
-- [x] Initial ML training experiments
-- [x] AI detection visualization
-
-### Planned
-
-- [ ] Improved road-damage detection accuracy
-- [ ] Direct ML inference integration with report submission
-- [ ] Automated severity estimation
-- [ ] Advanced priority scoring
-- [ ] Maintenance work-order dispatch
-- [ ] Repair progress tracking
-- [ ] Citizen notifications
-- [ ] Expanded municipal analytics
-
----
 
 ## 🔗 Explore CivicSight
 
