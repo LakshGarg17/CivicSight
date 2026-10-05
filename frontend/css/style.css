@@ -2573,3 +2573,257 @@ spline-viewer,
   font-size: 0.85rem;
   margin: 0.5rem 0 1rem;
 }
+
+/* ==========================================================================
+   13. Week 6: Report Lifecycle Badges & History Timeline
+   ========================================================================== */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.status-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+}
+
+/* Status variants reusing established color tokens */
+.status-badge.status-submitted {
+  background-color: var(--color-info-bg);
+  border: 1px solid var(--color-info-border);
+  color: var(--color-info-text);
+}
+.status-badge.status-submitted .status-badge-dot { background-color: var(--color-info); }
+
+.status-badge.status-pending_verification {
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning-text);
+}
+.status-badge.status-pending_verification .status-badge-dot { background-color: var(--color-warning); }
+
+.status-badge.status-verified {
+  background-color: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  color: var(--color-success-text);
+}
+.status-badge.status-verified .status-badge-dot { background-color: var(--color-success); }
+
+.status-badge.status-assigned {
+  background-color: var(--accent-subtle);
+  border: 1px solid var(--accent-subtle-border);
+  color: var(--accent-color);
+}
+.status-badge.status-assigned .status-badge-dot { background-color: var(--accent-color); }
+
+.status-badge.status-under_repair {
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning-text);
+}
+.status-badge.status-under_repair .status-badge-dot { background-color: var(--color-warning); }
+
+.status-badge.status-repaired,
+.status-badge.status-closed {
+  background-color: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  color: var(--color-success-text);
+}
+.status-badge.status-repaired .status-badge-dot,
+.status-badge.status-closed .status-badge-dot { background-color: var(--color-success); }
+
+.status-badge.status-rejected {
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger-text);
+}
+.status-badge.status-rejected .status-badge-dot { background-color: var(--color-danger); }
+
+.status-badge.status-duplicate {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+.status-badge.status-duplicate .status-badge-dot { background-color: var(--text-muted); }
+
+/* Report History Section in Details View */
+.report-history-section {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.history-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.history-count-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-left: 1.25rem;
+}
+
+.history-timeline::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 5px;
+  width: 2px;
+  background-color: var(--border-color);
+}
+
+.history-timeline-item {
+  position: relative;
+  padding-bottom: 1.25rem;
+}
+
+.history-timeline-item:last-child {
+  padding-bottom: 0.25rem;
+}
+
+.history-timeline-node {
+  position: absolute;
+  left: -1.25rem;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background-color: var(--bg-card);
+  border: 2px solid var(--accent-color);
+  z-index: 2;
+}
+
+.history-timeline-content {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+}
+
+.history-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.history-transition-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.history-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.history-performer {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+}
+
+.history-performer strong {
+  color: var(--text-primary);
+}
+
+.history-note-box {
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.825rem;
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+
+.history-empty-msg {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Action Dialogs in Modals */
+.action-dialog-group {
+  margin-bottom: 1.25rem;
+}
+
+.action-dialog-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: var(--text-primary);
+}
+
+.action-dialog-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.action-dialog-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  color: #ffffff;
+  border: 1px solid var(--color-danger);
+}
+.btn-danger:hover {
+  background-color: #b91c1c;
+  border-color: #b91c1c;
+  color: #ffffff;
+}
+
+.modal-actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+

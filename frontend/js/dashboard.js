@@ -1,14 +1,20 @@
 /**
  * CivicSight — Municipal Operations Dashboard & Interactive Map
  *
- * Municipal operations dashboard implementation:
+ * Week 6 Enhanced Implementation:
  * - Strict Route Guard: Citizens receive Access Denied screen & redirection; Unauthenticated redirected to login.
  * - Live Backend API Integration: Fetches from GET /api/v1/reports with JWT Bearer auth.
- * - Live Query Filtering: Dynamic filtering via ?status=... and ?priority=... (supports both combined).
+ * - Live Query Filtering: Dynamic filtering via ?status=... and ?priority=...
  * - Interactive Leaflet Map: Geospatial pins color-coded by priority (Red=HIGH, Amber=MEDIUM, Green=LOW).
  * - Deep Inspection Modal: Reuses CivicSightMLViewer for bounding box and defect triage.
- * - In-Place Report Verification: PATCH /api/v1/reports/{id}/verify immediately updates state without page reload.
- * - 100% Theme Adherent: Strict white/black color token system across all light & dark themes.
+ * - Real Lifecycle Status Transitions:
+ *     * PATCH /reports/{id}/verify (moves to verified)
+ *     * PATCH /reports/{id}/reject (prompts for required reason)
+ *     * PATCH /reports/{id}/duplicate (prompts for required original report ID)
+ *     * PATCH /reports/{id}/assign (prompts for required maintenance staff/crew)
+ * - Server-Validated State Machine Rules mirrored on frontend (illegal actions hidden/disabled).
+ * - Real Status Transition Audit History loaded from GET /reports/{id}/history.
+ * - Established Theme-Aware Color Tokens for status badges across both Light and Dark modes.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -64,17 +70,58 @@ document.addEventListener('DOMContentLoaded', () => {
   // --------------------------------------------------------------------------
   const dashboardMapEl = document.getElementById('dashboardMap');
   const queueTableBody = document.getElementById('queueTableBody');
+  const toastContainer = document.getElementById('toastContainer');
+
+  // Inspection Modal Elements
   const inspectionModal = document.getElementById('inspectionModal');
   const closeInspectionModalBtn = document.getElementById('closeInspectionModalBtn');
   const modalCloseActionBtn = document.getElementById('modalCloseActionBtn');
-  const modalVerifyBtn = document.getElementById('modalVerifyBtn');
-  const modalCurrentStatusBadge = document.getElementById('modalCurrentStatusBadge');
+  const modalReportSubheader = document.getElementById('modalReportSubheader');
   const modalMLViewerSlot = document.getElementById('modalMLViewerSlot');
+  const modalCurrentStatusBadge = document.getElementById('modalCurrentStatusBadge');
+  const modalCurrentStatusText = document.getElementById('modalCurrentStatusText');
+  const modalExtraMeta = document.getElementById('modalExtraMeta');
+  const modalHistoryTimeline = document.getElementById('modalHistoryTimeline');
+  const historyCountBadge = document.getElementById('historyCountBadge');
+
+  // Modal Action Buttons
+  const modalVerifyBtn = document.getElementById('modalVerifyBtn');
+  const modalAssignBtn = document.getElementById('modalAssignBtn');
+  const modalDuplicateBtn = document.getElementById('modalDuplicateBtn');
+  const modalRejectBtn = document.getElementById('modalRejectBtn');
+
+  // Sub-Modal: Reject
+  const rejectModal = document.getElementById('rejectModal');
+  const closeRejectModalBtn = document.getElementById('closeRejectModalBtn');
+  const cancelRejectBtn = document.getElementById('cancelRejectBtn');
+  const rejectForm = document.getElementById('rejectForm');
+  const rejectReasonInput = document.getElementById('rejectReasonInput');
+  const rejectNoteInput = document.getElementById('rejectNoteInput');
+
+  // Sub-Modal: Duplicate
+  const duplicateModal = document.getElementById('duplicateModal');
+  const closeDuplicateModalBtn = document.getElementById('closeDuplicateModalBtn');
+  const cancelDuplicateBtn = document.getElementById('cancelDuplicateBtn');
+  const duplicateForm = document.getElementById('duplicateForm');
+  const duplicateOriginalSelect = document.getElementById('duplicateOriginalSelect');
+  const duplicateOriginalInput = document.getElementById('duplicateOriginalInput');
+  const duplicateNoteInput = document.getElementById('duplicateNoteInput');
+
+  // Sub-Modal: Assign
+  const assignModal = document.getElementById('assignModal');
+  const closeAssignModalBtn = document.getElementById('closeAssignModalBtn');
+  const cancelAssignBtn = document.getElementById('cancelAssignBtn');
+  const assignForm = document.getElementById('assignForm');
+  const assignStaffSelect = document.getElementById('assignStaffSelect');
+  const assignCustomWrap = document.getElementById('assignCustomWrap');
+  const assignCustomInput = document.getElementById('assignCustomInput');
+  const assignNoteInput = document.getElementById('assignNoteInput');
+
+  // Sub-Modal: Repair
   const repairModal = document.getElementById('repairModal');
   const closeRepairModalBtn = document.getElementById('closeRepairModalBtn');
   const confirmRepairDismissBtn = document.getElementById('confirmRepairDismissBtn');
   const repairTargetText = document.getElementById('repairTargetText');
-  const toastContainer = document.getElementById('toastContainer');
 
   // Filter Elements
   const statusFilter = document.getElementById('statusFilter');
@@ -96,7 +143,43 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentlyInspectedReportId = null;
 
   // --------------------------------------------------------------------------
-  // Tile provider + graceful tile failure handling (shared behavior with report page)
+  // Utility & Formatting Helpers
+  // --------------------------------------------------------------------------
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatStatusLabel(status) {
+    if (!status) return 'Submitted';
+    const s = status.toLowerCase();
+    switch (s) {
+      case 'submitted': return 'Submitted';
+      case 'pending_verification': return 'Pending Verification';
+      case 'verified': return 'Verified';
+      case 'assigned': return 'Assigned';
+      case 'under_repair': return 'Under Repair';
+      case 'repaired': return 'Repaired';
+      case 'closed': return 'Closed';
+      case 'rejected': return 'Rejected';
+      case 'duplicate': return 'Duplicate';
+      default: return status.replace(/_/g, ' ');
+    }
+  }
+
+  function renderStatusBadge(status) {
+    const s = (status || 'submitted').toLowerCase();
+    const label = formatStatusLabel(s);
+    return `<span class="status-badge status-${s}"><span class="status-badge-dot"></span>${label}</span>`;
+  }
+
+  // --------------------------------------------------------------------------
+  // Tile Provider & Handling
   // --------------------------------------------------------------------------
   function cartoTileUrl() {
     const mode = (document.documentElement.getAttribute('data-theme') === 'dark') ? 'dark_all' : 'light_all';
@@ -137,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // 3. SVG Severity Pin Generator (Visible on BOTH Light & Dark Themes)
+  // Severity Pin Generator
   // --------------------------------------------------------------------------
   function createSeverityIcon(priority) {
     let pinColor = '#d97706'; // Medium Amber
@@ -162,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // 4. Leaflet Map Initialization
+  // Map Initialization
   // --------------------------------------------------------------------------
   function initDashboardMap() {
     if (!dashboardMapEl || typeof L === 'undefined') return;
@@ -190,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // 5. Render Map Markers
+  // Render Map Markers
   // --------------------------------------------------------------------------
   function renderMarkers() {
     if (!markersLayer || !map) return;
@@ -209,8 +292,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       validCoordinates.push([report.latitude, report.longitude]);
 
-      const isCompleted = report.status === 'repaired' || report.status === 'closed';
-      const isVerified = report.status === 'verified';
       const damageCode = report.damage_type || 'D40';
 
       const popupContent = `
@@ -229,35 +310,22 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="popup-meta-row">
             <span class="popup-meta-label">Address / Spot:</span>
-            <span class="popup-meta-val">${report.address_text || 'Pinned Location'}</span>
+            <span class="popup-meta-val">${escapeHtml(report.address_text) || 'Pinned Location'}</span>
           </div>
           <div class="popup-meta-row">
-            <span class="popup-meta-label">Current Status:</span>
-            <span class="popup-meta-val" style="text-transform: capitalize; font-weight: 600;">${report.status}</span>
+            <span class="popup-meta-label">Status:</span>
+            <span class="popup-meta-val">${renderStatusBadge(report.status)}</span>
           </div>
 
-          <div class="popup-actions">
-            <button type="button" class="btn btn-secondary btn-sm inspect-btn" data-report-id="${report.id}">
-              View Report
+          <div class="popup-actions" style="margin-top: 0.75rem;">
+            <button type="button" class="btn btn-secondary btn-sm inspect-btn" data-report-id="${report.id}" style="width: 100%;">
+              Open Deep Inspection
             </button>
-            ${report.status === 'submitted' ? `
-              <button type="button" class="btn btn-primary btn-sm popup-verify-btn" data-report-id="${report.id}">
-                Verify Report
-              </button>
-            ` : isCompleted ? `
-              <button type="button" class="btn btn-secondary btn-sm" disabled style="opacity: 0.6;">
-                Resolved
-              </button>
-            ` : `
-              <button type="button" class="btn btn-primary btn-sm popup-assign-btn" data-report-id="${report.id}">
-                ${report.status === 'assigned' ? 'Mark Repaired' : 'Assign Repair'}
-              </button>
-            `}
           </div>
         </div>
       `;
 
-      marker.bindPopup(popupContent, { maxWidth: 280 });
+      marker.bindPopup(popupContent, { maxWidth: 290 });
       markersLayer.addLayer(marker);
     });
 
@@ -270,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Delegate popup button clicks
     map.off('popupopen');
     map.on('popupopen', () => {
       document.querySelectorAll('.inspect-btn').forEach(btn => {
@@ -279,25 +346,11 @@ document.addEventListener('DOMContentLoaded', () => {
           openInspectionModal(reportId);
         });
       });
-
-      document.querySelectorAll('.popup-verify-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const reportId = parseInt(e.currentTarget.getAttribute('data-report-id'));
-          verifyReport(reportId);
-        });
-      });
-
-      document.querySelectorAll('.popup-assign-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const reportId = parseInt(e.currentTarget.getAttribute('data-report-id'));
-          handleRepairAction(reportId);
-        });
-      });
     });
   }
 
   // --------------------------------------------------------------------------
-  // 6. Triage Table Population
+  // Triage Table Population
   // --------------------------------------------------------------------------
   function renderTriageTable() {
     if (!queueTableBody) return;
@@ -317,10 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     activeReports.forEach((report) => {
       const priority = report.priority || 'MEDIUM';
-      const isCompleted = report.status === 'repaired' || report.status === 'closed';
-      const isSubmitted = report.status === 'submitted';
-      const isVerified = report.status === 'verified';
       const damageCode = report.damage_type || 'D40';
+      const status = (report.status || 'submitted').toLowerCase();
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -329,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="detection-code-chip">${damageCode}</span>
         </td>
         <td>
-          <div style="font-size: 0.85rem; font-weight: 500;">${report.address_text || 'Pinned Coordinates'}</div>
+          <div style="font-size: 0.85rem; font-weight: 500;">${escapeHtml(report.address_text) || 'Pinned Coordinates'}</div>
           <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">${(report.latitude || 0).toFixed(4)}, ${(report.longitude || 0).toFixed(4)}</div>
         </td>
         <td>
@@ -339,23 +390,31 @@ document.addEventListener('DOMContentLoaded', () => {
           </span>
         </td>
         <td>
-          <span style="text-transform: capitalize; font-weight: 600; font-size: 0.825rem;" id="tableStatus_${report.id}">${report.status}</span>
+          ${renderStatusBadge(status)}
         </td>
         <td>
-          <div style="display: flex; gap: 0.4rem; align-items: center;">
+          <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
             <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.openInspection(${report.id})">
               Inspect AI
             </button>
-            ${isSubmitted ? `
+            ${(status === 'submitted' || status === 'pending_verification') ? `
               <button type="button" class="btn btn-primary btn-sm" onclick="CivicSightDashboard.verifyReport(${report.id})" id="tableVerifyBtn_${report.id}">
                 Verify
               </button>
-            ` : !isCompleted ? `
-              <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.markRepaired(${report.id})">
-                ${report.status === 'assigned' ? 'Mark Repaired' : 'Assign'}
+            ` : status === 'verified' ? `
+              <button type="button" class="btn btn-primary btn-sm" onclick="CivicSightDashboard.openAssignModal(${report.id})" id="tableAssignBtn_${report.id}">
+                Assign Crew
+              </button>
+            ` : status === 'assigned' ? `
+              <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.transitionStatus(${report.id}, 'under_repair')">
+                Start Repair
+              </button>
+            ` : status === 'under_repair' ? `
+              <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.transitionStatus(${report.id}, 'repaired')">
+                Mark Repaired
               </button>
             ` : `
-              <span class="legend-dot green" title="Verified Complete" style="margin: 0 0.5rem;"></span>
+              <span class="legend-dot green" title="Finished / Terminal State" style="margin: 0 0.5rem;"></span>
             `}
           </div>
         </td>
@@ -367,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // 7. Update KPI Metrics Counters
+  // Update KPI Metrics Counters
   // --------------------------------------------------------------------------
   function updateMetrics() {
     const total = activeReports.length;
@@ -382,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // 8. Fetch Reports from Backend (with Query Filters)
+  // Fetch Reports from Backend
   // --------------------------------------------------------------------------
   async function fetchReports() {
     try {
@@ -433,13 +492,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // 9. Inspection Modal & Detail View
+  // Inspection Modal & Detail View
   // --------------------------------------------------------------------------
   async function openInspectionModal(reportId) {
     currentlyInspectedReportId = reportId;
     let report = activeReports.find(r => r.id === reportId);
 
-    // Fetch full details from GET /reports/{id} to get complete ML results
+    // Fetch full details from GET /reports/{id}
     try {
       const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}`, {
         headers: {
@@ -449,7 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (res.ok) {
         report = await res.json();
-        // Update item in local list
         const idx = activeReports.findIndex(r => r.id === reportId);
         if (idx !== -1) activeReports[idx] = report;
       }
@@ -458,6 +516,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!report) return;
+
+    if (modalReportSubheader) {
+      const createdDate = report.created_at ? new Date(report.created_at).toLocaleString() : 'Recent';
+      modalReportSubheader.textContent = `Report #${report.id} • Registered on ${createdDate} • ${report.address_text || 'Pinned Location'}`;
+    }
 
     // Resolve Image URL
     let fullImageUrl = '../assets/test_damage.jpg';
@@ -485,41 +548,180 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Update Modal Verification & Action Buttons state
     updateModalVerificationState(report);
+
+    // Load REAL Status Transition History from Backend
+    await loadReportHistory(reportId);
 
     if (inspectionModal) inspectionModal.classList.add('open');
   }
 
+  // --------------------------------------------------------------------------
+  // Update Modal State & Button Controls (Mirroring Backend Transition Rules)
+  // --------------------------------------------------------------------------
   function updateModalVerificationState(report) {
-    if (!modalCurrentStatusBadge || !modalVerifyBtn) return;
+    if (!modalCurrentStatusBadge) return;
 
-    modalCurrentStatusBadge.textContent = `Status: ${report.status.toUpperCase()}`;
-    modalCurrentStatusBadge.className = 'ml-severity-badge';
+    const status = (report.status || 'submitted').toLowerCase();
 
-    if (report.status === 'verified') {
-      modalCurrentStatusBadge.classList.add('severity-low'); // green style
-      modalVerifyBtn.disabled = true;
-      modalVerifyBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        Verified
-      `;
-      modalVerifyBtn.style.opacity = '0.7';
-    } else if (report.status === 'repaired' || report.status === 'closed') {
-      modalCurrentStatusBadge.classList.add('severity-low');
-      modalVerifyBtn.disabled = true;
-      modalVerifyBtn.innerHTML = `Closed / Repaired`;
-      modalVerifyBtn.style.opacity = '0.5';
-    } else {
-      modalCurrentStatusBadge.classList.add('severity-medium');
-      modalVerifyBtn.disabled = false;
-      modalVerifyBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.25rem;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-        Verify Report
-      `;
-      modalVerifyBtn.style.opacity = '1';
+    // 1. Update Status Badge with established color tokens
+    modalCurrentStatusBadge.className = `status-badge status-${status}`;
+    if (modalCurrentStatusText) {
+      modalCurrentStatusText.textContent = formatStatusLabel(status);
+    }
+
+    // 2. Extra Metadata Summary (Assigned crew, Rejection reason, Duplicate ref)
+    if (modalExtraMeta) {
+      const metaParts = [];
+      if (report.assigned_to) {
+        metaParts.push(`<strong>Assigned Crew:</strong> ${escapeHtml(report.assigned_to)}`);
+      }
+      if (report.duplicate_of_id) {
+        metaParts.push(`<strong>Duplicate of:</strong> Work Order #${report.duplicate_of_id}`);
+      }
+      if (report.rejection_reason) {
+        metaParts.push(`<strong style="color: var(--color-danger);">Rejection Reason:</strong> ${escapeHtml(report.rejection_reason)}`);
+      }
+      modalExtraMeta.innerHTML = metaParts.length > 0 ? metaParts.join(' &bull; ') : '';
+    }
+
+    // 3. Mirror Legal Transition Map strictly
+    // Submitted & Pending Verification: can Verify, Reject, or Duplicate. CANNOT Assign yet.
+    const isSubOrPending = (status === 'submitted' || status === 'pending_verification');
+    const isVerified = (status === 'verified');
+    const isAssigned = (status === 'assigned');
+    const isUnderRepair = (status === 'under_repair');
+    const isTerminal = ['repaired', 'closed', 'rejected', 'duplicate'].includes(status);
+
+    if (modalVerifyBtn) {
+      if (isSubOrPending) {
+        modalVerifyBtn.style.display = 'inline-flex';
+        modalVerifyBtn.disabled = false;
+        modalVerifyBtn.innerHTML = `
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          Verify Report
+        `;
+      } else {
+        modalVerifyBtn.style.display = 'none';
+      }
+    }
+
+    if (modalRejectBtn) {
+      if (isSubOrPending) {
+        modalRejectBtn.style.display = 'inline-flex';
+        modalRejectBtn.disabled = false;
+      } else {
+        modalRejectBtn.style.display = 'none';
+      }
+    }
+
+    if (modalDuplicateBtn) {
+      if (isSubOrPending) {
+        modalDuplicateBtn.style.display = 'inline-flex';
+        modalDuplicateBtn.disabled = false;
+      } else {
+        modalDuplicateBtn.style.display = 'none';
+      }
+    }
+
+    if (modalAssignBtn) {
+      if (isVerified) {
+        modalAssignBtn.style.display = 'inline-flex';
+        modalAssignBtn.disabled = false;
+      } else {
+        modalAssignBtn.style.display = 'none';
+      }
     }
   }
 
+  // --------------------------------------------------------------------------
+  // Real Status Transition History Audit Timeline (GET /reports/{id}/history)
+  // --------------------------------------------------------------------------
+  async function loadReportHistory(reportId) {
+    if (!modalHistoryTimeline) return;
+
+    modalHistoryTimeline.innerHTML = `
+      <div style="padding: 1.25rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+        Loading transition history...
+      </div>
+    `;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/history`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error(`History fetch failed with status ${res.status}`);
+      }
+
+      const historyData = await res.json();
+      const records = Array.isArray(historyData) ? historyData : [];
+
+      if (historyCountBadge) {
+        historyCountBadge.textContent = `${records.length} ${records.length === 1 ? 'event' : 'events'}`;
+      }
+
+      if (records.length === 0) {
+        modalHistoryTimeline.innerHTML = `
+          <div class="history-empty-msg">No status history recorded yet for this report.</div>
+        `;
+        return;
+      }
+
+      // Sort chronological ascending (or already returned sorted)
+      modalHistoryTimeline.innerHTML = records.map((entry) => {
+        const timeFormatted = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Recorded';
+        const fromStatus = entry.from_status ? formatStatusLabel(entry.from_status) : null;
+        const toStatus = formatStatusLabel(entry.to_status);
+        const performerName = entry.changed_by_name || 'System / Officer';
+        const performerRole = entry.role ? ` (${entry.role})` : '';
+
+        const transitionLabel = fromStatus
+          ? `${renderStatusBadge(entry.from_status)} <span style="color: var(--text-muted);">&rarr;</span> ${renderStatusBadge(entry.to_status)}`
+          : `${renderStatusBadge(entry.to_status)} <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 0.25rem;">(Initial Submission)</span>`;
+
+        return `
+          <div class="history-timeline-item">
+            <div class="history-timeline-node"></div>
+            <div class="history-timeline-content">
+              <div class="history-header-row">
+                <div class="history-transition-badge">
+                  ${transitionLabel}
+                </div>
+                <div class="history-time">${timeFormatted}</div>
+              </div>
+              <div class="history-performer">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span>Recorded by <strong>${escapeHtml(performerName)}</strong>${performerRole}</span>
+              </div>
+              ${entry.note ? `
+                <div class="history-note-box">
+                  <strong>Note / Reason:</strong> ${escapeHtml(entry.note)}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+    } catch (err) {
+      console.error('Error fetching report history:', err);
+      modalHistoryTimeline.innerHTML = `
+        <div style="padding: 1rem; color: var(--color-danger); font-size: 0.85rem; text-align: center;">
+          Failed to load status history timeline from backend.
+        </div>
+      `;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Close Modals
+  // --------------------------------------------------------------------------
   function closeInspectionModal() {
     if (inspectionModal) inspectionModal.classList.remove('open');
     currentlyInspectedReportId = null;
@@ -532,7 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 10. In-Place Report Verification (PATCH /reports/{id}/verify)
+  // Lifecycle Action 1: PATCH /reports/{id}/verify
   // --------------------------------------------------------------------------
   async function verifyReport(reportId) {
     if (!reportId) return;
@@ -544,7 +746,8 @@ document.addEventListener('DOMContentLoaded', () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-        }
+        },
+        body: JSON.stringify({ note: 'Verified by Municipal Officer from operations center.' })
       });
 
       if (!res.ok) {
@@ -555,20 +758,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const updatedReport = await res.json();
 
-      // Immediate in-memory state update without full page reload
+      // Immediate in-memory state update
       const target = activeReports.find(r => r.id === reportId);
       if (target) {
         target.status = updatedReport.status || 'verified';
         if (updatedReport.priority) target.priority = updatedReport.priority;
       }
 
-      // Re-render UI components immediately
       renderMarkers();
       renderTriageTable();
       updateMetrics();
 
-      if (currentlyInspectedReportId === reportId && target) {
-        updateModalVerificationState(target);
+      if (currentlyInspectedReportId === reportId) {
+        updateModalVerificationState(updatedReport);
+        await loadReportHistory(reportId);
       }
 
       showToast(`Report #${reportId} verified successfully.`, 'success');
@@ -585,26 +788,324 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 11. Repair Action (Transition to assigned / repaired)
+  // Lifecycle Action 2: PATCH /reports/{id}/reject
   // --------------------------------------------------------------------------
-  function handleRepairAction(reportId) {
-    const report = activeReports.find(r => r.id === reportId);
-    if (!report) return;
+  function openRejectModal(reportId) {
+    if (rejectReasonInput) rejectReasonInput.value = '';
+    if (rejectNoteInput) rejectNoteInput.value = '';
+    if (rejectModal) rejectModal.classList.add('open');
+  }
 
-    if (report.status === 'submitted' || report.status === 'verified') {
-      report.status = 'assigned';
+  function closeRejectModal() {
+    if (rejectModal) rejectModal.classList.remove('open');
+  }
+
+  closeRejectModalBtn?.addEventListener('click', closeRejectModal);
+  cancelRejectBtn?.addEventListener('click', closeRejectModal);
+  rejectModal?.addEventListener('click', (e) => {
+    if (e.target === rejectModal) closeRejectModal();
+  });
+
+  modalRejectBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) {
+      openRejectModal(currentlyInspectedReportId);
+    }
+  });
+
+  rejectForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reportId = currentlyInspectedReportId;
+    if (!reportId) return;
+
+    const reason = rejectReasonInput ? rejectReasonInput.value.trim() : '';
+    const note = rejectNoteInput ? rejectNoteInput.value.trim() : '';
+
+    if (!reason) {
+      showToast('A specific rejection reason is required.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/reject`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ reason: reason, note: note || null })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || `Rejection failed (${res.status})`, 'error');
+        return;
+      }
+
+      const updatedReport = await res.json();
+      const target = activeReports.find(r => r.id === reportId);
+      if (target) {
+        target.status = updatedReport.status || 'rejected';
+        target.rejection_reason = reason;
+      }
+
+      closeRejectModal();
       renderMarkers();
       renderTriageTable();
-      showToast(`Work order assigned for Report #${report.id}.`, 'info');
-    } else {
-      report.status = 'repaired';
-      report.priority = 'LOW';
+      updateMetrics();
+
+      if (currentlyInspectedReportId === reportId) {
+        updateModalVerificationState(updatedReport);
+        await loadReportHistory(reportId);
+      }
+
+      showToast(`Report #${reportId} has been marked as Rejected.`, 'info');
+    } catch (err) {
+      console.error('Error rejecting report:', err);
+      showToast('Network error while rejecting report.', 'error');
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Lifecycle Action 3: PATCH /reports/{id}/duplicate
+  // --------------------------------------------------------------------------
+  function openDuplicateModal(reportId) {
+    if (duplicateOriginalInput) duplicateOriginalInput.value = '';
+    if (duplicateNoteInput) duplicateNoteInput.value = '';
+
+    // Populate selection options from active reports (excluding self)
+    if (duplicateOriginalSelect) {
+      duplicateOriginalSelect.innerHTML = `<option value="">-- Select from Active Reports --</option>`;
+      activeReports.forEach((r) => {
+        if (r.id !== reportId) {
+          const opt = document.createElement('option');
+          opt.value = r.id;
+          opt.textContent = `Report #${r.id} (${r.damage_type || 'Defect'} - ${r.address_text || 'Pinned Location'})`;
+          duplicateOriginalSelect.appendChild(opt);
+        }
+      });
+    }
+
+    if (duplicateModal) duplicateModal.classList.add('open');
+  }
+
+  duplicateOriginalSelect?.addEventListener('change', (e) => {
+    if (e.target.value && duplicateOriginalInput) {
+      duplicateOriginalInput.value = e.target.value;
+    }
+  });
+
+  function closeDuplicateModal() {
+    if (duplicateModal) duplicateModal.classList.remove('open');
+  }
+
+  closeDuplicateModalBtn?.addEventListener('click', closeDuplicateModal);
+  cancelDuplicateBtn?.addEventListener('click', closeDuplicateModal);
+  duplicateModal?.addEventListener('click', (e) => {
+    if (e.target === duplicateModal) closeDuplicateModal();
+  });
+
+  modalDuplicateBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) {
+      openDuplicateModal(currentlyInspectedReportId);
+    }
+  });
+
+  duplicateForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reportId = currentlyInspectedReportId;
+    if (!reportId) return;
+
+    const originalIdVal = duplicateOriginalInput ? parseInt(duplicateOriginalInput.value) : null;
+    const note = duplicateNoteInput ? duplicateNoteInput.value.trim() : '';
+
+    if (!originalIdVal || isNaN(originalIdVal)) {
+      showToast('A valid original report ID is required.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/duplicate`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ original_report_id: originalIdVal, note: note || null })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || `Duplicate operation failed (${res.status})`, 'error');
+        return;
+      }
+
+      const updatedReport = await res.json();
+      const target = activeReports.find(r => r.id === reportId);
+      if (target) {
+        target.status = updatedReport.status || 'duplicate';
+        target.duplicate_of_id = originalIdVal;
+      }
+
+      closeDuplicateModal();
       renderMarkers();
       renderTriageTable();
+      updateMetrics();
 
-      if (repairTargetText) repairTargetText.textContent = `Report #${report.id} Repaired`;
-      if (repairModal) repairModal.classList.add('open');
-      showToast(`Report #${report.id} marked as repaired and closed.`, 'success');
+      if (currentlyInspectedReportId === reportId) {
+        updateModalVerificationState(updatedReport);
+        await loadReportHistory(reportId);
+      }
+
+      showToast(`Report #${reportId} marked as Duplicate of #${originalIdVal}.`, 'info');
+    } catch (err) {
+      console.error('Error marking duplicate:', err);
+      showToast('Network error while marking duplicate.', 'error');
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Lifecycle Action 4: PATCH /reports/{id}/assign
+  // --------------------------------------------------------------------------
+  function openAssignModal(reportId) {
+    currentlyInspectedReportId = reportId;
+    if (assignStaffSelect) assignStaffSelect.value = 'Metro Asphalt Crew Alpha';
+    if (assignCustomWrap) assignCustomWrap.style.display = 'none';
+    if (assignCustomInput) assignCustomInput.value = '';
+    if (assignNoteInput) assignNoteInput.value = '';
+    if (assignModal) assignModal.classList.add('open');
+  }
+
+  assignStaffSelect?.addEventListener('change', (e) => {
+    if (assignCustomWrap) {
+      assignCustomWrap.style.display = e.target.value === 'custom' ? 'block' : 'none';
+    }
+  });
+
+  function closeAssignModal() {
+    if (assignModal) assignModal.classList.remove('open');
+  }
+
+  closeAssignModalBtn?.addEventListener('click', closeAssignModal);
+  cancelAssignBtn?.addEventListener('click', closeAssignModal);
+  assignModal?.addEventListener('click', (e) => {
+    if (e.target === assignModal) closeAssignModal();
+  });
+
+  modalAssignBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) {
+      openAssignModal(currentlyInspectedReportId);
+    }
+  });
+
+  assignForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reportId = currentlyInspectedReportId;
+    if (!reportId) return;
+
+    let assignee = assignStaffSelect ? assignStaffSelect.value : '';
+    if (assignee === 'custom') {
+      assignee = assignCustomInput ? assignCustomInput.value.trim() : '';
+    }
+    const note = assignNoteInput ? assignNoteInput.value.trim() : '';
+
+    if (!assignee) {
+      showToast('A maintenance crew or technician must be designated.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/assign`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ assigned_to: assignee, note: note || null })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || `Assignment failed (${res.status})`, 'error');
+        return;
+      }
+
+      const updatedReport = await res.json();
+      const target = activeReports.find(r => r.id === reportId);
+      if (target) {
+        target.status = updatedReport.status || 'assigned';
+        target.assigned_to = assignee;
+      }
+
+      closeAssignModal();
+      renderMarkers();
+      renderTriageTable();
+      updateMetrics();
+
+      if (currentlyInspectedReportId === reportId) {
+        updateModalVerificationState(updatedReport);
+        await loadReportHistory(reportId);
+      }
+
+      showToast(`Work order #${reportId} dispatched to ${assignee}.`, 'success');
+    } catch (err) {
+      console.error('Error assigning report:', err);
+      showToast('Network error while assigning crew.', 'error');
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Generic Transition Helper (e.g. Under Repair -> Repaired)
+  // --------------------------------------------------------------------------
+  async function transitionStatus(reportId, newStatus) {
+    if (!reportId) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          note: `Transitioned to ${formatStatusLabel(newStatus)} via Operations Console.`
+        })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || `Status update failed (${res.status})`, 'error');
+        return;
+      }
+
+      const updatedReport = await res.json();
+      const target = activeReports.find(r => r.id === reportId);
+      if (target) {
+        target.status = updatedReport.status;
+      }
+
+      renderMarkers();
+      renderTriageTable();
+      updateMetrics();
+
+      if (currentlyInspectedReportId === reportId) {
+        updateModalVerificationState(updatedReport);
+        await loadReportHistory(reportId);
+      }
+
+      if (newStatus === 'repaired' || newStatus === 'closed') {
+        if (repairTargetText) repairTargetText.textContent = `Report #${reportId} Marked Repaired`;
+        if (repairModal) repairModal.classList.add('open');
+      }
+
+      showToast(`Report #${reportId} transitioned to ${formatStatusLabel(newStatus)}.`, 'success');
+    } catch (err) {
+      console.error('Error transitioning report status:', err);
+      showToast('Network error while transitioning status.', 'error');
     }
   }
 
@@ -619,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 12. Filter Event Listeners
+  // Filter Event Listeners
   // --------------------------------------------------------------------------
   statusFilter?.addEventListener('change', () => fetchReports());
   priorityFilter?.addEventListener('change', () => fetchReports());
@@ -630,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 13. Toast Notification Helper
+  // Toast Notification Helper
   // --------------------------------------------------------------------------
   function showToast(message, type = 'info') {
     if (!toastContainer) return;
@@ -646,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <line x1="12" y1="16" x2="12" y2="12"></line>
         <line x1="12" y1="8" x2="12.01" y2="8"></line>
       </svg>
-      <span>${message}</span>
+      <span>${escapeHtml(message)}</span>
     `;
 
     toastContainer.appendChild(toast);
@@ -661,7 +1162,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.CivicSightDashboard = {
     openInspection: openInspectionModal,
     verifyReport: verifyReport,
-    markRepaired: handleRepairAction,
+    openAssignModal: openAssignModal,
+    transitionStatus: transitionStatus,
   };
 
   // Initialize
