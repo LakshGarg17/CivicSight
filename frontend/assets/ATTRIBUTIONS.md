@@ -8,6 +8,6 @@ The following minimal animations are sourced from the LottieFiles free community
 - `locating.json`: Geolocation pulse / pinpoint radar (LottieFiles Community, lf20_5njp3vgg).
 - `repaired.json`: Municipal repair verified stamp / checkmark (LottieFiles Community, lf20_atippmse).
 
-## 2. Spline 3D Scene (Spline Community License)
-- Hero section 3D miniature urban road & infrastructure scene: Built and adapted from the Spline Community urban / smart city road models under Spline Community License.
-- Fallback vector illustration: `frontend/assets/hero-city-fallback.svg` designed with pure SVG and CivicSight design tokens.
+## 2. Hero Illustration
+- `hero-civic-scene.svg`: Custom SVG isometric road scene (pothole detection, location pin, municipal repair vehicle) designed with pure SVG and CivicSight design tokens.
+- Map tiles: [CARTO basemaps](https://carto.com/attributions) with data from [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.

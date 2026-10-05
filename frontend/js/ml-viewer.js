@@ -1,7 +1,7 @@
 /**
  * CivicSight — Reusable Visual ML Detection Results Component
  *
- * Implements Requirement 4:
+ * ML detection viewer:
  * - Image container with animated SVG bounding box overlays in --accent-color
  * - Results list sorted by confidence descending with defect classification
  * - Derived severity rating (HIGH / MEDIUM / LOW) with visual indicator bar
@@ -83,14 +83,14 @@ const CivicSightMLViewer = (() => {
 
     // Build markup
     const html = `
-      <div class="ml-viewer-card" role="region" aria-label="Automated AI Damage Assessment">
+      <div class="ml-viewer-card" role="region" aria-label="AI damage detection preview">
         <div class="ml-viewer-header">
           <div class="ml-viewer-title-group">
             <span class="ml-status-pill">
               <span class="ml-status-dot"></span>
               YOLOv8 Road Defect Detection
             </span>
-            <h3 class="ml-viewer-title">${reportId ? `Report #${reportId} Analysis` : 'Automated Defect Segmentation'}</h3>
+            <h3 class="ml-viewer-title">${reportId ? `Report #${reportId} Analysis` : 'Defect Analysis Preview'}</h3>
           </div>
           <div class="ml-severity-badge severity-${severity.level.toLowerCase()}">
             <span class="severity-bullet"></span>

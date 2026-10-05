@@ -1510,7 +1510,7 @@ body {
 }
 
 /* ==========================================================================
-   8. Requirement 1 — Hero Section: Spline 3D Scene & Fallback
+   8. Hero Section
    ========================================================================== */
 
 .hero-visual {
@@ -1537,19 +1537,7 @@ body {
   border-color: var(--border-color-hover);
 }
 
-/* Spline Web Component explicit constraints */
-spline-viewer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
-  z-index: 2;
-  background: transparent !important;
-}
-
-/* Static Fallback Container */
+/* Static Hero Illustration */
 .hero-3d-fallback {
   position: absolute;
   top: 0;
@@ -1594,7 +1582,7 @@ spline-viewer {
 }
 
 /* ==========================================================================
-   9. Requirement 2 — Lottie Animation Containers (5 Moments Only)
+   9. Lottie Animation Containers
    ========================================================================== */
 
 .lottie-wrap {
@@ -1605,25 +1593,25 @@ spline-viewer {
   flex-shrink: 0;
 }
 
-/* Moment 1 & 2: Form Submission Success / Error */
+/* Form submission success / error */
 .lottie-submission-status {
   width: 64px;
   height: 64px;
 }
 
-/* Moment 3: ML Analysis in Progress */
+/* ML analysis in progress */
 .lottie-ml-scanning {
   width: 56px;
   height: 56px;
 }
 
-/* Moment 4: Geolocation Pin / Searching */
+/* Geolocation pin / searching */
 .lottie-geolocation {
   width: 28px;
   height: 28px;
 }
 
-/* Moment 5: Municipal Repair Completed */
+/* Municipal repair completed */
 .lottie-repair-completed {
   width: 72px;
   height: 72px;
@@ -1634,7 +1622,7 @@ lottie-player {
   background: transparent !important;
 }
 
-/* Enhanced status banner for Lottie moments */
+/* Status banner for Lottie animations */
 .submission-status-banner .lottie-status-layout {
   display: flex;
   align-items: center;
@@ -1659,7 +1647,7 @@ lottie-player {
 }
 
 /* ==========================================================================
-   10. Requirement 4 — Visual ML Detection Results Component
+   10. Visual ML Detection Results Component
    ========================================================================== */
 
 .ml-viewer-card {
@@ -2013,7 +2001,7 @@ lottie-player {
 }
 
 /* ==========================================================================
-   11. Requirement 5 — Municipal Dashboard & Severity Map Markers
+   11. Municipal Dashboard & Severity Map Markers
    ========================================================================== */
 
 .dashboard-main {
@@ -2218,7 +2206,7 @@ lottie-player {
   box-shadow: var(--shadow-sm);
 }
 
-/* Dashboard Filter Controls (Week 5) */
+/* Dashboard Filter Controls  */
 .dashboard-filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -2400,13 +2388,188 @@ lottie-player {
     animation: none !important;
   }
 
-  /* Spline 3D Scene Fallback on reduced motion */
-  spline-viewer {
-    display: none !important;
-  }
-
   .hero-3d-fallback {
     opacity: 1 !important;
     display: block !important;
   }
+}
+
+/* ==========================================================================
+   12. Visual polish & removed-spline safeguards
+   ========================================================================== */
+
+/* Spline 3D viewer fully removed */
+spline-viewer,
+#splineViewerContainer {
+  display: none !important;
+}
+
+.hero-3d-fallback {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Hero background: soft gradient + subtle grid */
+.hero-section {
+  background:
+    radial-gradient(1200px 480px at 80% -10%, var(--accent-subtle) 0%, transparent 60%),
+    radial-gradient(900px 420px at 5% 110%, var(--accent-subtle) 0%, transparent 55%),
+    var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Glassy sticky navbar */
+.navbar {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background-color: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+}
+
+/* Hero visual card upgrade */
+.hero-3d-wrapper {
+  border-radius: 18px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.18), 0 6px 14px -8px rgba(0,0,0,0.1);
+  height: 420px;
+  transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+.hero-3d-wrapper:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 28px 50px -20px rgba(0, 0, 0, 0.25), 0 8px 18px -10px rgba(0,0,0,0.12);
+  border-color: var(--accent-color);
+}
+
+.hero-3d-badge {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 3;
+  background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.hero-3d-badge .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34,197,94,.25);
+  animation: cs-pulse 1.8s ease-in-out infinite;
+}
+@keyframes cs-pulse {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(.6); opacity: .6; }
+}
+
+/* Hero stat strip */
+.hero-stats {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2.25rem;
+  flex-wrap: wrap;
+}
+.hero-stat strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent-color);
+  line-height: 1.1;
+}
+.hero-stat span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+/* Workflow cards */
+.workflow-card {
+  border-radius: 14px;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.workflow-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 32px -16px rgba(0,0,0,.2);
+  border-color: var(--accent-color);
+}
+.step-num {
+  font-family: var(--font-display);
+  width: 38px; height: 38px;
+  border-radius: 10px;
+}
+
+/* Portal cards */
+.portal-card {
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.portal-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 36px -18px rgba(0,0,0,.22);
+  border-color: var(--accent-color);
+}
+
+/* Tech tags as pills */
+.tech-tag {
+  border-radius: 9999px;
+  border: 1px solid var(--border-color);
+  padding: 0.35rem 0.9rem;
+  background: var(--bg-card);
+  font-weight: 500;
+}
+
+/* Buttons: more depth on hover */
+.btn {
+  transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(37, 99, 235, .45);
+}
+.btn-secondary:hover {
+  box-shadow: 0 10px 20px -12px rgba(0,0,0,.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-3d-badge .dot { animation: none; }
+  .hero-3d-wrapper:hover, .workflow-card:hover, .portal-card:hover, .btn:hover { transform: none; }
+}
+
+/* Map tile error overlay */
+.report-map,
+.dashboard-map-canvas {
+  position: relative;
+}
+.map-error-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
+  backdrop-filter: blur(3px);
+}
+.map-error-card {
+  max-width: 320px;
+  text-align: center;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+.map-error-card p {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0.5rem 0 1rem;
 }

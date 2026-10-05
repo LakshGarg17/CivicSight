@@ -1,7 +1,7 @@
 /**
  * CivicSight — Municipal Operations Dashboard & Interactive Map
  *
- * Week 5 Implementation:
+ * Municipal operations dashboard implementation:
  * - Strict Route Guard: Citizens receive Access Denied screen & redirection; Unauthenticated redirected to login.
  * - Live Backend API Integration: Fetches from GET /api/v1/reports with JWT Bearer auth.
  * - Live Query Filtering: Dynamic filtering via ?status=... and ?priority=... (supports both combined).
@@ -91,8 +91,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let map = null;
   let markersLayer = null;
+  let tileLayer = null;
   let activeReports = [];
   let currentlyInspectedReportId = null;
+
+  // --------------------------------------------------------------------------
+  // Tile provider + graceful tile failure handling (shared behavior with report page)
+  // --------------------------------------------------------------------------
+  function cartoTileUrl() {
+    const mode = (document.documentElement.getAttribute('data-theme') === 'dark') ? 'dark_all' : 'light_all';
+    return `https://{s}.basemaps.cartocdn.com/${mode}/{z}/{x}/{y}{r}.png`;
+  }
+  const CARTO_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
+
+  function attachTileErrorHandling(mapElement) {
+    if (!tileLayer || !mapElement) return;
+    let tileErrorCount = 0;
+    tileLayer.on('tileload', () => { tileErrorCount = 0; hideMapError(mapElement); });
+    tileLayer.on('tileerror', () => {
+      tileErrorCount += 1;
+      if (tileErrorCount >= 3) showMapError(mapElement);
+    });
+  }
+
+  function showMapError(mapElement) {
+    if (mapElement.querySelector('.map-error-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'map-error-overlay';
+    overlay.innerHTML = `
+      <div class="map-error-card">
+        <strong>Map tiles could not be loaded</strong>
+        <p>Check your internet connection, then retry. Report data remains available in the table below.</p>
+        <button type="button" class="btn btn-secondary btn-sm" data-map-retry>Retry</button>
+      </div>`;
+    overlay.querySelector('[data-map-retry]').addEventListener('click', () => {
+      overlay.remove();
+      if (map) map.invalidateSize();
+    });
+    mapElement.appendChild(overlay);
+  }
+
+  function hideMapError(mapElement) {
+    const overlay = mapElement.querySelector('.map-error-overlay');
+    if (overlay) overlay.remove();
+  }
 
   // --------------------------------------------------------------------------
   // 3. SVG Severity Pin Generator (Visible on BOTH Light & Dark Themes)
@@ -130,10 +172,19 @@ document.addEventListener('DOMContentLoaded', () => {
       attributionControl: true,
     }).setView([37.7760, -122.4180], 13);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+    tileLayer = L.tileLayer(cartoTileUrl(), {
+      maxZoom: 20,
+      attribution: CARTO_ATTRIBUTION,
     }).addTo(map);
+
+    attachTileErrorHandling(dashboardMapEl);
+
+    const themeObserver = new MutationObserver(() => {
+      if (tileLayer) map.removeLayer(tileLayer);
+      tileLayer = L.tileLayer(cartoTileUrl(), { maxZoom: 20, attribution: CARTO_ATTRIBUTION }).addTo(map);
+      attachTileErrorHandling(dashboardMapEl);
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     markersLayer = L.layerGroup().addTo(map);
   }

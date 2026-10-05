@@ -1,5 +1,5 @@
 /**
- * CivicSight - Authentication & Role-Based Navigation Manager (Week 3)
+ * CivicSight - Authentication & Role-Based Navigation Manager 
  *
  * Provides client-side JWT session management, API request helpers,
  * role verification, and dynamic post-login navigation updates.

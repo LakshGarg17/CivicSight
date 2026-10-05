@@ -1,5 +1,5 @@
 /**
- * CivicSight — Report Road Damage Module (Week 4)
+ * CivicSight — Report Road Damage Module 
  *
  * Implements full end-to-end citizen reporting workflow:
  * - Photo drag-and-drop file upload with live preview
@@ -44,8 +44,43 @@ document.addEventListener('DOMContentLoaded', () => {
   // Map & Marker State
   let map = null;
   let marker = null;
+  let tileLayer = null;
   const DEFAULT_COORDS = [37.7749, -122.4194]; // Default San Francisco Civic Center coordinates
   const DEFAULT_ZOOM = 13;
+
+  // --- Graceful tile failure handling ---
+  function attachTileErrorHandling(mapElement) {
+    if (!tileLayer || !mapElement) return;
+    let tileErrorCount = 0;
+    tileLayer.on('tileload', () => { tileErrorCount = 0; hideMapError(mapElement); });
+    tileLayer.on('tileerror', () => {
+      tileErrorCount += 1;
+      if (tileErrorCount >= 3) showMapError(mapElement);
+    });
+  }
+
+  function showMapError(mapElement) {
+    let overlay = mapElement.querySelector('.map-error-overlay');
+    if (overlay) return;
+    overlay = document.createElement('div');
+    overlay.className = 'map-error-overlay';
+    overlay.innerHTML = `
+      <div class="map-error-card">
+        <strong>Map tiles could not be loaded</strong>
+        <p>Check your internet connection, then retry. You can still type coordinates or pick a location once the map recovers.</p>
+        <button type="button" class="btn btn-secondary btn-sm" data-map-retry>Retry</button>
+      </div>`;
+    overlay.querySelector('[data-map-retry]').addEventListener('click', () => {
+      overlay.remove();
+      if (map) map.invalidateSize();
+    });
+    mapElement.appendChild(overlay);
+  }
+
+  function hideMapError(mapElement) {
+    const overlay = mapElement.querySelector('.map-error-overlay');
+    if (overlay) overlay.remove();
+  }
 
   // --- 1. Toast Notification System ---
   function showToast(message, type = 'info') {
@@ -85,11 +120,28 @@ document.addEventListener('DOMContentLoaded', () => {
       attributionControl: true,
     }).setView(DEFAULT_COORDS, DEFAULT_ZOOM);
 
-    // Add OpenStreetMap tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+    // Legitimate tile provider: CARTO basemaps (OSM data, no API key required,
+    // free for production use with attribution). Theme-aware light/dark.
+    const mode = (document.documentElement.getAttribute('data-theme') === 'dark') ? 'dark_all' : 'light_all';
+    const tileUrl = `https://{s}.basemaps.cartocdn.com/${mode}/{z}/{x}/{y}{r}.png`;
+    tileLayer = L.tileLayer(tileUrl, {
+      maxZoom: 20,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
     }).addTo(map);
+
+    attachTileErrorHandling(mapElement);
+
+    // Swap tile style when the user toggles the theme
+    const themeObserver = new MutationObserver(() => {
+      const nextMode = (document.documentElement.getAttribute('data-theme') === 'dark') ? 'dark_all' : 'light_all';
+      if (tileLayer) map.removeLayer(tileLayer);
+      tileLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${nextMode}/{z}/{x}/{y}{r}.png`, {
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+      }).addTo(map);
+      attachTileErrorHandling(mapElement);
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     // Initialize draggable marker
     marker = L.marker(DEFAULT_COORDS, {
@@ -115,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
     requestBrowserGeolocation();
   }
 
-  // --- 3. Browser Geolocation Handler (Moment 4: Location Detection Lottie) ---
+  // --- 3. Browser Geolocation Handler ---
   const locationLottieSlot = document.getElementById('locationLottieSlot');
 
   function requestBrowserGeolocation() {
@@ -168,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateLocationStatus(text, isActive, isLoading = false) {
     if (locationStatusText) locationStatusText.textContent = text;
     
-    // Moment 4: Geolocation Lottie Animation slot
+    // Geolocation Lottie Animation slot
     if (locationLottieSlot) {
       if (isLoading) {
         locationLottieSlot.innerHTML = `<lottie-player src="../assets/lottie/locating.json" background="transparent" speed="1" loop autoplay aria-hidden="true" style="width: 24px; height: 24px;"></lottie-player>`;
@@ -259,13 +311,13 @@ document.addEventListener('DOMContentLoaded', () => {
       dropzoneIdle.style.display = 'none';
       previewContainer.style.display = 'flex';
 
-      // Trigger Moment 3: ML analysis in progress Lottie scanning animation
+      // ML analysis in progress Lottie scanning animation
       triggerMLAnalysis(dataUri);
     };
     reader.readAsDataURL(file);
   }
 
-  // Moment 3: ML analysis scanning trigger + Requirement 4 Visual ML Detection
+  // ML analysis scanning trigger + visual ML detection preview
   const mlScanningState = document.getElementById('mlScanningState');
   const mlDetectionResultsSlot = document.getElementById('mlDetectionResultsSlot');
 
@@ -292,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
           longitude: lonVal,
           address: address,
         });
-        showToast('AI Defect Analysis complete: bounding boxes identified.', 'info');
+        showToast('Defect analysis preview generated.', 'info');
       }
     }, 1100);
   }
@@ -365,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     damageDescription.classList.remove('input-invalid');
   });
 
-  // --- 5. Submission Status Banner Management (Lottie Moments 1 & 2) ---
+  // --- 5. Submission Status Banner Management ---
   function showStatus(state, data = {}) {
     if (!submissionStatus) return;
     submissionStatus.style.display = 'flex';
@@ -391,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (state === 'success') {
       const createdDate = data.created_at ? new Date(data.created_at).toLocaleString() : new Date().toLocaleString();
       
-      // Moment 1: Report Submission Success Lottie checkmark + Report ID text
+      // Report submission success Lottie checkmark + Report ID text
       submissionStatus.innerHTML = `
         <div class="lottie-status-layout">
           <div class="lottie-wrap lottie-submission-status">
@@ -439,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearForm();
       });
     } else if (state === 'error') {
-      // Moment 2: Distinct Error-State Lottie animation
+      // Error-state Lottie animation
       submissionStatus.innerHTML = `
         <div class="lottie-status-layout">
           <div class="lottie-wrap lottie-submission-status">

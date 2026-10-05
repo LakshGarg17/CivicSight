@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CivicSight — Smart Road Damage Detection & Municipal Repair System</title>
-  <meta name="description" content="CivicSight is an intelligent civic tech platform connecting citizens with municipal repair management through automated computer vision road damage detection.">
+  <meta name="description" content="CivicSight is a civic tech platform connecting citizens with municipal repair management through computer vision–assisted road damage reporting.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
@@ -52,13 +52,13 @@
         <div class="hero-content">
           <div class="badge-pill hero-badge">
             <span class="badge-dot"></span>
-            <span>Week 4 Active: Computer Vision & Municipal Dispatch</span>
+            <span>Citizen Reporting, CV Classification &amp; Municipal Repair Workflow</span>
           </div>
           <h1 class="hero-title">
-            Empowering Communities with <span class="accent-text">Intelligent Road Infrastructure</span>
+            Smart Road Damage Detection &amp; <span class="accent-text">Municipal Repair Management</span>
           </h1>
           <p class="hero-subtitle">
-            CivicSight connects citizens directly with municipal repair teams using computer vision AI to detect, prioritize, and accelerate road damage remediation.
+            CivicSight connects citizens and municipal teams: citizens report road hazards with photos and GPS locations, and municipal staff review, prioritize, verify, and resolve them.
           </p>
           <div class="hero-cta">
             <a href="pages/report.html" class="btn btn-primary" id="heroReportBtn">
@@ -78,25 +78,26 @@
               Municipal Dashboard
             </a>
           </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><strong>4</strong><span>Damage Classes</span></div>
+            <div class="hero-stat"><strong>7</strong><span>Workflow Stages</span></div>
+            <div class="hero-stat"><strong>YOLO</strong><span>CV Classification</span></div>
+          </div>
         </div>
 
-        <!-- Single Constrained Spline 3D Scene with Resilient Fallback -->
+        <!-- Hero Visual: Civic road-damage detection scene -->
         <div class="hero-visual">
           <div class="hero-3d-wrapper" id="hero3dWrapper">
-            <!-- Resilient Vector Fallback (Works in both light/dark theme, slow connections, and reduced-motion) -->
-            <img src="assets/hero-city-fallback.svg" alt="CivicSight 3D Urban Infrastructure" class="hero-3d-fallback" id="hero3dFallback">
-            
-            <!-- Spline 3D Viewer Container (Injected asynchronously) -->
-            <div id="splineViewerContainer"></div>
+            <img src="assets/hero-civic-scene.svg" alt="Isometric city road scene with a detected pothole, location pin, and municipal repair vehicle" class="hero-3d-fallback" id="hero3dFallback">
 
             <span class="hero-3d-badge">
               <span class="dot"></span>
-              Urban Infrastructure 3D
+              Detection &amp; Response Workflow
             </span>
           </div>
         </div>
       </div>
-    </section>n>
+    </section>
 
     <!-- Workflow Section -->
     <section class="workflow-section" id="workflow">
@@ -120,7 +121,7 @@
           <div class="workflow-card">
             <span class="step-num">03</span>
             <h3>Prioritize</h3>
-            <p>Automated severity scoring ranks high-impact damage and critical transit corridors first.</p>
+            <p>Automatic priority scoring ranks high-severity damage first for municipal review.</p>
           </div>
           <div class="workflow-card">
             <span class="step-num">04</span>
@@ -130,7 +131,7 @@
           <div class="workflow-card">
             <span class="step-num">05</span>
             <h3>Assign</h3>
-            <p>Work orders and geolocation markers are dispatched directly to field maintenance crews.</p>
+            <p>Each report gets a geolocation marker and work order tracked through the municipal workflow.</p>
           </div>
           <div class="workflow-card">
             <span class="step-num">06</span>
@@ -157,9 +158,9 @@
         <div class="portals-grid">
           <div class="portal-card">
             <div>
-              <span class="portal-tag portal-tag-active">Active in Week 2</span>
+              <span class="portal-tag portal-tag-active">Citizen Portal</span>
               <h3>Citizen Damage Reporting</h3>
-              <p>An intuitive interface for quick road hazard submission with photo upload, detailed descriptions, and structured location placeholders.</p>
+              <p>An intuitive interface for quick road hazard submission with photo upload, detailed descriptions, and map-based location pinpointing with GPS support.</p>
             </div>
             <div>
               <a href="pages/report.html" class="btn btn-primary btn-sm">
@@ -170,9 +171,9 @@
 
           <div class="portal-card">
             <div>
-              <span class="portal-tag portal-tag-active">Active in Week 4</span>
+              <span class="portal-tag portal-tag-active">Municipal Operations</span>
               <h3>Municipal Operations Center</h3>
-              <p>Interactive geospatial Leaflet heatmap, automated severity triage (Red/Amber/Green), crew dispatching, and resolution auditing tools.</p>
+              <p>Interactive Leaflet map with severity-colored markers, status and priority triage filters, in-place report verification, and AI confidence review.</p>
             </div>
             <div>
               <a href="pages/dashboard.html" class="btn btn-secondary btn-sm">
@@ -194,7 +195,7 @@
           <span class="tech-tag">Ultralytics YOLO</span>
           <span class="tech-tag">RDD2022 Dataset Standards</span>
           <span class="tech-tag">GSAP 3 Sequencing</span>
-          <span class="tech-tag">Spline 3D Web Component</span>
+          <span class="tech-tag">Leaflet.js Geospatial Maps</span>
         </div>
       </div>
     </section>
@@ -208,7 +209,7 @@
           <img src="assets/logo-icon.png" alt="CivicSight Logo">
           <span class="brand-text">Civic<span>Sight</span></span>
         </div>
-        <p class="footer-note">&copy; 2026 CivicSight Project. Week 4 Active Phase.</p>
+        <p class="footer-note">&copy; 2026 CivicSight. Smart Road Damage Detection &amp; Municipal Repair Management.</p>
       </div>
     </div>
   </footer>
@@ -224,62 +225,5 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
   <script src="js/animations.js"></script>
-
-  <!-- Lazy Loading for Hero Spline 3D Scene (Requirement 1) -->
-  <script>
-    (function() {
-      // 1. Respect prefers-reduced-motion: Never load heavy 3D canvas if user requested reduced motion
-      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (prefersReducedMotion) {
-        console.info('[CivicSight] prefers-reduced-motion detected: preserving static vector 3D fallback.');
-        return;
-      }
-
-      function initSplineHero() {
-        const container = document.getElementById('splineViewerContainer');
-        const fallback = document.getElementById('hero3dFallback');
-        if (!container) return;
-
-        // Asynchronously load the official Spline viewer component script
-        const splineScript = document.createElement('script');
-        splineScript.type = 'module';
-        splineScript.src = 'https://unpkg.com/@splinetool/viewer@1.9.96/build/spline-viewer.js';
-
-        splineScript.onload = () => {
-          const viewer = document.createElement('spline-viewer');
-          viewer.setAttribute('url', 'https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode');
-          viewer.setAttribute('loading-anim', 'false');
-
-          // Reveal 3D scene smoothly once loaded
-          viewer.addEventListener('load', () => {
-            if (fallback) {
-              fallback.classList.add('hidden');
-            }
-          });
-
-          // If 3D scene fails, keep fallback visible
-          viewer.addEventListener('error', () => {
-            console.warn('[CivicSight] Spline scene failed to load; static fallback active.');
-            if (fallback) fallback.classList.remove('hidden');
-          });
-
-          container.appendChild(viewer);
-        };
-
-        splineScript.onerror = () => {
-          console.warn('[CivicSight] Spline script failed to load; static fallback active.');
-        };
-
-        document.body.appendChild(splineScript);
-      }
-
-      // Load after initial page paint to guarantee zero render blocking
-      if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => setTimeout(initSplineHero, 600));
-      } else {
-        window.addEventListener('load', () => setTimeout(initSplineHero, 600));
-      }
-    })();
-  </script>
 </body>
 </html>

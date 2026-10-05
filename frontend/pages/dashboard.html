@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Municipal Operations Center — CivicSight</title>
-  <meta name="description" content="Municipal geospatial road hazard operations center with interactive Leaflet severity map, automated triage, and repair dispatch auditing.">
+  <meta name="description" content="Municipal geospatial road hazard operations center with interactive Leaflet severity map, status triage, and in-place verification.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
@@ -65,11 +65,11 @@
         <div>
           <div class="badge-pill">
             <span class="badge-dot"></span>
-            <span>Live Municipal Dispatch Console</span>
+            <span>Municipal Operations Center</span>
           </div>
           <h1 class="dashboard-title">Municipal <span class="accent-text">Operations Center</span></h1>
           <p class="dashboard-subtitle">
-            Geospatial hazard triage, AI confidence auditing, and repair work order lifecycle tracking.
+            Geospatial hazard triage, AI confidence review, and report lifecycle management.
           </p>
         </div>
         <div class="dashboard-header-actions">
@@ -119,12 +119,12 @@
         </div>
       </div>
 
-      <!-- Requirement 5: Interactive Leaflet Map with Severity Color Markers -->
+      <!-- Interactive Leaflet Map with Severity Color Markers -->
       <section class="dashboard-map-card">
         <div class="dashboard-map-header">
           <div>
             <h2 class="form-section-title" style="margin: 0;">Geospatial Hazard Map</h2>
-            <p class="form-section-desc" style="margin-top: 0.2rem;">Click any pin marker to inspect details, dispatch repair teams, or audit AI bounding boxes.</p>
+            <p class="form-section-desc" style="margin-top: 0.2rem;">Click any pin marker to inspect details, update status, or review AI bounding boxes.</p>
           </div>
           <div class="map-legend">
             <span class="legend-item"><span class="legend-dot red"></span> High Priority</span>
@@ -142,11 +142,11 @@
         <div class="section-title-wrap" style="margin-bottom: 0;">
           <div>
             <h2 class="form-section-title">Incident Triage & Work Orders</h2>
-            <p class="form-section-desc">Real-time status updates synced with field engineering dispatch.</p>
+            <p class="form-section-desc">Review, verify, and update the status of every reported hazard.</p>
           </div>
         </div>
 
-        <!-- Filter Controls (Week 5) -->
+        <!-- Filter Controls -->
         <div class="dashboard-filter-bar">
           <div class="filter-group">
             <label for="statusFilter" class="filter-label">Status:</label>
@@ -195,7 +195,7 @@
     </div>
   </main>
 
-  <!-- Inspection Modal (Hosts Requirement 4 Visual ML Detection Component) -->
+  <!-- Inspection Modal -->
   <div class="modal-overlay" id="inspectionModal" role="dialog" aria-modal="true" aria-labelledby="inspectionModalTitle">
     <div class="modal-card">
       <div class="modal-header">
@@ -220,7 +220,7 @@
     </div>
   </div>
 
-  <!-- Repair Completed Modal (Hosts Requirement 2 Moment 5 Lottie Animation) -->
+  <!-- Repair Completed Modal -->
   <div class="modal-overlay" id="repairModal" role="dialog" aria-modal="true" aria-labelledby="repairModalTitle">
     <div class="modal-card" style="max-width: 440px;">
       <div class="modal-header">
@@ -229,7 +229,7 @@
       </div>
       <div class="repair-completion-content">
         <div class="lottie-wrap lottie-repair-completed">
-          <!-- Moment 5 Lottie Animation: Repair completed / checkmark -->
+          <!-- Repair completed Lottie checkmark -->
           <lottie-player src="../assets/lottie/repaired.json" background="transparent" speed="1" autoplay aria-hidden="true" style="width: 72px; height: 72px;"></lottie-player>
         </div>
         <h3 id="repairTargetText">Report Repaired</h3>
@@ -249,7 +249,7 @@
           <img src="../assets/logo-icon.png" alt="CivicSight Logo">
           <span class="brand-text">Civic<span>Sight</span></span>
         </div>
-        <p class="footer-note">&copy; 2026 CivicSight Project. Week 4 Municipal Center Active.</p>
+        <p class="footer-note">&copy; 2026 CivicSight. Municipal Operations Center.</p>
       </div>
     </div>
   </footer>
@@ -259,12 +259,12 @@
 
   <!-- Core Scripts -->
   <script src="../js/auth.js"></script>
-  <!-- Reusable Visual ML Detection Component (Requirement 4) -->
+  <!-- Reusable Visual ML Detection Component -->
   <script src="../js/ml-viewer.js"></script>
-  <!-- GSAP Controller (Requirement 3) -->
+  <!-- GSAP Controller -->
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="../js/animations.js"></script>
-  <!-- Municipal Dashboard Logic (Requirement 5) -->
+  <!-- Municipal Dashboard Logic -->
   <script src="../js/dashboard.js"></script>
 </body>
 </html>

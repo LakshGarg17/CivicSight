@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       const feature = el.getAttribute('data-placeholder') || 'Feature';
-      showToast(`${feature} module will be enabled in Week 2.`);
+      showToast(`${feature} module is coming soon.`);
     });
   });
 

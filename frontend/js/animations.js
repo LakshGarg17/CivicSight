@@ -1,8 +1,8 @@
 /**
  * CivicSight — GSAP Transitions & Micro-Interactions Controller
  *
- * Implements Requirement 3 strictly:
- * - Sequenced hero text/CTA fade-in and upward slide on page load (logo -> badge -> h1 -> subtitle -> CTA -> 3D scene)
+ * Animation behavior:
+ * - Sequenced hero text/CTA fade-in and upward slide on page load (logo -> badge -> h1 -> subtitle -> CTA -> hero visual)
  * - "How CivicSight Works" 7-stage workflow step reveal on scroll using ScrollTrigger
  * - Card/section reveal animations on scroll for dashboard and reporting pages
  * - Subtle micro-interactions on buttons/nav (scale: 1.02, slight elevation — NO bounce, NO spin)
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- 2. Sequenced Hero Animation on Load ---
-  // Sequence: logo/nav -> badge -> hero title -> hero subtitle -> hero CTA -> 3D scene container
+  // Sequence: logo/nav -> badge -> hero title -> hero subtitle -> hero CTA -> hero visual
   const heroSection = document.querySelector('.hero-section');
   if (heroSection) {
     const heroTl = gsap.timeline({ defaults: { ease: 'power2.out' } });
