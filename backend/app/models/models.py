@@ -32,12 +32,16 @@ class UserRole(str, enum.Enum):
 class ReportStatus(str, enum.Enum):
     """Lifecycle stages of a road damage report."""
     SUBMITTED = "submitted"
+    PENDING_VERIFICATION = "pending_verification"
     DETECTED = "detected"
     PRIORITIZED = "prioritized"
     VERIFIED = "verified"
     ASSIGNED = "assigned"
+    UNDER_REPAIR = "under_repair"
     REPAIRED = "repaired"
     CLOSED = "closed"
+    REJECTED = "rejected"
+    DUPLICATE = "duplicate"
 
 
 class User(Base):
@@ -69,6 +73,7 @@ class User(Base):
         back_populates="reporter",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        foreign_keys="Report.reporter_id",
     )
 
     def __repr__(self):
@@ -109,6 +114,22 @@ class Report(Base):
     priority = Column(String(20), nullable=True, default="MEDIUM", index=True)
     ml_detections = Column(Text, nullable=True)
 
+    # Assignment & Lifecycle Details
+    assigned_to = Column(String(120), nullable=True)
+    assigned_to_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    duplicate_of_id = Column(
+        Integer,
+        ForeignKey("reports.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    rejection_reason = Column(Text, nullable=True)
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
@@ -119,7 +140,47 @@ class Report(Base):
     )
 
     # Relationships
-    reporter = relationship("User", back_populates="reports")
+    reporter = relationship("User", back_populates="reports", foreign_keys=[reporter_id])
+    assigned_staff = relationship("User", foreign_keys=[assigned_to_id])
+    duplicate_of = relationship("Report", remote_side=[id], foreign_keys=[duplicate_of_id])
+    status_history = relationship(
+        "ReportStatusHistory",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="ReportStatusHistory.created_at.asc()",
+    )
 
     def __repr__(self):
         return f"<Report id={self.id} status='{self.status}' reporter_id={self.reporter_id}>"
+
+
+class ReportStatusHistory(Base):
+    """Audit log tracking every status transition across a report's lifecycle."""
+    __tablename__ = "report_status_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(
+        Integer,
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    from_status = Column(String(50), nullable=True)
+    to_status = Column(String(50), nullable=False, index=True)
+    performed_by_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    performed_by_name = Column(String(120), nullable=True)
+    performed_by_role = Column(String(50), nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    report = relationship("Report", back_populates="status_history")
+    performed_by = relationship("User", foreign_keys=[performed_by_id])
+
+    def __repr__(self):
+        return f"<ReportStatusHistory id={self.id} report_id={self.report_id} {self.from_status}->{self.to_status}>"

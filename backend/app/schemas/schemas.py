@@ -133,11 +133,65 @@ class ReportStatusUpdate(BaseModel):
     status: ReportStatus = Field(..., description="Updated report lifecycle status")
 
 
+class ReportVerifyRequest(BaseModel):
+    note: Optional[str] = Field(None, description="Optional note or inspection comments")
+
+
+class ReportRejectRequest(BaseModel):
+    reason: str = Field(..., min_length=1, description="Reason for rejecting the report")
+    note: Optional[str] = Field(None, description="Additional context or notes")
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Rejection reason cannot be empty")
+        return v
+
+
+class ReportDuplicateRequest(BaseModel):
+    original_report_id: int = Field(..., ge=1, description="ID of the original report that this duplicates")
+    note: Optional[str] = Field(None, description="Additional context or notes")
+
+
+class ReportAssignRequest(BaseModel):
+    assigned_to: str = Field(..., min_length=1, description="Maintenance staff member or crew identifier")
+    staff_id: Optional[int] = Field(None, description="Optional user ID of assigned maintenance staff")
+    note: Optional[str] = Field(None, description="Optional assignment notes or instructions")
+
+    @field_validator("assigned_to")
+    @classmethod
+    def validate_assigned_to_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Assigned staff identifier cannot be empty")
+        return v
+
+
+class ReportStatusHistoryResponse(BaseModel):
+    id: int
+    report_id: int
+    from_status: Optional[str] = None
+    to_status: str
+    performed_by_id: Optional[int] = None
+    performed_by_name: Optional[str] = None
+    performed_by_role: Optional[str] = None
+    note: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ReportResponse(ReportBase):
     id: int
     reporter_id: Optional[int] = None
     status: ReportStatus
     severity_score: Optional[float] = None
+    assigned_to: Optional[str] = None
+    assigned_to_id: Optional[int] = None
+    duplicate_of_id: Optional[int] = None
+    rejection_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     reporter: Optional[UserResponse] = None

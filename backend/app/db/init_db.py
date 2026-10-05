@@ -70,6 +70,27 @@ def init_db() -> None:
                     conn.execute(text("ALTER TABLE reports ADD COLUMN ml_detections TEXT;"))
                     conn.commit()
 
+                # Week 6 additions
+                if "assigned_to" not in existing_report_cols:
+                    logger.info("Adding 'assigned_to' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN assigned_to VARCHAR(120);"))
+                    conn.commit()
+
+                if "assigned_to_id" not in existing_report_cols:
+                    logger.info("Adding 'assigned_to_id' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN assigned_to_id INTEGER;"))
+                    conn.commit()
+
+                if "duplicate_of_id" not in existing_report_cols:
+                    logger.info("Adding 'duplicate_of_id' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN duplicate_of_id INTEGER;"))
+                    conn.commit()
+
+                if "rejection_reason" not in existing_report_cols:
+                    logger.info("Adding 'rejection_reason' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN rejection_reason TEXT;"))
+                    conn.commit()
+
         logger.info("Database tables verified/created successfully.")
     except Exception as e:
         logger.error(f"Failed to initialize database tables: {e}")

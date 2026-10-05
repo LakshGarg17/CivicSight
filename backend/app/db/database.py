@@ -7,12 +7,20 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # Create SQLAlchemy engine
-engine = create_engine(
-    settings.sync_database_uri,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
-)
+db_uri = settings.sync_database_uri
+if db_uri.startswith("sqlite"):
+    engine = create_engine(
+        db_uri,
+        connect_args={"check_same_thread": False},
+        pool_pre_ping=True,
+    )
+else:
+    engine = create_engine(
+        db_uri,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+    )
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -31,7 +39,8 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def check_db_connection() -> dict:
-    """Verifies active connectivity to PostgreSQL database."""
+    """Verifies active connectivity to database."""
+    target_db = "SQLite" if settings.sync_database_uri.startswith("sqlite") else settings.POSTGRES_DB
     try:
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
@@ -39,18 +48,18 @@ def check_db_connection() -> dict:
             if row and row[0] == 1:
                 return {
                     "reachable": True,
-                    "database": settings.POSTGRES_DB,
+                    "database": target_db,
                     "message": "Database connection verified successfully"
                 }
             return {
                 "reachable": False,
-                "database": settings.POSTGRES_DB,
+                "database": target_db,
                 "message": "Database returned unexpected response"
             }
     except Exception as e:
         logger.warning(f"Database connection check failed: {str(e)}")
         return {
             "reachable": False,
-            "database": settings.POSTGRES_DB,
+            "database": target_db,
             "message": f"Connection failed: {str(e)}"
         }

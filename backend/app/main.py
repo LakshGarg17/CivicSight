@@ -47,6 +47,11 @@ app.add_middleware(
 # Mount Static Files for Uploaded Report Photos
 app.mount("/uploads", StaticFiles(directory=UPLOAD_BASE_DIR), name="uploads")
 
+# Mount Static Files for Frontend Web Application
+FRONTEND_DIR = os.path.join(os.path.dirname(BACKEND_DIR), "frontend")
+if os.path.isdir(FRONTEND_DIR):
+    app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
 # Mount Versioned API Routes (/api/v1)
 app.include_router(api_router)
 
