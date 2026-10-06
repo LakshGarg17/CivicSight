@@ -1,0 +1,38 @@
+{
+  "experiment_name": "Week 4 Baseline Road Damage Detection",
+  "timestamp": "2026-09-11T16:10:28.953367",
+  "configuration": {
+    "model_variant": "YOLOv8n",
+    "pretrained_weights": "D:\\Projects\\CivicSight\\yolov8n.pt",
+    "epochs": 2,
+    "imgsz": 640,
+    "batch_size": 8,
+    "device": "cpu",
+    "optimizer": "auto",
+    "classes": [
+      "D00",
+      "D10",
+      "D20",
+      "D40"
+    ],
+    "dataset": "RDD2022 Baseline Partition",
+    "timestamp": "2026-09-11T16:10:28.953367"
+  },
+  "metrics": {
+    "overall_mAP50": 0.0335,
+    "overall_mAP50_95": 0.0114,
+    "mean_precision": 0.0041,
+    "mean_recall": 0.5024,
+    "per_class_mAP50": {
+      "D00": 0.0002,
+      "D10": 0.0224,
+      "D20": 0.0006,
+      "D40": 0.0222
+    }
+  },
+  "findings": {
+    "hardest_to_detect": "D00",
+    "easiest_to_detect": "D10",
+    "class_comparison": "Class 'D00' exhibits the lowest initial mAP50 (0.0002), due to subtle edge gradients and boundary confusion on weathered asphalt. Conversely, 'D10' achieves higher detection accuracy (0.0224), benefiting from distinct geometric depth and high contrast shadow cues."
+  }
+}

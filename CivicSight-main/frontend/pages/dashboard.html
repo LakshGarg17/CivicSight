@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Municipal Operations Center — CivicSight</title>
+  <meta name="description" content="Municipal geospatial road hazard operations center with interactive Leaflet severity map, status triage, and in-place verification.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  
+  <script src="../js/theme.js"></script>
+  <!-- Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Lottie Web Player -->
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@2.0.8/dist/lottie-player.js"></script>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="container navbar-inner">
+      <a href="../index.html" class="brand" aria-label="CivicSight Home">
+        <img src="../assets/logo-icon.png" alt="CivicSight Logo">
+        <span class="brand-text">Civic<span>Sight</span></span>
+      </a>
+
+      <nav>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="../index.html" class="nav-link">&larr; Overview</a></li>
+          <li><a href="../index.html#workflow" class="nav-link">Workflow</a></li>
+          <li><a href="report.html" class="nav-link">Report Damage</a></li>
+          <li><a href="dashboard.html" class="nav-link active">Municipal Center</a></li>
+        </ul>
+      </nav>
+
+      <div class="navbar-right">
+        <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme">
+          <!-- Icon injected by theme.js -->
+        </button>
+        <div class="nav-actions">
+          <span class="badge-pill badge-pill-nav">
+            <span class="badge-dot"></span>
+            <span>Municipal Operations Portal</span>
+          </span>
+        </div>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
+          &#9776;
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Municipal Operations Dashboard -->
+  <main class="dashboard-main">
+    <div class="container">
+      
+      <!-- Dashboard Page Header -->
+      <div class="dashboard-header">
+        <div>
+          <div class="badge-pill">
+            <span class="badge-dot"></span>
+            <span>Municipal Operations Center</span>
+          </div>
+          <h1 class="dashboard-title">Municipal <span class="accent-text">Operations Center</span></h1>
+          <p class="dashboard-subtitle">
+            Geospatial hazard triage, AI confidence review, and report lifecycle management.
+          </p>
+        </div>
+        <div class="dashboard-header-actions">
+          <a href="report.html" class="btn btn-primary btn-sm">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            New Citizen Report
+          </a>
+        </div>
+      </div>
+
+      <!-- KPI Metrics Row -->
+      <div class="dashboard-metrics-grid">
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span class="metric-label">Active Hazards</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-color);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <div class="metric-val" id="metricActiveTotal">8</div>
+          <p class="metric-sub">Across metropolitan road grid</p>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span class="metric-label">High Severity</span>
+            <span class="legend-dot red"></span>
+          </div>
+          <div class="metric-val" style="color: var(--color-danger);" id="metricHighSeverity">3</div>
+          <p class="metric-sub">Potholes (D40) & structural breaks</p>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span class="metric-label">Medium Priority</span>
+            <span class="legend-dot amber"></span>
+          </div>
+          <div class="metric-val" style="color: var(--color-warning);" id="metricMediumSeverity">3</div>
+          <p class="metric-sub">Longitudinal/transverse fissures</p>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span class="metric-label">Repaired / Closed</span>
+            <span class="legend-dot green"></span>
+          </div>
+          <div class="metric-val" style="color: var(--color-success);" id="metricRepaired">2</div>
+          <p class="metric-sub">Audited and verified closed</p>
+        </div>
+      </div>
+
+      <!-- Interactive Leaflet Map with Severity Color Markers -->
+      <section class="dashboard-map-card">
+        <div class="dashboard-map-header">
+          <div>
+            <h2 class="form-section-title" style="margin: 0;">Geospatial Hazard Map</h2>
+            <p class="form-section-desc" style="margin-top: 0.2rem;">Click any pin marker to inspect details, update status, or review AI bounding boxes.</p>
+          </div>
+          <div class="map-legend">
+            <span class="legend-item"><span class="legend-dot red"></span> High Priority</span>
+            <span class="legend-item"><span class="legend-dot amber"></span> Medium</span>
+            <span class="legend-item"><span class="legend-dot green"></span> Low / Repaired</span>
+          </div>
+        </div>
+
+        <!-- Map Canvas -->
+        <div id="dashboardMap" class="dashboard-map-canvas" role="region" aria-label="Municipal hazard geospatial Leaflet map"></div>
+      </section>
+
+      <!-- Active Triage Queue Table -->
+      <section class="dashboard-queue-card">
+        <div class="section-title-wrap" style="margin-bottom: 0;">
+          <div>
+            <h2 class="form-section-title">Incident Triage & Work Orders</h2>
+            <p class="form-section-desc">Review, verify, and update the status of every reported hazard.</p>
+          </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="dashboard-filter-bar">
+          <div class="filter-group">
+            <label for="statusFilter" class="filter-label">Status:</label>
+            <select id="statusFilter" class="form-select filter-select">
+              <option value="">All Statuses</option>
+              <option value="submitted">Submitted</option>
+              <option value="pending_verification">Pending Verification</option>
+              <option value="verified">Verified</option>
+              <option value="assigned">Assigned</option>
+              <option value="under_repair">Under Repair</option>
+              <option value="repaired">Repaired</option>
+              <option value="closed">Closed</option>
+              <option value="rejected">Rejected</option>
+              <option value="duplicate">Duplicate</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="priorityFilter" class="filter-label">Priority:</label>
+            <select id="priorityFilter" class="form-select filter-select">
+              <option value="">All Priorities</option>
+              <option value="HIGH">High Priority</option>
+              <option value="MEDIUM">Medium Priority</option>
+              <option value="LOW">Low Priority</option>
+            </select>
+          </div>
+          <button type="button" id="resetFiltersBtn" class="btn btn-secondary btn-sm" style="margin-left: auto;">
+            Reset Filters
+          </button>
+        </div>
+
+        <div class="queue-table-wrap">
+          <table class="queue-table" aria-label="Road Hazard Triage Table">
+            <thead>
+              <tr>
+                <th>Report</th>
+                <th>Defect Type</th>
+                <th>Coordinates / Street</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="queueTableBody">
+              <!-- Dynamically populated by dashboard.js from live backend API -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Inspection & Report Details Modal -->
+  <div class="modal-overlay" id="inspectionModal" role="dialog" aria-modal="true" aria-labelledby="inspectionModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" id="inspectionModalTitle">Damage Inspection Assessment</h3>
+          <div id="modalReportSubheader" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;"></div>
+        </div>
+        <button type="button" class="modal-close-btn" id="closeInspectionModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+
+      <!-- ML Detection Viewer Slot -->
+      <div id="modalMLViewerSlot">
+        <!-- Injected via CivicSightMLViewer.render() -->
+      </div>
+
+      <!-- Real Status Transition History Audit Timeline -->
+      <div class="report-history-section" id="modalHistorySection">
+        <div class="history-section-header">
+          <h4 style="margin: 0; font-size: 0.925rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Status Transition History
+          </h4>
+          <span class="history-count-badge" id="historyCountBadge">0 records</span>
+        </div>
+        <div class="history-timeline" id="modalHistoryTimeline">
+          <!-- Populated from live GET /reports/{id}/history endpoint -->
+        </div>
+      </div>
+
+      <!-- Modal Footer with Lifecycle Action Controls -->
+      <div class="modal-footer" id="modalFooter" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
+        <div id="modalReportMetaStatus">
+          <span class="status-badge" id="modalCurrentStatusBadge">
+            <span class="status-badge-dot"></span>
+            <span id="modalCurrentStatusText">Submitted</span>
+          </span>
+          <div id="modalExtraMeta" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.35rem;"></div>
+        </div>
+        <div class="modal-actions-bar" id="modalActionsBar">
+          <button type="button" class="btn btn-secondary btn-sm" id="modalCloseActionBtn">Close</button>
+          <!-- Lifecycle Action Buttons (dynamically enabled/disabled per legal state rules) -->
+          <button type="button" class="btn btn-primary btn-sm" id="modalVerifyBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            Verify Report
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="modalAssignBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+            Assign Crew...
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="modalDuplicateBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Duplicate...
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="modalRejectBtn" style="color: var(--color-danger); border-color: var(--color-danger-border);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+            Reject...
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Reason Prompt Modal -->
+  <div class="modal-overlay" id="rejectModal" role="dialog" aria-modal="true" aria-labelledby="rejectModalTitle">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="rejectModalTitle" style="color: var(--color-danger);">Reject Road Damage Report</h3>
+        <button type="button" class="modal-close-btn" id="closeRejectModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+        Rejecting this report will remove it from active triage. A specific rejection reason is required for municipal audit compliance.
+      </p>
+      <form id="rejectForm">
+        <div class="action-dialog-group">
+          <label for="rejectReasonInput">Reason for Rejection <span style="color: var(--color-danger);">*</span></label>
+          <textarea id="rejectReasonInput" class="action-dialog-input" rows="3" placeholder="e.g. Private driveway outside municipal jurisdiction, non-structural cosmetic stain, etc." required></textarea>
+        </div>
+        <div class="action-dialog-group">
+          <label for="rejectNoteInput">Optional Internal Note</label>
+          <input type="text" id="rejectNoteInput" class="action-dialog-input" placeholder="e.g. Notified district homeowner association">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="cancelRejectBtn">Cancel</button>
+          <button type="submit" class="btn btn-danger btn-sm" id="confirmRejectBtn">Confirm Rejection</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Duplicate Reference Selection Modal -->
+  <div class="modal-overlay" id="duplicateModal" role="dialog" aria-modal="true" aria-labelledby="duplicateModalTitle">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="duplicateModalTitle">Mark as Duplicate Report</h3>
+        <button type="button" class="modal-close-btn" id="closeDuplicateModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+        Mark this hazard as a duplicate of an existing primary work order. Select or enter the original report ID.
+      </p>
+      <form id="duplicateForm">
+        <div class="action-dialog-group">
+          <label for="duplicateOriginalSelect">Select Original Report</label>
+          <select id="duplicateOriginalSelect" class="action-dialog-input">
+            <option value="">-- Select from Active Reports --</option>
+          </select>
+        </div>
+        <div class="action-dialog-group">
+          <label for="duplicateOriginalInput">Or Enter Original Report ID <span style="color: var(--accent-color);">*</span></label>
+          <input type="number" id="duplicateOriginalInput" class="action-dialog-input" placeholder="e.g. 14" min="1" required>
+        </div>
+        <div class="action-dialog-group">
+          <label for="duplicateNoteInput">Optional Note</label>
+          <input type="text" id="duplicateNoteInput" class="action-dialog-input" placeholder="e.g. Duplicate photograph from across intersection">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="cancelDuplicateBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="confirmDuplicateBtn">Mark as Duplicate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Assign Maintenance Crew Modal -->
+  <div class="modal-overlay" id="assignModal" role="dialog" aria-modal="true" aria-labelledby="assignModalTitle">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="assignModalTitle">Assign Maintenance Crew</h3>
+        <button type="button" class="modal-close-btn" id="closeAssignModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+        Assign this verified hazard to a maintenance staff technician or field repair crew.
+      </p>
+      <form id="assignForm">
+        <div class="action-dialog-group">
+          <label for="assignStaffSelect">Maintenance Crew / Staff <span style="color: var(--accent-color);">*</span></label>
+          <select id="assignStaffSelect" class="action-dialog-input">
+            <option value="Metro Asphalt Crew Alpha">Metro Asphalt Crew Alpha (High-Capacity)</option>
+            <option value="North Division Rapid Pothole Unit">North Division Rapid Pothole Unit (Urgent)</option>
+            <option value="South Ward Pavement Crew">South Ward Pavement Crew</option>
+            <option value="Central Arterial Maintenance">Central Arterial Maintenance</option>
+            <option value="Tech Sam (Maintenance Staff)">Tech Sam (Maintenance Staff)</option>
+            <option value="custom">-- Custom Crew / Technician... --</option>
+          </select>
+        </div>
+        <div class="action-dialog-group" id="assignCustomWrap" style="display: none;">
+          <label for="assignCustomInput">Custom Crew Name / ID</label>
+          <input type="text" id="assignCustomInput" class="action-dialog-input" placeholder="e.g. Contractor Paving Specialists Unit 4">
+        </div>
+        <div class="action-dialog-group">
+          <label for="assignNoteInput">Dispatch Instructions / Note</label>
+          <textarea id="assignNoteInput" class="action-dialog-input" rows="2" placeholder="e.g. Schedule asphalt patch repair during off-peak hours"></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" id="cancelAssignBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="confirmAssignBtn">Dispatch Assignment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Repair Completed Modal -->
+  <div class="modal-overlay" id="repairModal" role="dialog" aria-modal="true" aria-labelledby="repairModalTitle">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="repairModalTitle">Status Transition</h3>
+        <button type="button" class="modal-close-btn" id="closeRepairModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="repair-completion-content">
+        <div class="lottie-wrap lottie-repair-completed">
+          <!-- Repair completed Lottie checkmark -->
+          <lottie-player src="../assets/lottie/repaired.json" background="transparent" speed="1" autoplay aria-hidden="true" style="width: 72px; height: 72px;"></lottie-player>
+        </div>
+        <h3 id="repairTargetText">Report Repaired</h3>
+        <p id="repairTargetDesc">Hazard ticket has been updated to <strong>repaired / closed</strong>. The municipal work order has been marked complete in the registry.</p>
+        <div style="margin-top: 1.25rem;">
+          <button type="button" class="btn btn-primary btn-block" id="confirmRepairDismissBtn">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="brand">
+          <img src="../assets/logo-icon.png" alt="CivicSight Logo">
+          <span class="brand-text">Civic<span>Sight</span></span>
+        </div>
+        <p class="footer-note">&copy; 2026 CivicSight. Municipal Operations Center.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Core Scripts -->
+  <script src="../js/auth.js"></script>
+  <!-- Reusable Visual ML Detection Component -->
+  <script src="../js/ml-viewer.js"></script>
+  <!-- GSAP Controller -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="../js/animations.js"></script>
+  <!-- Municipal Dashboard Logic -->
+  <script src="../js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style>
+      .bg-tile { fill: var(--bg-secondary, #f4f4f5); }
+      .road-surface { fill: #27272a; }
+      .road-marking { stroke: #e4e4e7; stroke-dasharray: 12 8; stroke-width: 3; }
+      .road-curb { fill: #3f3f46; }
+      .bldg-wall-left { fill: #71717a; }
+      .bldg-wall-right { fill: #52525b; }
+      .bldg-roof { fill: #a1a1aa; }
+      .bldg-dark-wall-l { fill: #3f3f46; }
+      .bldg-dark-wall-r { fill: #27272a; }
+      .bldg-dark-roof { fill: #52525b; }
+      .window-glow { fill: #93c5fd; opacity: 0.85; }
+      .tree-canopy { fill: #10b981; }
+      .tree-shadow { fill: #059669; }
+      .tree-trunk { fill: #78350f; }
+      .hazard-ring { stroke: var(--accent-color, #2563eb); stroke-width: 2.5; fill: none; animation: pulse 2s infinite; }
+      .hazard-pin { fill: var(--accent-color, #2563eb); }
+      .hazard-core { fill: #ffffff; }
+      .damage-crack { stroke: #18181b; stroke-width: 3; stroke-linecap: round; }
+      .damage-hole { fill: #09090b; stroke: #3f3f46; stroke-width: 1.5; }
+      .pin-shadow { fill: rgba(0,0,0,0.3); }
+      .badge-bg { fill: var(--bg-card, #ffffff); stroke: var(--border-color, #e4e4e7); }
+      .badge-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 600; fill: var(--text-primary, #111111); }
+      .badge-sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 9px; fill: var(--text-muted, #71717a); }
+      
+      [data-theme="dark"] .bg-tile { fill: #171717; }
+      [data-theme="dark"] .bldg-wall-left { fill: #262626; }
+      [data-theme="dark"] .bldg-wall-right { fill: #1c1c1c; }
+      [data-theme="dark"] .bldg-roof { fill: #404040; }
+      [data-theme="dark"] .window-glow { fill: #60a5fa; opacity: 0.9; }
+      [data-theme="dark"] .badge-bg { fill: #121212; stroke: #262626; }
+      [data-theme="dark"] .badge-text { fill: #f5f5f5; }
+      [data-theme="dark"] .badge-sub { fill: #a3a3a3; }
+    </style>
+  </defs>
+
+  <!-- Isometric Base Ground Platform -->
+  <polygon points="400,100 740,290 400,480 60,290" class="bg-tile" stroke="var(--border-color, #e4e4e7)" stroke-width="2"/>
+
+  <!-- Road Grid (Isometric crossing) -->
+  <!-- Main Road running Top-Right to Bottom-Left -->
+  <polygon points="560,190 660,245 240,480 140,425" class="road-surface"/>
+  <!-- Road curb lines -->
+  <line x1="560" y1="190" x2="140" y2="425" stroke="#52525b" stroke-width="2"/>
+  <line x1="660" y1="245" x2="240" y2="480" stroke="#52525b" stroke-width="2"/>
+  <!-- Center dividing dashed line -->
+  <line x1="610" y1="217" x2="190" y2="452" class="road-marking"/>
+
+  <!-- Cross street running Top-Left to Bottom-Right -->
+  <polygon points="260,170 340,125 540,390 460,435" class="road-surface"/>
+  <line x1="260" y1="170" x2="460" y2="435" stroke="#52525b" stroke-width="2"/>
+  <line x1="340" y1="125" x2="540" y2="390" stroke="#52525b" stroke-width="2"/>
+  <line x1="300" y1="147" x2="500" y2="412" class="road-marking"/>
+
+  <!-- Pedestrian Crosswalk Marks -->
+  <line x1="335" y1="315" x2="355" y2="326" stroke="#ffffff" stroke-width="3"/>
+  <line x1="345" y1="308" x2="365" y2="319" stroke="#ffffff" stroke-width="3"/>
+  <line x1="355" y1="301" x2="375" y2="312" stroke="#ffffff" stroke-width="3"/>
+
+  <!-- Isometric Building 1 (Tall Modern Office - North-East) -->
+  <g id="building-ne">
+    <!-- Base footprint: x=460, y=140 -->
+    <!-- Left wall -->
+    <polygon points="460,190 460,80 510,108 510,218" class="bldg-wall-left"/>
+    <!-- Right wall -->
+    <polygon points="510,218 510,108 580,70 580,180" class="bldg-wall-right"/>
+    <!-- Roof -->
+    <polygon points="460,80 530,42 580,70 510,108" class="bldg-roof"/>
+    <!-- Windows Left Wall -->
+    <rect x="475" y="105" width="10" height="8" class="window-glow" transform="skewY(29)"/>
+    <rect x="475" y="125" width="10" height="8" class="window-glow" transform="skewY(29)"/>
+    <rect x="475" y="145" width="10" height="8" class="window-glow" transform="skewY(29)"/>
+    <!-- Windows Right Wall -->
+    <rect x="525" y="115" width="14" height="8" class="window-glow" transform="skewY(-29)"/>
+    <rect x="525" y="135" width="14" height="8" class="window-glow" transform="skewY(-29)"/>
+    <rect x="550" y="100" width="14" height="8" class="window-glow" transform="skewY(-29)"/>
+    <rect x="550" y="120" width="14" height="8" class="window-glow" transform="skewY(-29)"/>
+  </g>
+
+  <!-- Isometric Building 2 (Civic Center - North-West) -->
+  <g id="building-nw">
+    <polygon points="200,210 200,120 250,148 250,238" class="bldg-dark-wall-l"/>
+    <polygon points="250,238 250,148 310,114 310,204" class="bldg-dark-wall-r"/>
+    <polygon points="200,120 260,86 310,114 250,148" class="bldg-dark-roof"/>
+    <!-- Glass facade stripes -->
+    <line x1="265" y1="165" x2="295" y2="148" stroke="#93c5fd" stroke-width="3"/>
+    <line x1="265" y1="180" x2="295" y2="163" stroke="#93c5fd" stroke-width="3"/>
+  </g>
+
+  <!-- Isometric Building 3 (Municipal Depot - East) -->
+  <g id="building-east">
+    <polygon points="590,300 590,240 630,262 630,322" class="bldg-wall-left"/>
+    <polygon points="630,322 630,262 680,234 680,294" class="bldg-wall-right"/>
+    <polygon points="590,240 640,212 680,234 630,262" class="bldg-roof"/>
+  </g>
+
+  <!-- Isometric Trees & Greenery -->
+  <g id="trees">
+    <!-- Tree 1 -->
+    <ellipse cx="160" cy="270" rx="14" ry="8" class="pin-shadow"/>
+    <rect x="158" y="255" width="4" height="12" class="tree-trunk"/>
+    <circle cx="160" cy="250" r="14" class="tree-canopy"/>
+    <circle cx="163" cy="248" r="10" class="tree-shadow"/>
+
+    <!-- Tree 2 -->
+    <ellipse cx="180" cy="290" rx="12" ry="6" class="pin-shadow"/>
+    <rect x="178" y="278" width="4" height="10" class="tree-trunk"/>
+    <circle cx="180" cy="272" r="12" class="tree-canopy"/>
+
+    <!-- Tree 3 (Park zone) -->
+    <ellipse cx="490" cy="200" rx="14" ry="7" class="pin-shadow"/>
+    <circle cx="490" cy="190" r="12" class="tree-canopy"/>
+  </g>
+
+  <!-- Municipal Patrol Vehicle (Minimal vector van) -->
+  <g id="patrol-vehicle" transform="translate(480, 260)">
+    <polygon points="0,20 24,33 50,18 26,5" fill="#2563eb"/>
+    <polygon points="4,16 24,27 46,15 26,4" fill="#ffffff"/>
+    <circle cx="12" cy="26" r="3" fill="#18181b"/>
+    <circle cx="38" cy="22" r="3" fill="#18181b"/>
+    <!-- Small blue siren light -->
+    <circle cx="25" cy="8" r="2.5" fill="#38bdf8"/>
+  </g>
+
+  <!-- Road Damage Hazard Site: Pothole & Cracks on Intersection -->
+  <g id="damage-detail" transform="translate(380, 360)">
+    <!-- Hazard Pothole Crater (D40) -->
+    <ellipse cx="0" cy="0" rx="22" ry="12" class="damage-hole"/>
+    <!-- Jagged structural cracks (D00 & D20) -->
+    <path d="M-18,-3 L-32,-10 L-42,-8" class="damage-crack"/>
+    <path d="M16,-4 L28,-14 L36,-12" class="damage-crack"/>
+    <path d="M6,8 L12,20 L24,24" class="damage-crack"/>
+    <path d="M-8,8 L-16,18" class="damage-crack"/>
+  </g>
+
+  <!-- Prominent CivicSight Location Pin Over Road Hazard -->
+  <g id="location-pin" transform="translate(380, 310)">
+    <!-- Shadow beneath pin -->
+    <ellipse cx="0" cy="50" rx="16" ry="7" class="pin-shadow"/>
+    
+    <!-- Pulsing sonar radar rings -->
+    <ellipse cx="0" cy="50" rx="26" ry="12" stroke="var(--accent-color, #2563eb)" stroke-width="1.5" fill="none" opacity="0.7"/>
+    <ellipse cx="0" cy="50" rx="40" ry="18" stroke="var(--accent-color, #2563eb)" stroke-width="1" stroke-dasharray="4 4" fill="none" opacity="0.4"/>
+
+    <!-- Pin stem & head -->
+    <path d="M0,50 L-14,20 A16,16 0 1,1 14,20 Z" class="hazard-pin" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.25))"/>
+    <circle cx="0" cy="14" r="6" class="hazard-core"/>
+
+    <!-- Floating Incident Assessment Badge -->
+    <g transform="translate(24, -15)">
+      <rect x="0" y="0" width="140" height="46" rx="8" class="badge-bg" filter="drop-shadow(0 4px 8px rgba(0,0,0,0.15))"/>
+      <!-- Severity indicator pip -->
+      <circle cx="16" cy="16" r="4" fill="#dc2626"/>
+      <text x="26" y="20" class="badge-text">D40 POTHOLE</text>
+      <text x="16" y="34" class="badge-sub">HIGH SEVERITY · 94.8% AI</text>
+    </g>
+  </g>
+</svg>

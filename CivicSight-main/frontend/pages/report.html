@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report Road Damage — CivicSight</title>
+  <meta name="description" content="Submit road hazard reports with photo upload, Leaflet interactive map location pinpointing, and direct municipal routing.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <script src="../js/theme.js"></script>
+  <!-- Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="container navbar-inner">
+      <a href="../index.html" class="brand" aria-label="CivicSight Home">
+        <img src="../assets/logo-icon.png" alt="CivicSight Logo">
+        <span class="brand-text">Civic<span>Sight</span></span>
+      </a>
+
+      <nav>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="../index.html" class="nav-link">&larr; Back to Home</a></li>
+          <li><a href="../index.html#workflow" class="nav-link">Workflow</a></li>
+          <li><a href="report.html" class="nav-link active">Report Damage</a></li>
+          <li><a href="dashboard.html" class="nav-link">Municipal Dashboard</a></li>
+        </ul>
+      </nav>
+
+      <div class="navbar-right">
+        <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme">
+          <!-- Icon injected by theme.js -->
+        </button>
+        <div class="nav-actions">
+          <span class="badge-pill badge-pill-nav">
+            <span class="badge-dot"></span>
+            <span>Stage 01: Citizen Report</span>
+          </span>
+        </div>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
+          &#9776;
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="report-main">
+    <div class="container report-container">
+      
+      <!-- Page Header -->
+      <div class="report-header">
+        <a href="../index.html" class="back-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          Back to Overview
+        </a>
+        <h1 class="report-title">Report <span class="accent-text">Road Damage</span></h1>
+        <p class="report-subtitle">
+          Submit photo evidence and verify the exact hazard coordinates so it enters the municipal review queue.
+        </p>
+      </div>
+
+      <!-- Submission Status Message Container -->
+      <div id="submissionStatus" class="submission-status-banner" style="display: none;" role="alert" aria-live="polite"></div>
+
+      <!-- Report Form Container -->
+      <form id="roadDamageForm" class="report-form-card" onsubmit="return false;">
+        
+        <!-- Step 1: Image Upload Section -->
+        <section class="form-section">
+          <div class="section-title-wrap">
+            <span class="section-step-badge">1</span>
+            <div>
+              <h2 class="form-section-title">Upload Damage Photo <span class="label-required">*</span></h2>
+              <p class="form-section-desc">Select or capture a clear photo of the pothole, crack, or pavement defect.</p>
+            </div>
+          </div>
+
+          <div class="upload-dropzone" id="uploadDropzone" tabindex="0" role="button" aria-label="Upload photo of road damage">
+            <input 
+              type="file" 
+              id="damageImage" 
+              name="image" 
+              accept="image/jpeg,image/png,image/jpg,image/webp" 
+              class="file-input-hidden"
+              required
+            >
+            
+            <div class="dropzone-idle" id="dropzoneIdle">
+              <div class="upload-icon-wrapper">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+              </div>
+              <p class="dropzone-text"><strong>Click to browse</strong> or drag and drop your photo here</p>
+              <p class="dropzone-hint">Supports JPEG, PNG, WEBP (Max 15MB)</p>
+            </div>
+
+            <!-- Image Preview Box -->
+            <div class="preview-container" id="previewContainer" style="display: none;">
+              <img id="imagePreview" src="" alt="Road Damage Preview" class="preview-image">
+              <div class="preview-meta">
+                <div>
+                  <p class="preview-filename" id="previewFilename">road_photo.jpg</p>
+                  <p class="preview-filesize" id="previewFilesize">1.4 MB</p>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="removeImageBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                  Replace Photo
+                </button>
+              </div>
+            </div>
+          </div>
+          <span class="input-error-text" id="imageInputError"></span>
+
+          <!-- ML Analysis in Progress (Scanning Lottie) -->
+          <div id="mlScanningState" class="submission-status-banner status-submitting" style="display: none; margin-top: 1rem;">
+            <div class="lottie-status-layout">
+              <div class="lottie-wrap lottie-ml-scanning">
+                <lottie-player src="../assets/lottie/scanning.json" background="transparent" speed="1" loop autoplay aria-hidden="true"></lottie-player>
+              </div>
+              <div class="lottie-status-content">
+                <strong>YOLO Road Hazard Analysis in Progress...</strong>
+                <p class="status-body" style="margin: 0.25rem 0 0;">Scanning pavement surface for cracks, potholes, and defect coordinates.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Visual ML Detection Results Component Container -->
+          <div id="mlDetectionResultsSlot"></div>
+        </section>
+
+        <!-- Step 2: Damage Description & Category -->
+        <section class="form-section">
+          <div class="section-title-wrap">
+            <span class="section-step-badge">2</span>
+            <div>
+              <h2 class="form-section-title">Problem Description & Details <span class="label-required">*</span></h2>
+              <p class="form-section-desc">Provide context to assist maintenance triage and crew dispatch.</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="damageDescription" class="form-label">
+              Detailed Description <span class="label-required">*</span>
+            </label>
+            <textarea 
+              id="damageDescription" 
+              name="description" 
+              class="form-textarea" 
+              rows="4" 
+              placeholder="E.g., Deep pothole on right traffic lane near pedestrian crossing. Edges are sharp and pose a risk to vehicles..."
+              required
+            ></textarea>
+            <span class="input-error-text" id="descriptionError"></span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Observed Defect Category <span class="label-optional">(Optional)</span></label>
+            <div class="damage-category-chips" id="damageTypeChips">
+              <label class="chip-option">
+                <input type="radio" name="damage_type" value="D40" id="chip_d40">
+                <span class="chip-label"><strong>D40</strong> Pothole</span>
+              </label>
+              <label class="chip-option">
+                <input type="radio" name="damage_type" value="D00" id="chip_d00">
+                <span class="chip-label"><strong>D00</strong> Longitudinal Crack</span>
+              </label>
+              <label class="chip-option">
+                <input type="radio" name="damage_type" value="D10" id="chip_d10">
+                <span class="chip-label"><strong>D10</strong> Transverse Crack</span>
+              </label>
+              <label class="chip-option">
+                <input type="radio" name="damage_type" value="D20" id="chip_d20">
+                <span class="chip-label"><strong>D20</strong> Alligator Crack</span>
+              </label>
+              <label class="chip-option">
+                <input type="radio" name="damage_type" value="OTHER" id="chip_other" checked>
+                <span class="chip-label">Unsure / Automatic AI Detection</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Step 3: Interactive Location Section (Leaflet Map & Geolocation) -->
+        <section class="form-section">
+          <div class="section-title-wrap">
+            <span class="section-step-badge">3</span>
+            <div>
+              <h2 class="form-section-title">Incident Location <span class="label-required">*</span></h2>
+              <p class="form-section-desc">Use GPS, click the map, or drag the pin to pinpoint the exact hazard coordinates.</p>
+            </div>
+          </div>
+
+          <!-- Location Toolbar with Geolocation Lottie Animation -->
+          <div class="location-toolbar">
+            <div class="location-status-badge" id="locationStatusBadge">
+              <span id="locationLottieSlot" class="lottie-wrap lottie-geolocation"></span>
+              <span class="status-indicator-dot" id="locationStatusDot"></span>
+              <span id="locationStatusText">Detecting location...</span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="recenterGpsBtn" title="Request GPS location from browser">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              Locate Me (GPS)
+            </button>
+          </div>
+
+          <!-- Leaflet Interactive Map Container -->
+          <div id="reportMap" class="report-map" role="region" aria-label="Interactive map for selecting road hazard location"></div>
+          <p class="map-helper-hint">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            Click anywhere on the map or drag the blue pin to fine-tune the exact hazard location.
+          </p>
+
+          <!-- Address and Coordinate Fields -->
+          <div class="location-fields-grid">
+            <div class="form-group">
+              <label for="addressText" class="form-label">Street / Landmark Address <span class="label-optional">(Optional)</span></label>
+              <input 
+                type="text" 
+                id="addressText" 
+                name="address_text" 
+                class="form-input" 
+                placeholder="E.g., 452 Elm Street, near Metro Station Gate 2"
+              >
+            </div>
+
+            <div class="coord-inputs-row">
+              <div class="form-group">
+                <label for="latitude" class="form-label">Latitude <span class="label-required">*</span></label>
+                <input 
+                  type="number" 
+                  step="any" 
+                  id="latitude" 
+                  name="latitude" 
+                  class="form-input" 
+                  placeholder="37.774929"
+                  required
+                >
+                <span class="input-error-text" id="latitudeError"></span>
+              </div>
+              <div class="form-group">
+                <label for="longitude" class="form-label">Longitude <span class="label-required">*</span></label>
+                <input 
+                  type="number" 
+                  step="any" 
+                  id="longitude" 
+                  name="longitude" 
+                  class="form-input" 
+                  placeholder="-122.419416"
+                  required
+                >
+                <span class="input-error-text" id="longitudeError"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Form Submission Action Bar -->
+        <div class="form-actions-bar">
+          <button type="button" class="btn btn-secondary" id="resetFormBtn">
+            Clear Form
+          </button>
+          <button type="submit" class="btn btn-primary" id="submitReportBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+            <span>Submit Road Report</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="brand">
+          <img src="../assets/logo-icon.png" alt="CivicSight Logo">
+          <span class="brand-text">Civic<span>Sight</span></span>
+        </div>
+        <p class="footer-note">&copy; 2026 CivicSight. Report road damage, help fix it faster.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="../js/auth.js"></script>
+  <!-- Lottie Player Web Component -->
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@2.0.8/dist/lottie-player.js"></script>
+  <!-- Visual ML Detection Viewer Component -->
+  <script src="../js/ml-viewer.js"></script>
+  <!-- GSAP Interactions -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="../js/animations.js"></script>
+  <!-- Report Logic -->
+  <script src="../js/report.js"></script>
+</body>
+</html>

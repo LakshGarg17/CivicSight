@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivicSight — Smart Road Damage Detection & Municipal Repair System</title>
+  <meta name="description" content="CivicSight is a civic tech platform connecting citizens with municipal repair management through computer vision–assisted road damage reporting.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <script src="js/theme.js"></script>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="container navbar-inner">
+      <a href="index.html" class="brand" aria-label="CivicSight Home">
+        <img src="assets/logo-icon.png" alt="CivicSight Logo">
+        <span class="brand-text">Civic<span>Sight</span></span>
+      </a>
+
+      <nav>
+        <ul class="nav-links" id="navLinks"          <li><a href="#about" class="nav-link">About CivicSight</a></li>
+          <li><a href="#workflow" class="nav-link">How It Works</a></li>
+          <li><a href="pages/report.html" class="nav-link">Report Road Damage</a></li>
+          <li><a href="pages/dashboard.html" class="nav-link">Municipal Dashboard</a></li>
+        </ul>
+      </nav>
+
+      <div class="navbar-right">
+        <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme">
+          <!-- Icon injected by theme.js -->
+        </button>
+        <div class="nav-actions">
+          <a href="pages/login.html" class="btn btn-secondary btn-sm">Log In</a>
+          <a href="pages/register.html" class="btn btn-primary btn-sm">Register</a>
+        </div>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
+          &#9776;
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero-section" id="about">
+      <div class="container hero-grid">
+        <div class="hero-content">
+          <div class="badge-pill hero-badge">
+            <span class="badge-dot"></span>
+            <span>Citizen Reporting, CV Classification &amp; Municipal Repair Workflow</span>
+          </div>
+          <h1 class="hero-title">
+            Smart Road Damage Detection &amp; <span class="accent-text">Municipal Repair Management</span>
+          </h1>
+          <p class="hero-subtitle">
+            CivicSight connects citizens and municipal teams: citizens report road hazards with photos and GPS locations, and municipal staff review, prioritize, verify, and resolve them.
+          </p>
+          <div class="hero-cta">
+            <a href="pages/report.html" class="btn btn-primary" id="heroReportBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              Report Road Damage
+            </a>
+            <a href="pages/dashboard.html" class="btn btn-secondary" id="heroDashboardBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+              Municipal Dashboard
+            </a>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><strong>4</strong><span>Damage Classes</span></div>
+            <div class="hero-stat"><strong>7</strong><span>Workflow Stages</span></div>
+            <div class="hero-stat"><strong>YOLO</strong><span>CV Classification</span></div>
+          </div>
+        </div>
+
+        <!-- Hero Visual: Civic road-damage detection scene -->
+        <div class="hero-visual">
+          <div class="hero-3d-wrapper" id="hero3dWrapper">
+            <img src="assets/hero-civic-scene.svg" alt="Isometric city road scene with a detected pothole, location pin, and municipal repair vehicle" class="hero-3d-fallback" id="hero3dFallback">
+
+            <span class="hero-3d-badge">
+              <span class="dot"></span>
+              Detection &amp; Response Workflow
+            </span>
+
+            <div class="hero-chip chip-detect"><span class="chip-dot chip-dot-red"></span>D00 · Pothole detected</div>
+            <div class="hero-chip chip-gps"><span class="chip-dot chip-dot-blue"></span>GPS · 37.7749, -122.4194</div>
+            <div class="hero-chip chip-priority"><span class="chip-dot chip-dot-amber"></span>Priority · HIGH</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Workflow Section -->
+    <section class="workflow-section" id="workflow">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">How it works</span>
+          <h2 class="section-title">The CivicSight Workflow</h2>
+          <p class="section-desc">From initial citizen discovery to final road repair verification in 7 seamless stages.</p>
+        </div>
+
+        <div class="workflow-grid">
+          <div class="workflow-card">
+            <span class="step-num">01</span>
+            <h3>Report</h3>
+            <p>Citizens photograph road hazards and upload location data seamlessly from any mobile browser.</p>
+          </div>
+          <div class="workflow-card">
+            <span class="step-num">02</span>
+            <h3>Detect</h3>
+            <p>YOLO-powered deep learning models classify road defects across D00, D10, D20, and D40 categories.</p>
+          </div>
+          <div class="workflow-card">
+            <span class="step-num">03</span>
+            <h3>Prioritize</h3>
+            <p>Automatic priority scoring ranks high-severity damage first for municipal review.</p>
+          </div>
+          <div class="workflow-card">
+            <span class="step-num">04</span>
+            <h3>Verify</h3>
+            <p>Municipal engineers validate damage assessments and estimate repair scopes efficiently.</p>
+          </div>
+          <div class="workflow-card">
+            <span class="step-num">05</span>
+            <h3>Assign</h3>
+            <p>Each report gets a geolocation marker and work order tracked through the municipal workflow.</p>
+          </div>
+          <div class="workflow-card">
+            <span class="step-num">06</span>
+            <h3>Repair</h3>
+            <p>Field crews conduct asphalt repair, pothole filling, or resurfacing operations.</p>
+          </div>
+          <div class="workflow-card">
+            <span class="step-num">07</span>
+            <h3>Close</h3>
+            <p>Post-repair photos confirm resolution, updating citizens and closing the maintenance cycle.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Subsystems & Portals Preview -->
+    <section class="portals-section" id="portals">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-eyebrow">Platform</span>
+          <h2 class="section-title">Modular Architecture</h2>
+          <p class="section-desc">Built for citizen transparency and municipal operations efficiency.</p>
+        </div>
+
+        <div class="portals-grid">
+          <div class="portal-card">
+            <div>
+              <span class="portal-tag portal-tag-active">Citizen Portal</span>
+              <h3>Citizen Damage Reporting</h3>
+              <p>An intuitive interface for quick road hazard submission with photo upload, detailed descriptions, and map-based location pinpointing with GPS support.</p>
+            </div>
+            <div>
+              <a href="pages/report.html" class="btn btn-primary btn-sm">
+                Launch Reporting Tool &rarr;
+              </a>
+            </div>
+          </div>
+
+          <div class="portal-card">
+            <div>
+              <span class="portal-tag portal-tag-active">Municipal Operations</span>
+              <h3>Municipal Operations Center</h3>
+              <p>Interactive Leaflet map with severity-colored markers, status and priority triage filters, in-place report verification, and AI confidence review.</p>
+            </div>
+            <div>
+              <a href="pages/dashboard.html" class="btn btn-secondary btn-sm">
+                Launch Municipal Center &rarr;
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tech Specs Footer Banner -->
+    <section class="tech-spec-bar">
+      <div class="container">
+        <p class="tech-spec-label">Built with modern, production-grade technologies:</p>
+        <div class="tech-tags">
+          <span class="tech-tag">FastAPI REST Core</span>
+          <span class="tech-tag">PostgreSQL + SQLAlchemy</span>
+          <span class="tech-tag">Ultralytics YOLO</span>
+          <span class="tech-tag">RDD2022 Dataset Standards</span>
+          <span class="tech-tag">GSAP 3 Sequencing</span>
+          <span class="tech-tag">Leaflet.js Geospatial Maps</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="brand">
+          <img src="assets/logo-icon.png" alt="CivicSight Logo">
+          <span class="brand-text">Civic<span>Sight</span></span>
+        </div>
+        <p class="footer-note">&copy; 2026 CivicSight. Smart Road Damage Detection &amp; Municipal Repair Management.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Core Scripts -->
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- GSAP Animation Library & Controller -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="js/animations.js"></script>
+</body>
+</html>

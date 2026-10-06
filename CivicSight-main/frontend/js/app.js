@@ -1,0 +1,75 @@
+/**
+ * CivicSight - Core Frontend JavaScript
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Mobile navigation menu toggle
+  const mobileToggle = document.getElementById('mobileMenuToggle');
+  const navLinks = document.getElementById('navLinks');
+
+  if (mobileToggle && navLinks) {
+    mobileToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+      const isExpanded = navLinks.classList.contains('open');
+      mobileToggle.setAttribute('aria-expanded', isExpanded);
+    });
+  }
+
+  // Toast Notification System
+  const toastContainer = document.getElementById('toastContainer');
+
+  function showToast(message) {
+    if (!toastContainer) return;
+    
+    toastContainer.innerHTML = '';
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+      <span>${message}</span>
+    `;
+
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 10);
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+
+  // Bind placeholder actions
+  const placeholderTriggers = document.querySelectorAll('[data-placeholder]');
+  placeholderTriggers.forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const feature = el.getAttribute('data-placeholder') || 'Feature';
+      showToast(`${feature} module is coming soon.`);
+    });
+  });
+
+  // Smooth scroll for in-page anchors
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+      const targetId = this.getAttribute('href');
+      if (targetId.length > 1) {
+        const targetElement = document.querySelector(targetId);
+        if (targetElement) {
+          e.preventDefault();
+          targetElement.scrollIntoView({ behavior: 'smooth' });
+          if (navLinks && navLinks.classList.contains('open')) {
+            navLinks.classList.remove('open');
+          }
+        }
+      }
+    });
+  });
+});

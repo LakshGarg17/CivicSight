@@ -1,0 +1,213 @@
+{
+  "evaluated_count": 180,
+  "matched_detections": [
+    {
+      "image": "China_MotorBike_000093.jpg",
+      "subset": "Street Level (China_MotorBike)",
+      "pred_class": "D10",
+      "gt_class": "D10",
+      "conf": 0.2332,
+      "iou": 0.473
+    }
+  ],
+  "sample_false_positives": [
+    {
+      "image": "China_Drone_000008.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "pred_class": "D10",
+      "description": "Transverse Crack",
+      "confidence": 0.1216,
+      "bbox_norm": [
+        0.1823,
+        0.7731,
+        0.4067,
+        0.8552
+      ],
+      "ground_truth_classes": [
+        "D10"
+      ]
+    }
+  ],
+  "sample_missed_detections": [
+    {
+      "image": "China_Drone_000008.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D10",
+      "description": "Transverse Crack",
+      "bbox_norm": [
+        0.1094,
+        0.6855,
+        0.7012,
+        0.8809
+      ]
+    },
+    {
+      "image": "China_Drone_000017.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D10",
+      "description": "Transverse Crack",
+      "bbox_norm": [
+        0.0957,
+        0.6934,
+        0.3965,
+        0.7402
+      ]
+    },
+    {
+      "image": "China_Drone_000040.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D00",
+      "description": "Longitudinal Crack",
+      "bbox_norm": [
+        0.1602,
+        0.2793,
+        0.2051,
+        0.4648
+      ]
+    },
+    {
+      "image": "China_Drone_000040.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D10",
+      "description": "Transverse Crack",
+      "bbox_norm": [
+        0.0625,
+        0.8359,
+        0.3086,
+        0.877
+      ]
+    },
+    {
+      "image": "China_Drone_000052.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D10",
+      "description": "Transverse Crack",
+      "bbox_norm": [
+        0.9121,
+        0.5215,
+        1.0,
+        0.7227
+      ]
+    },
+    {
+      "image": "China_Drone_000053.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D20",
+      "description": "Alligator Crack",
+      "bbox_norm": [
+        0.7129,
+        0.002,
+        0.918,
+        0.25
+      ]
+    },
+    {
+      "image": "China_Drone_000075.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D10",
+      "description": "Transverse Crack",
+      "bbox_norm": [
+        0.2617,
+        0.4746,
+        0.375,
+        0.5195
+      ]
+    },
+    {
+      "image": "China_Drone_000085.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D10",
+      "description": "Transverse Crack",
+      "bbox_norm": [
+        0.002,
+        0.0586,
+        1.0,
+        0.2305
+      ]
+    },
+    {
+      "image": "China_Drone_000092.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D00",
+      "description": "Longitudinal Crack",
+      "bbox_norm": [
+        0.3633,
+        0.0898,
+        0.4629,
+        0.4688
+      ]
+    },
+    {
+      "image": "China_Drone_000092.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D00",
+      "description": "Longitudinal Crack",
+      "bbox_norm": [
+        0.4492,
+        0.4746,
+        0.5098,
+        0.7949
+      ]
+    },
+    {
+      "image": "China_Drone_000092.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D00",
+      "description": "Longitudinal Crack",
+      "bbox_norm": [
+        0.373,
+        0.7988,
+        0.4297,
+        1.0
+      ]
+    },
+    {
+      "image": "China_Drone_000096.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D10",
+      "description": "Transverse Crack",
+      "bbox_norm": [
+        0.7812,
+        0.0312,
+        0.8691,
+        0.0664
+      ]
+    },
+    {
+      "image": "China_Drone_000098.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D00",
+      "description": "Longitudinal Crack",
+      "bbox_norm": [
+        0.3691,
+        0.002,
+        0.4434,
+        0.4922
+      ]
+    },
+    {
+      "image": "China_Drone_000098.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D00",
+      "description": "Longitudinal Crack",
+      "bbox_norm": [
+        0.3633,
+        0.8125,
+        0.4395,
+        1.0
+      ]
+    },
+    {
+      "image": "China_Drone_000099.jpg",
+      "subset": "Drone Aerials (China_Drone)",
+      "gt_class": "D00",
+      "description": "Longitudinal Crack",
+      "bbox_norm": [
+        0.1621,
+        0.3164,
+        0.5352,
+        0.8125
+      ]
+    }
+  ]
+}

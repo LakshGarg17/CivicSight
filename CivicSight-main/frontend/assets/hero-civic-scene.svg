@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Isometric road scene showing a detected pothole, location pin, and municipal repair vehicle">
+  <defs>
+    <style>
+      .bg-tile { fill: var(--bg-secondary, #f4f4f5); }
+      .grid-line { stroke: #d4d4d8; stroke-width: 1; opacity: .45; }
+      .sidewalk { fill: #e4e4e7; }
+      .road { fill: #3f3f46; }
+      .road-dark { fill: #27272a; }
+      .lane { stroke: #e4e4e7; stroke-width: 4; stroke-dasharray: 16 14; fill: none; }
+      .bldg { fill: #d4d4d8; }
+      .bldg-tall { fill: #a1a1aa; }
+      .bldg-roof { fill: #e4e4e7; }
+      .window { fill: #93c5fd; opacity: .9; }
+      .tree { fill: #10b981; }
+      .tree-dark { fill: #059669; }
+      .pothole { fill: #18181b; }
+      .hazard-ring { fill: none; stroke: #f59e0b; stroke-width: 3; stroke-dasharray: 6 6; }
+      .detect-box { fill: rgba(37,99,235,.08); stroke: var(--accent-color, #2563eb); stroke-width: 2.5; stroke-dasharray: 8 6; }
+      .detect-label { fill: var(--accent-color, #2563eb); }
+      .detect-text { fill: #ffffff; font-family: Inter, sans-serif; font-size: 13px; font-weight: 700; }
+      .pin-body { fill: var(--accent-color, #2563eb); }
+      .pin-core { fill: #ffffff; }
+      .truck-body { fill: #f59e0b; }
+      .truck-cab { fill: #fbbf24; }
+      .truck-stripe { fill: #ffffff; }
+      .wheel { fill: #18181b; }
+      .pin-group { animation: float 3.2s ease-in-out infinite; transform-origin: 560px 300px; }
+      .pulse { animation: pulse 2.4s ease-out infinite; transform-origin: 560px 415px; }
+      @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+      @keyframes pulse { 0% { transform: scale(.6); opacity: .8; } 100% { transform: scale(1.6); opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .pin-group, .pulse { animation: none; } }
+    </style>
+  </defs>
+
+  <rect class="bg-tile" width="800" height="600" rx="14"/>
+
+  <!-- subtle map grid -->
+  <g>
+    <line class="grid-line" x1="0" y1="120" x2="800" y2="120"/>
+    <line class="grid-line" x1="0" y1="240" x2="800" y2="240"/>
+    <line class="grid-line" x1="0" y1="560" x2="800" y2="560"/>
+    <line class="grid-line" x1="160" y1="0" x2="160" y2="600"/>
+    <line class="grid-line" x1="640" y1="0" x2="640" y2="600"/>
+  </g>
+
+  <!-- city blocks / sidewalks -->
+  <rect class="sidewalk" x="0" y="290" width="800" height="24"/>
+  <rect class="sidewalk" x="0" y="492" width="800" height="24"/>
+
+  <!-- horizontal road -->
+  <rect class="road" x="0" y="314" width="800" height="178"/>
+  <line class="lane" x1="0" y1="403" x2="330" y2="403"/>
+  <line class="lane" x1="470" y1="403" x2="800" y2="403"/>
+
+  <!-- vertical road -->
+  <rect class="road-dark" x="330" y="314" width="140" height="178"/>
+  <line class="lane" x1="400" y1="322" x2="400" y2="394"/>
+  <line class="lane" x1="400" y1="414" x2="400" y2="484"/>
+
+  <!-- buildings -->
+  <g>
+    <rect class="bldg-tall" x="80" y="120" width="110" height="170" rx="6"/>
+    <rect class="bldg-roof" x="80" y="112" width="110" height="12" rx="6"/>
+    <rect class="window" x="100" y="145" width="18" height="18" rx="3"/>
+    <rect class="window" x="140" y="145" width="18" height="18" rx="3"/>
+    <rect class="window" x="100" y="180" width="18" height="18" rx="3"/>
+    <rect class="window" x="140" y="180" width="18" height="18" rx="3"/>
+    <rect class="window" x="100" y="215" width="18" height="18" rx="3"/>
+    <rect class="window" x="140" y="215" width="18" height="18" rx="3"/>
+
+    <rect class="bldg" x="230" y="170" width="90" height="120" rx="6"/>
+    <rect class="bldg-roof" x="230" y="162" width="90" height="12" rx="6"/>
+    <rect class="window" x="246" y="192" width="16" height="16" rx="3"/>
+    <rect class="window" x="272" y="192" width="16" height="16" rx="3"/>
+    <rect class="window" x="246" y="222" width="16" height="16" rx="3"/>
+    <rect class="window" x="272" y="222" width="16" height="16" rx="3"/>
+
+    <rect class="bldg-tall" x="520" y="150" width="100" height="140" rx="6"/>
+    <rect class="bldg-roof" x="520" y="142" width="100" height="12" rx="6"/>
+    <rect class="window" x="538" y="172" width="16" height="16" rx="3"/>
+    <rect class="window" x="572" y="172" width="16" height="16" rx="3"/>
+    <rect class="window" x="538" y="204" width="16" height="16" rx="3"/>
+    <rect class="window" x="572" y="204" width="16" height="16" rx="3"/>
+    <rect class="window" x="538" y="236" width="16" height="16" rx="3"/>
+    <rect class="window" x="572" y="236" width="16" height="16" rx="3"/>
+
+    <rect class="bldg" x="660" y="190" width="90" height="100" rx="6"/>
+    <rect class="bldg-roof" x="660" y="182" width="90" height="12" rx="6"/>
+    <rect class="window" x="678" y="210" width="16" height="16" rx="3"/>
+    <rect class="window" x="706" y="210" width="16" height="16" rx="3"/>
+    <rect class="window" x="678" y="240" width="16" height="16" rx="3"/>
+    <rect class="window" x="706" y="240" width="16" height="16" rx="3"/>
+  </g>
+
+  <!-- trees -->
+  <g>
+    <circle class="tree" cx="45" cy="260" r="18"/><circle class="tree-dark" cx="45" cy="268" r="12"/>
+    <circle class="tree" cx="755" cy="120" r="18"/><circle class="tree-dark" cx="755" cy="128" r="12"/>
+    <circle class="tree" cx="480" cy="120" r="14"/><circle class="tree-dark" cx="480" cy="127" r="9"/>
+  </g>
+
+  <!-- pothole on road -->
+  <g>
+    <ellipse class="hazard-ring" cx="560" cy="415" rx="58" ry="26"/>
+    <ellipse class="pothole" cx="560" cy="415" rx="34" ry="14"/>
+  </g>
+
+  <!-- CV detection bounding box -->
+  <g>
+    <rect class="detect-box" x="496" y="368" width="128" height="94" rx="8"/>
+    <g class="detect-label">
+      <rect x="496" y="342" width="86" height="24" rx="6"/>
+    </g>
+    <text class="detect-text" x="506" y="358">D00 · Pothole</text>
+  </g>
+
+  <!-- pulse under pin -->
+  <ellipse class="pulse" cx="560" cy="415" rx="26" ry="10" fill="none" stroke="var(--accent-color,#2563eb)" stroke-width="2"/>
+
+  <!-- location pin -->
+  <g class="pin-group">
+    <path class="pin-body" d="M560 268c-16 0-28 12-28 27 0 20 28 41 28 41s28-21 28-41c0-15-12-27-28-27z"/>
+    <circle class="pin-core" cx="560" cy="295" r="10"/>
+  </g>
+
+  <!-- municipal repair truck -->
+  <g>
+    <rect class="truck-body" x="120" y="350" width="86" height="40" rx="6"/>
+    <rect class="truck-cab" x="206" y="362" width="40" height="28" rx="6"/>
+    <rect class="truck-stripe" x="120" y="366" width="86" height="8"/>
+    <rect fill="#bfdbfe" x="214" y="368" width="20" height="12" rx="3"/>
+    <circle class="wheel" cx="146" cy="394" r="10"/>
+    <circle class="wheel" cx="222" cy="394" r="10"/>
+  </g>
+
+  <!-- second complaint pin on far lane -->
+  <g>
+    <path fill="#f59e0b" d="M250 300c-10 0-17 7-17 16 0 12 17 25 17 25s17-13 17-25c0-9-7-16-17-16z"/>
+    <circle fill="#ffffff" cx="250" cy="316" r="6"/>
+  </g>
+</svg>
