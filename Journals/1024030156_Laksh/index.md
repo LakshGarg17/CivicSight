@@ -8,3 +8,5 @@ Name: Laksh Garg
 - [Week 3 — Authentication, Roles and Dataset Preparation](./week-3.md)
 - [Week 4 — Status UI, Report-Flow testing and YOLO training](./week-4.md)
 - [Week 5 — Report APIs and Municipal Access](./week-5.md)
+- [Week 6 — Report Verification and Lifecycle Interface](./week-6.md)
+

@@ -8,3 +8,5 @@ Name: Pranay Mittal
 - [Week 3 — Dataset Preparation and Authentication Interface](./week-3.md)
 - [Week 4 —  API integration, PostgreSQL setup and Image Preparation](./week-4.md)
 - [Week 5 — Municipal Dashboard and Report Management](./week-5.md)
+- [Week 6 — Report Status and Workflow APIs](./week-6.md)
+
