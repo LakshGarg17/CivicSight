@@ -2433,8 +2433,7 @@ spline-viewer,
   border-radius: 18px;
   border: 1px solid var(--border-color);
   box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.18), 0 6px 14px -8px rgba(0,0,0,0.1);
-  height: 420px;
-  transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+  height: 460px;`r`n  transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
 }
 .hero-3d-wrapper:hover {
   transform: translateY(-4px);
@@ -2827,3 +2826,199 @@ spline-viewer,
   align-items: center;
 }
 
+
+/* ==========================================================================
+   13. Visual enhancement layer (v6) — same palette, more depth & polish
+   ========================================================================== */
+
+::selection {
+  background: var(--accent-color);
+  color: #ffffff;
+}
+
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Navbar: nav-link underline affordance ---------- */
+.nav-link {
+  position: relative;
+  padding-bottom: 4px;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 100%;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent-color);
+  border-radius: 2px;
+  transition: right var(--transition-normal);
+}
+.nav-link:hover::after { right: 0; }
+
+/* ---------- Badge pill: softer glow dot ---------- */
+.badge-pill {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 8%, transparent);
+}
+.badge-dot {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 22%, transparent);
+  animation: cs-dot-pulse 2.2s ease-in-out infinite;
+}
+@keyframes cs-dot-pulse {
+  0%,100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 22%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-color) 8%, transparent); }
+}
+
+/* ---------- Buttons: subtle gradient + active press ---------- */
+.btn-primary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 92%, #ffffff) 0%, var(--accent-color) 100%);
+}
+.btn-primary:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hover) 92%, #ffffff) 0%, var(--accent-hover) 100%);
+}
+.btn:active { transform: translateY(0) scale(.98); }
+
+/* ---------- Hero: dot-grid backdrop + ambient halo ---------- */
+.hero-section {
+  background:
+    radial-gradient(1000px 420px at 82% -10%, color-mix(in srgb, var(--accent-color) 10%, transparent) 0%, transparent 60%),
+    radial-gradient(800px 380px at 4% 108%, color-mix(in srgb, var(--accent-color) 8%, transparent) 0%, transparent 55%),
+    var(--bg-primary);
+}
+.hero-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(color-mix(in srgb, var(--text-primary) 9%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 72%, transparent 100%);
+  pointer-events: none;
+}
+.hero-content, .hero-visual { position: relative; z-index: 1; }
+
+.hero-visual { position: relative; }
+.hero-visual::before {
+  content: '';
+  position: absolute;
+  width: 78%; height: 78%;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-color) 16%, transparent) 0%, transparent 65%);
+  filter: blur(10px);
+  z-index: 0;
+}
+.hero-3d-wrapper { position: relative; z-index: 1; }
+
+/* ---------- Floating info chips on hero card ---------- */
+.hero-chip {
+  position: absolute;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+.chip-detect  { top: 16px;  right: 16px; z-index: 4; animation: cs-float-a 4.5s ease-in-out infinite; }
+.chip-gps     { top: 16px;  left: 16px; animation: cs-float-b 5.2s ease-in-out infinite; }
+.chip-priority { bottom: 16px; right: 16px;  animation: cs-float-a 5.8s ease-in-out infinite; }
+.chip-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.chip-dot-red   { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.22); }
+.chip-dot-blue  { background: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.22); }
+.chip-dot-amber { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.22); }
+@keyframes cs-float-a { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-6px);} }
+@keyframes cs-float-b { 0%,100% { transform: translateY(0);} 50% { transform: translateY(5px);} }
+
+/* ---------- Section headers: eyebrow + bigger titles ---------- */
+.section-eyebrow {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-subtle-border);
+  color: var(--accent-color);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.section-title { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; }
+
+/* ---------- Workflow cards: accent top bar on hover ---------- */
+.workflow-card {
+  position: relative;
+  overflow: hidden;
+}
+.workflow-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 30%, transparent));
+  transition: right .35s ease;
+}
+.workflow-card:hover::before { right: 0; }
+.step-num {
+  transition: background-color .25s ease, color .25s ease, transform .25s ease;
+}
+.workflow-card:hover .step-num {
+  background: var(--accent-color);
+  color: #ffffff;
+  transform: scale(1.06);
+}
+
+/* ---------- Portal cards: left accent spine ---------- */
+.portal-card { position: relative; overflow: hidden; }
+.portal-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 20%, transparent));
+  opacity: .9;
+}
+.portal-tag { border-radius: 9999px; font-size: 0.7rem; letter-spacing: .06em; text-transform: uppercase; }
+
+/* ---------- Tech bar: frosted strip ---------- */
+.tech-spec-bar {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+}
+
+/* ---------- Footer: anchored surface ---------- */
+.footer { background: var(--bg-secondary); }
+
+/* ---------- Forms / auth / dashboard cards: deeper resting shadow ---------- */
+.auth-card, .form-card, .report-form-card, .dashboard-card, .metric-card {
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 28px -18px rgba(0,0,0,.14);
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 14%, transparent);
+}
+
+/* ---------- Map & map hint polish ---------- */
+.report-map, .dashboard-map-canvas {
+  border-radius: 14px;
+  box-shadow: 0 12px 26px -16px rgba(0,0,0,.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-chip, .badge-dot { animation: none !important; }
+  .nav-link::after, .workflow-card::before, .hero-chip { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .hero-chip { display: none; }
+  .hero-3d-wrapper { height: 300px; }
+  .section-title { font-size: 1.6rem; }
+}
