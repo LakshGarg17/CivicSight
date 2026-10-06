@@ -528,24 +528,37 @@ document.addEventListener('DOMContentLoaded', () => {
       fullImageUrl = report.image_url.startsWith('http') ? report.image_url : `${API_BASE}${report.image_url}`;
     }
 
-    // Resolve Detections
-    let detections = report.ml_detections;
-    if (!detections || (Array.isArray(detections) && detections.length === 0)) {
-      if (typeof CivicSightMLViewer !== 'undefined') {
-        detections = CivicSightMLViewer.generateSyntheticDetections(report.damage_type || 'D40');
-      }
-    }
+    // Resolve REAL ML Detections & Status (ZERO synthetic/mocked data)
+    const rawResults = report.detection_results || [];
+    const detections = rawResults.map(d => ({
+      type: d.detected_class,
+      label: d.class_name,
+      confidence: d.confidence,
+      bbox: d.bbox_normalized || [d.bbox_ymin, d.bbox_xmin, d.bbox_ymax, d.bbox_xmax],
+      severity: d.severity,
+    }));
 
-    // Render using reusable CivicSightMLViewer
+    const mlStatus = report.ml_status || (detections.length > 0 ? 'ML_COMPLETE' : 'ML_NO_DETECTIONS');
+
+    // Render using reusable CivicSightMLViewer with full 4-state handling
     if (modalMLViewerSlot && typeof CivicSightMLViewer !== 'undefined') {
       CivicSightMLViewer.render(modalMLViewerSlot, {
         imageUrl: fullImageUrl,
+        mlStatus: mlStatus,
         detections: detections,
         latitude: report.latitude,
         longitude: report.longitude,
         address: report.address_text,
         reportId: report.id,
+        modelVersion: report.ml_model_version || 'YOLOv8n-experiment2_week5',
+        inferenceTimeMs: report.ml_inference_time_ms,
+        errorMessage: report.ml_error_message,
       });
+    }
+
+    // If report is still ML_PENDING, periodically refresh in background
+    if (mlStatus === 'ML_PENDING') {
+      pollModalMLStatus(report.id);
     }
 
     // Update Modal Verification & Action Buttons state
@@ -720,9 +733,55 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
+  // ML Status Polling for Pending Reports
+  // --------------------------------------------------------------------------
+  let activeModalPollTimer = null;
+  function pollModalMLStatus(reportId) {
+    if (activeModalPollTimer) clearTimeout(activeModalPollTimer);
+    let attempts = 0;
+    const maxAttempts = 15;
+
+    async function check() {
+      attempts++;
+      if (currentlyInspectedReportId !== reportId || attempts > maxAttempts) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/ml-status`);
+        if (res.ok) {
+          const statusData = await res.json();
+          if (statusData.ml_status !== 'ML_PENDING') {
+            const fullRes = await fetch(`${API_BASE}/api/v1/reports/${reportId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (fullRes.ok) {
+              const updatedReport = await fullRes.json();
+              const idx = activeReports.findIndex(r => r.id === reportId);
+              if (idx !== -1) activeReports[idx] = updatedReport;
+              if (currentlyInspectedReportId === reportId) {
+                openInspectionModal(reportId);
+              }
+            }
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('ML status poll error in modal:', err);
+      }
+      if (currentlyInspectedReportId === reportId && attempts < maxAttempts) {
+        activeModalPollTimer = setTimeout(check, 1000);
+      }
+    }
+
+    activeModalPollTimer = setTimeout(check, 1000);
+  }
+
+  // --------------------------------------------------------------------------
   // Close Modals
   // --------------------------------------------------------------------------
   function closeInspectionModal() {
+    if (activeModalPollTimer) {
+      clearTimeout(activeModalPollTimer);
+      activeModalPollTimer = null;
+    }
     if (inspectionModal) inspectionModal.classList.remove('open');
     currentlyInspectedReportId = null;
   }

@@ -442,6 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     } else if (state === 'success') {
       const createdDate = data.created_at ? new Date(data.created_at).toLocaleString() : new Date().toLocaleString();
+      const apiBase = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.API_BASE : 'http://127.0.0.1:8000';
       
       // Report submission success Lottie checkmark + Report ID text
       submissionStatus.innerHTML = `
@@ -457,15 +458,19 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="status-id-badge">REPORT #${data.id}</span>
             </div>
             <p class="status-body" style="margin-top: 0.5rem;">
-              Your road hazard report has been routed to the municipal dispatch queue and classified for rapid repair triage.
+              Your road hazard report has been recorded in the municipal dispatch queue and classified for triage.
             </p>
           </div>
         </div>
 
+        <!-- Municipal Verification & Report Lifecycle Status (Strictly separated from AI Assessment) -->
         <div class="status-details-grid" style="margin-top: 1rem;">
           <div class="status-details-item">
-            <strong>Lifecycle Status</strong>
-            <span>${data.status || 'submitted'}</span>
+            <strong>Municipal Verification Status</strong>
+            <span class="status-badge status-submitted" style="margin-top: 0.25rem;">
+              <span class="status-badge-dot"></span>
+              ${data.status ? data.status.toUpperCase() : 'SUBMITTED'} &bull; Under Review
+            </span>
           </div>
           <div class="status-details-item">
             <strong>Coordinates</strong>
@@ -480,7 +485,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <span>${data.image_url ? 'Attached & Stored' : 'Attached'}</span>
           </div>
         </div>
-        <div class="status-actions">
+
+        <!-- Automated AI Assessment Slot (Enrichment / Decision Support) -->
+        <div id="submissionMLAssessmentSlot" style="margin-top: 1.25rem;">
+          <!-- Rendered via CivicSightMLViewer -->
+        </div>
+
+        <div class="status-actions" style="margin-top: 1.25rem;">
           <button type="button" class="btn btn-secondary btn-sm" id="newReportBtn">Submit Another Report</button>
           <a href="dashboard.html" class="btn btn-primary btn-sm">View in Municipal Dashboard &rarr;</a>
         </div>
@@ -489,7 +500,13 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('newReportBtn')?.addEventListener('click', () => {
         submissionStatus.style.display = 'none';
         clearForm();
+        if (window.history && window.history.pushState) {
+          window.history.pushState({}, '', window.location.pathname);
+        }
       });
+
+      // Poll and render ML Assessment in background
+      pollAndRenderMLAssessment(data.id, data);
     } else if (state === 'error') {
       // Error-state Lottie animation
       submissionStatus.innerHTML = `
@@ -669,6 +686,126 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- 7. Automated ML Assessment Polling & Rendering ---
+  let activeReportPollTimer = null;
+
+  async function pollAndRenderMLAssessment(reportId, initialReportData) {
+    if (activeReportPollTimer) clearTimeout(activeReportPollTimer);
+    const slot = document.getElementById('submissionMLAssessmentSlot');
+    if (!slot || typeof CivicSightMLViewer === 'undefined') return;
+
+    const apiBase = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.API_BASE : 'http://127.0.0.1:8000';
+    let fullImageUrl = '../assets/test_damage.jpg';
+    if (initialReportData && initialReportData.image_url) {
+      fullImageUrl = initialReportData.image_url.startsWith('http')
+        ? initialReportData.image_url
+        : `${apiBase}${initialReportData.image_url}`;
+    }
+
+    // Render initial ML_PENDING state
+    CivicSightMLViewer.render(slot, {
+      imageUrl: fullImageUrl,
+      mlStatus: initialReportData?.ml_status || 'ML_PENDING',
+      reportId: reportId,
+      latitude: initialReportData?.latitude,
+      longitude: initialReportData?.longitude,
+      address: initialReportData?.address_text,
+    });
+
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    async function checkStatus() {
+      attempts++;
+      try {
+        const res = await fetch(`${apiBase}/api/v1/reports/${reportId}/ml-status`);
+        if (res.ok) {
+          const statusData = await res.json();
+          if (statusData.ml_status !== 'ML_PENDING' || attempts >= maxAttempts) {
+            // ML is complete, failed, or timed out. Fetch full report with detection_results.
+            const headers = {};
+            const token = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.getToken() : null;
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const detailRes = await fetch(`${apiBase}/api/v1/reports/${reportId}`, { headers });
+            let reportData = initialReportData;
+            if (detailRes.ok) {
+              reportData = await detailRes.json();
+            } else {
+              // Fallback to statusData
+              reportData = {
+                ...initialReportData,
+                ml_status: statusData.ml_status,
+                ml_model_version: statusData.ml_model_version,
+                ml_inference_time_ms: statusData.ml_inference_time_ms,
+                ml_error_message: statusData.ml_error_message,
+              };
+            }
+
+            if (reportData.image_url) {
+              fullImageUrl = reportData.image_url.startsWith('http')
+                ? reportData.image_url
+                : `${apiBase}${reportData.image_url}`;
+            }
+
+            const detections = (reportData.detection_results || []).map(d => ({
+              type: d.detected_class,
+              label: d.class_name,
+              confidence: d.confidence,
+              bbox: d.bbox_normalized || [d.bbox_ymin, d.bbox_xmin, d.bbox_ymax, d.bbox_xmax],
+              severity: d.severity,
+            }));
+
+            CivicSightMLViewer.render(slot, {
+              imageUrl: fullImageUrl,
+              mlStatus: reportData.ml_status || (detections.length > 0 ? 'ML_COMPLETE' : 'ML_NO_DETECTIONS'),
+              detections: detections,
+              latitude: reportData.latitude,
+              longitude: reportData.longitude,
+              address: reportData.address_text,
+              reportId: reportData.id,
+              modelVersion: reportData.ml_model_version || 'YOLOv8n-experiment2_week5',
+              inferenceTimeMs: reportData.ml_inference_time_ms,
+              errorMessage: reportData.ml_error_message,
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Error polling ML status for report #' + reportId, err);
+      }
+
+      if (attempts < maxAttempts) {
+        activeReportPollTimer = setTimeout(checkStatus, 800);
+      }
+    }
+
+    activeReportPollTimer = setTimeout(checkStatus, 800);
+  }
+
+  // --- 8. Load Existing Report View (if ?id=... present in URL) ---
+  async function checkUrlForExistingReport() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reportId = urlParams.get('id');
+    if (!reportId) return;
+
+    const apiBase = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.API_BASE : 'http://127.0.0.1:8000';
+    const headers = {};
+    const token = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.getToken() : null;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    try {
+      const res = await fetch(`${apiBase}/api/v1/reports/${reportId}`, { headers });
+      if (res.ok) {
+        const report = await res.json();
+        showStatus('success', report);
+      }
+    } catch (e) {
+      console.warn('Could not load existing report from query param:', e);
+    }
+  }
+
   // Initialize interactive map on DOM ready
   initMap();
+  checkUrlForExistingReport();
 });
