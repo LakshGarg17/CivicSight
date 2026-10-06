@@ -93,7 +93,7 @@ def get_road_damage_detector(
 
 def detect_road_damage(
     image_input: Union[str, Path, Image.Image, np.ndarray, Dict[str, Any]],
-    confidence_threshold: float = 0.25,
+    confidence_threshold: float = 0.20,
     iou_threshold: float = 0.45,
     model_path: Optional[Union[str, Path]] = None,
     device: str = "cpu",
@@ -131,15 +131,26 @@ def detect_road_damage(
     # 1. Normalize image source and extract original dimensions
     orig_w: int = 0
     orig_h: int = 0
+    pad_w: float = 0.0
+    pad_h: float = 0.0
+    scale_ratio: float = 1.0
+    is_preprocessed_dict: bool = False
     prediction_source: Any = None
 
     if isinstance(image_input, dict) and "preprocessed_np" in image_input:
         # Preprocessed output from Week 4 pipeline
-        prediction_source = image_input["preprocessed_np"]
+        # Note: Ultralytics expects BGR numpy arrays (OpenCV convention)
+        padded_rgb = image_input["preprocessed_np"]
+        prediction_source = cv2.cvtColor(padded_rgb, cv2.COLOR_RGB2BGR)
+        is_preprocessed_dict = True
         if "original_shape" in image_input:
             orig_h, orig_w = image_input["original_shape"]
         else:
-            orig_h, orig_w = prediction_source.shape[:2]
+            orig_h, orig_w = padded_rgb.shape[:2]
+        if "padding" in image_input:
+            pad_w, pad_h = image_input["padding"]
+        if "scale_ratio" in image_input:
+            scale_ratio = float(image_input["scale_ratio"])
     elif isinstance(image_input, (str, Path)):
         path_obj = Path(image_input)
         if not path_obj.is_file():
@@ -150,7 +161,8 @@ def detect_road_damage(
             orig_w, orig_h = img.size
     elif isinstance(image_input, Image.Image):
         orig_w, orig_h = image_input.size
-        prediction_source = np.array(image_input.convert("RGB"))
+        # PIL is RGB -> convert to BGR numpy for Ultralytics
+        prediction_source = cv2.cvtColor(np.array(image_input.convert("RGB")), cv2.COLOR_RGB2BGR)
     elif isinstance(image_input, np.ndarray):
         orig_h, orig_w = image_input.shape[:2]
         prediction_source = image_input
@@ -211,11 +223,20 @@ def detect_road_damage(
 
                 class_frequency[class_code] = class_frequency.get(class_code, 0) + 1
 
+                # Invert letterbox transform if prediction was run on preprocessed tensor/array
+                if is_preprocessed_dict and scale_ratio > 0:
+                    raw_xmin = (xyxy[0] - pad_w) / scale_ratio
+                    raw_ymin = (xyxy[1] - pad_h) / scale_ratio
+                    raw_xmax = (xyxy[2] - pad_w) / scale_ratio
+                    raw_ymax = (xyxy[3] - pad_h) / scale_ratio
+                else:
+                    raw_xmin, raw_ymin, raw_xmax, raw_ymax = xyxy[0], xyxy[1], xyxy[2], xyxy[3]
+
                 # Clamp bounding boxes within original image dimensions
-                xmin = max(0.0, min(float(orig_w), xyxy[0]))
-                ymin = max(0.0, min(float(orig_h), xyxy[1]))
-                xmax = max(0.0, min(float(orig_w), xyxy[2]))
-                ymax = max(0.0, min(float(orig_h), xyxy[3]))
+                xmin = max(0.0, min(float(orig_w), raw_xmin))
+                ymin = max(0.0, min(float(orig_h), raw_ymin))
+                xmax = max(0.0, min(float(orig_w), raw_xmax))
+                ymax = max(0.0, min(float(orig_h), raw_ymax))
 
                 # Calculate normalized [0, 1] relative coordinates
                 norm_w = float(orig_w) if orig_w > 0 else 1.0
