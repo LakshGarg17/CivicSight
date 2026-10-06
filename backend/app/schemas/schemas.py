@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional, List, Union, Any
 import json
 import re
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from app.models.models import ReportStatus, UserRole
 
 
@@ -183,6 +183,73 @@ class ReportStatusHistoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class DetectionResultResponse(BaseModel):
+    """Structured detection response for a single bounding box finding (Week 7)."""
+    id: int
+    report_id: int
+    detected_class: str
+    class_name: Optional[str] = None
+    confidence: float
+    bbox_xmin: float
+    bbox_ymin: float
+    bbox_xmax: float
+    bbox_ymax: float
+    bbox: Optional[List[float]] = None
+    bbox_normalized: Optional[List[float]] = None
+    severity: Optional[str] = "MEDIUM"
+    model_version: str
+    inference_timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def compute_bbox_fields(cls, data: Any) -> Any:
+        if hasattr(data, "bbox_xmin"):
+            norm = getattr(data, "bbox_normalized", None)
+            if isinstance(norm, str):
+                try:
+                    norm = json.loads(norm)
+                except Exception:
+                    norm = None
+            return {
+                "id": getattr(data, "id", 0),
+                "report_id": getattr(data, "report_id", 0),
+                "detected_class": getattr(data, "detected_class", ""),
+                "class_name": getattr(data, "class_name", None),
+                "confidence": getattr(data, "confidence", 0.0),
+                "bbox_xmin": getattr(data, "bbox_xmin", 0.0),
+                "bbox_ymin": getattr(data, "bbox_ymin", 0.0),
+                "bbox_xmax": getattr(data, "bbox_xmax", 0.0),
+                "bbox_ymax": getattr(data, "bbox_ymax", 0.0),
+                "bbox": [
+                    getattr(data, "bbox_xmin", 0.0),
+                    getattr(data, "bbox_ymin", 0.0),
+                    getattr(data, "bbox_xmax", 0.0),
+                    getattr(data, "bbox_ymax", 0.0),
+                ],
+                "bbox_normalized": norm,
+                "severity": getattr(data, "severity", "MEDIUM"),
+                "model_version": getattr(data, "model_version", ""),
+                "inference_timestamp": getattr(data, "inference_timestamp", datetime.utcnow()),
+            }
+        elif isinstance(data, dict):
+            if "bbox" not in data and "bbox_xmin" in data:
+                data["bbox"] = [
+                    data.get("bbox_xmin", 0.0),
+                    data.get("bbox_ymin", 0.0),
+                    data.get("bbox_xmax", 0.0),
+                    data.get("bbox_ymax", 0.0),
+                ]
+            if isinstance(data.get("bbox_normalized"), str):
+                try:
+                    data["bbox_normalized"] = json.loads(data["bbox_normalized"])
+                except Exception:
+                    data["bbox_normalized"] = None
+            return data
+        return data
+
+
 class ReportResponse(ReportBase):
     id: int
     reporter_id: Optional[int] = None
@@ -192,6 +259,15 @@ class ReportResponse(ReportBase):
     assigned_to_id: Optional[int] = None
     duplicate_of_id: Optional[int] = None
     rejection_reason: Optional[str] = None
+
+    # ML Pipeline Enrichment (Week 7)
+    ml_status: Optional[str] = "ML_PENDING"
+    ml_model_version: Optional[str] = None
+    ml_inference_time_ms: Optional[float] = None
+    ml_processed_at: Optional[datetime] = None
+    ml_error_message: Optional[str] = None
+    detection_results: List[DetectionResultResponse] = []
+
     created_at: datetime
     updated_at: datetime
     reporter: Optional[UserResponse] = None
@@ -207,4 +283,21 @@ class ReportResponse(ReportBase):
             except Exception:
                 return v
         return v
+
+
+class ReportMLStatusResponse(BaseModel):
+    """Targeted response schema for ML inference status polling."""
+    id: int
+    status: ReportStatus
+    ml_status: str
+    ml_model_version: Optional[str] = None
+    ml_inference_time_ms: Optional[float] = None
+    ml_processed_at: Optional[datetime] = None
+    ml_error_message: Optional[str] = None
+    num_detections: int = 0
+    detection_results: List[DetectionResultResponse] = []
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 

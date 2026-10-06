@@ -114,6 +114,18 @@ class Report(Base):
     priority = Column(String(20), nullable=True, default="MEDIUM", index=True)
     ml_detections = Column(Text, nullable=True)
 
+    # ML Pipeline Enrichment (Week 7)
+    ml_status = Column(
+        String(50),
+        default="ML_PENDING",
+        nullable=True,
+        index=True,
+    )
+    ml_model_version = Column(String(100), nullable=True)
+    ml_inference_time_ms = Column(Float, nullable=True)
+    ml_processed_at = Column(DateTime, nullable=True)
+    ml_error_message = Column(Text, nullable=True)
+
     # Assignment & Lifecycle Details
     assigned_to = Column(String(120), nullable=True)
     assigned_to_id = Column(
@@ -149,9 +161,49 @@ class Report(Base):
         cascade="all, delete-orphan",
         order_by="ReportStatusHistory.created_at.asc()",
     )
+    detection_results = relationship(
+        "DetectionResult",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="DetectionResult.confidence.desc()",
+    )
 
     def __repr__(self):
-        return f"<Report id={self.id} status='{self.status}' reporter_id={self.reporter_id}>"
+        return f"<Report id={self.id} status='{self.status}' ml_status='{self.ml_status}' reporter_id={self.reporter_id}>"
+
+
+class DetectionResult(Base):
+    """Individual road defect detection result linked to a Report (Week 7)."""
+    __tablename__ = "detection_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(
+        Integer,
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    detected_class = Column(String(50), nullable=False, index=True)
+    class_name = Column(String(100), nullable=True)
+    confidence = Column(Float, nullable=False)
+    bbox_xmin = Column(Float, nullable=False)
+    bbox_ymin = Column(Float, nullable=False)
+    bbox_xmax = Column(Float, nullable=False)
+    bbox_ymax = Column(Float, nullable=False)
+    bbox_normalized = Column(Text, nullable=True)
+    severity = Column(String(20), nullable=True, default="MEDIUM")
+    model_version = Column(String(100), nullable=False, default="YOLOv8n-experiment2_week5")
+    inference_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    report = relationship("Report", back_populates="detection_results")
+
+    def __repr__(self):
+        return (
+            f"<DetectionResult id={self.id} report_id={self.report_id} "
+            f"class='{self.detected_class}' conf={self.confidence:.3f}>"
+        )
 
 
 class ReportStatusHistory(Base):

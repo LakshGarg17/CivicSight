@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Backend API for CivicSight - Smart Road Damage Detection & Municipal Repair System",
-    version="0.4.0",
+    version="0.7.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -45,6 +45,8 @@ app.add_middleware(
 )
 
 # Mount Static Files for Uploaded Report Photos
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_BASE_DIR = os.path.join(BACKEND_DIR, "uploads")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_BASE_DIR), name="uploads")
 
 # Mount Static Files for Frontend Web Application
@@ -68,8 +70,8 @@ def read_root():
     return {
         "project": "CivicSight",
         "service": "CivicSight Backend Core API",
-        "version": "0.4.0",
-        "phase": "Week 4 - End-to-End Reporting Workflow, Spatial Maps & ML Baseline",
+        "version": "0.7.0",
+        "phase": "Week 7 - Prototype Integration (End-to-End Real Pipeline)",
         "workflow": "Report -> Detect -> Prioritize -> Verify -> Assign -> Repair -> Close",
         "status": "online",
         "endpoints": {

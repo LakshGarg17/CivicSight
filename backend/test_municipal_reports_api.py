@@ -235,5 +235,9 @@ def run_all_tests():
     print("=" * 70)
 
 
+def test_municipal_reports_api_suite():
+    run_all_tests()
+
+
 if __name__ == "__main__":
     run_all_tests()

@@ -1,0 +1,66 @@
+# ==============================================================================
+# CivicSight Backend - Git Ignore Rules
+# ==============================================================================
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+*.venv/
+
+# Environment files and credentials
+.env
+.env.local
+.env.*
+*.env
+!.env.example
+
+# Local SQLite databases & test databases
+*.db
+*.sqlite
+*.sqlite3
+civicsight.db
+civicsight_test.db
+
+# User uploaded media & files
+uploads/reports/*
+!uploads/reports/.gitkeep
+uploads/*
+!uploads/.gitkeep
+!uploads/reports/
+
+# Testing, pytest & code coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+
+# Distribution / builds
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Editor & IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini

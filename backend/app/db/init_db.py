@@ -91,6 +91,60 @@ def init_db() -> None:
                     conn.execute(text("ALTER TABLE reports ADD COLUMN rejection_reason TEXT;"))
                     conn.commit()
 
+                # Week 7 additions: ML Pipeline fields
+                if "ml_status" not in existing_report_cols:
+                    logger.info("Adding 'ml_status' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN ml_status VARCHAR(50) DEFAULT 'ML_PENDING';"))
+                    conn.commit()
+
+                if "ml_model_version" not in existing_report_cols:
+                    logger.info("Adding 'ml_model_version' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN ml_model_version VARCHAR(100);"))
+                    conn.commit()
+
+                if "ml_inference_time_ms" not in existing_report_cols:
+                    logger.info("Adding 'ml_inference_time_ms' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN ml_inference_time_ms FLOAT;"))
+                    conn.commit()
+
+                if "ml_processed_at" not in existing_report_cols:
+                    logger.info("Adding 'ml_processed_at' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN ml_processed_at TIMESTAMP;"))
+                    conn.commit()
+
+                if "ml_error_message" not in existing_report_cols:
+                    logger.info("Adding 'ml_error_message' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN ml_error_message TEXT;"))
+                    conn.commit()
+
+        # Seed standard prototype and test users
+        from app.db.database import SessionLocal
+        from app.models.models import User, UserRole
+        from app.core.security import get_password_hash
+
+        db = SessionLocal()
+        try:
+            demo_users = [
+                ("officer@civicsight.gov", "Sarah Chen", UserRole.MUNICIPAL_OFFICER, "Password123!"),
+                ("officer_test_w5@example.com", "Officer Dave", UserRole.MUNICIPAL_OFFICER, "testpassword123"),
+                ("citizen@civicsight.org", "Jane Citizen", UserRole.CITIZEN, "Password123!"),
+                ("citizen_test_w5@example.com", "Citizen Jane", UserRole.CITIZEN, "testpassword123"),
+                ("admin@civicsight.gov", "Admin Director", UserRole.ADMIN, "Password123!"),
+            ]
+            for email, name, role, pwd in demo_users:
+                u = db.query(User).filter(User.email == email).first()
+                if not u:
+                    new_user = User(
+                        email=email,
+                        name=name,
+                        role=role,
+                        hashed_password=get_password_hash(pwd),
+                    )
+                    db.add(new_user)
+            db.commit()
+        finally:
+            db.close()
+
         logger.info("Database tables verified/created successfully.")
     except Exception as e:
         logger.error(f"Failed to initialize database tables: {e}")

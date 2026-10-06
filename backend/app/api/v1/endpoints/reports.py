@@ -3,11 +3,11 @@ import os
 import uuid
 from datetime import datetime
 from typing import List, Optional, Union
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.models import Report, User, ReportStatus, UserRole, ReportStatusHistory
-from app.core.dependencies import require_roles
+from app.core.dependencies import require_roles, get_current_user
 from app.schemas.schemas import (
     ReportCreate,
     ReportUpdate,
@@ -18,7 +18,10 @@ from app.schemas.schemas import (
     ReportDuplicateRequest,
     ReportAssignRequest,
     ReportStatusHistoryResponse,
+    ReportMLStatusResponse,
+    DetectionResultResponse,
 )
+from app.services.ml_service import process_report_image_ml
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -199,7 +202,11 @@ def record_status_history(
     status_code=status.HTTP_201_CREATED,
     summary="Create a road damage report",
 )
-async def create_report(request: Request, db: Session = Depends(get_db)):
+async def create_report(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """Creates a new road damage report.
     
     Accepts both multipart/form-data (with file upload) and application/json.
@@ -335,6 +342,7 @@ async def create_report(request: Request, db: Session = Depends(get_db)):
             damage_type=str(damage_type).strip() if damage_type else None,
             priority=priority_val,
             ml_detections=ml_detections_str,
+            ml_status="ML_PENDING",
             status=ReportStatus.SUBMITTED,
             created_at=now,
             updated_at=now,
@@ -353,6 +361,10 @@ async def create_report(request: Request, db: Session = Depends(get_db)):
         )
         db.commit()
         db.refresh(report)
+
+        # 9. Asynchronously process image with YOLO defect detection
+        background_tasks.add_task(process_report_image_ml, report.id)
+
         return report
 
     else:
@@ -390,6 +402,7 @@ async def create_report(request: Request, db: Session = Depends(get_db)):
 
         now = datetime.utcnow()
         initial_status = report_in.status or ReportStatus.SUBMITTED
+        ml_status_init = "ML_PENDING" if report_in.image_url else None
         report = Report(
             reporter_id=report_in.reporter_id,
             description=report_in.description,
@@ -400,6 +413,7 @@ async def create_report(request: Request, db: Session = Depends(get_db)):
             damage_type=report_in.damage_type,
             priority=priority_val,
             ml_detections=ml_detections_str,
+            ml_status=ml_status_init,
             status=initial_status,
             created_at=now,
             updated_at=now,
@@ -417,6 +431,10 @@ async def create_report(request: Request, db: Session = Depends(get_db)):
         )
         db.commit()
         db.refresh(report)
+
+        if report_in.image_url:
+            background_tasks.add_task(process_report_image_ml, report.id)
+
         return report
 
 
@@ -457,21 +475,100 @@ def list_reports(
 @router.get(
     "/{report_id}",
     response_model=ReportResponse,
-    summary="Get report by ID (Municipal/Admin only)",
+    summary="Get report by ID (Municipal/Admin or owning Citizen)",
 )
 def get_report(
     report_id: int,
-    current_user: User = Depends(require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieves full detailed information for a single road damage report (Municipal Officer / Admin ONLY)."""
+    """Retrieves full detailed information for a single road damage report.
+    
+    Accessible by Municipal Officers, Admins, or the Citizen who authored the report.
+    """
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Report with ID {report_id} not found.",
         )
+
+    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    is_privileged = user_role in [UserRole.MUNICIPAL_OFFICER.value, UserRole.ADMIN.value]
+    is_owner = report.reporter_id is not None and report.reporter_id == current_user.id
+
+    if not (is_privileged or is_owner):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not authorized to access this report.",
+        )
+
     return report
+
+
+@router.get(
+    "/{report_id}/ml-status",
+    response_model=ReportMLStatusResponse,
+    summary="Get ML assessment status and detections for a report (Public/Citizen polling)",
+)
+def get_report_ml_status(
+    report_id: int,
+    db: Session = Depends(get_db),
+):
+    """Returns the ML inference status (ML_PENDING, ML_COMPLETE, ML_NO_DETECTIONS, ML_FAILED)
+    and associated bounding box detections for public and citizen status tracking.
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+
+    return ReportMLStatusResponse(
+        id=report.id,
+        status=report.status,
+        ml_status=report.ml_status or "ML_PENDING",
+        ml_model_version=report.ml_model_version,
+        ml_inference_time_ms=report.ml_inference_time_ms,
+        ml_processed_at=report.ml_processed_at,
+        ml_error_message=report.ml_error_message,
+        num_detections=len(report.detection_results),
+        detection_results=report.detection_results,
+        created_at=report.created_at,
+        updated_at=report.updated_at,
+    )
+
+
+@router.post(
+    "/{report_id}/process-ml",
+    response_model=ReportResponse,
+    summary="Trigger ML damage detection inference on a report",
+)
+def trigger_report_ml_inference(
+    report_id: int,
+    sync: bool = Query(True, description="Whether to execute synchronously before returning"),
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+):
+    """Executes or enqueues YOLOv8 damage detection for a specific report."""
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+
+    if sync:
+        process_report_image_ml(report_id=report.id, db=db)
+        db.refresh(report)
+        return report
+    else:
+        report.ml_status = "ML_PENDING"
+        db.commit()
+        if background_tasks:
+            background_tasks.add_task(process_report_image_ml, report.id)
+        return report
 
 
 # ============================================================================

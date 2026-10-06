@@ -73,8 +73,30 @@ def test_user_crud():
     return user_id
 
 
-def test_report_crud(user_id: int):
+def test_report_crud(user_id: int = None):
+    if user_id is None:
+        user_id = test_user_crud()
     print("\n[TEST] 3. Testing Report CRUD & Workflow Operations...")
+    from app.core.security import create_access_token
+    from app.models.models import User, UserRole
+    from app.db.database import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        admin_user = db.query(User).filter(User.email == "admin_crud@civicsight.org").first()
+        if not admin_user:
+            admin_user = User(
+                name="Admin Crud",
+                email="admin_crud@civicsight.org",
+                role=UserRole.ADMIN,
+            )
+            db.add(admin_user)
+            db.commit()
+            db.refresh(admin_user)
+        admin_token = create_access_token(subject=str(admin_user.id), claims={"email": admin_user.email, "role": UserRole.ADMIN.value})
+        auth_headers = {"Authorization": f"Bearer {admin_token}"}
+    finally:
+        db.close()
     
     # CREATE REPORT
     report_payload = {
@@ -96,7 +118,7 @@ def test_report_crud(user_id: int):
     print(f"   [OK] Created Report: ID={report_id}, Status='{report['status']}'")
 
     # READ SINGLE
-    res_get = client.get(f"/api/v1/reports/{report_id}")
+    res_get = client.get(f"/api/v1/reports/{report_id}", headers=auth_headers)
     assert res_get.status_code == 200
     data = res_get.json()
     assert data["id"] == report_id
@@ -104,11 +126,11 @@ def test_report_crud(user_id: int):
     print(f"   [OK] Retrieved Report ID={report_id} with nested Reporter relation")
 
     # LIST & FILTER
-    res_list_all = client.get("/api/v1/reports")
+    res_list_all = client.get("/api/v1/reports", headers=auth_headers)
     assert res_list_all.status_code == 200
     assert len(res_list_all.json()) >= 1
     
-    res_list_filtered = client.get("/api/v1/reports?status=submitted")
+    res_list_filtered = client.get("/api/v1/reports?status=submitted", headers=auth_headers)
     assert res_list_filtered.status_code == 200
     assert any(r["id"] == report_id for r in res_list_filtered.json())
     print("   [OK] Filtered Reports by status='submitted'")
@@ -125,9 +147,9 @@ def test_report_crud(user_id: int):
     print(f"   [OK] Updated Report ID={report_id} severity score to 0.88")
 
     # STATUS WORKFLOW TRANSITIONS
-    lifecycle = ["detected", "prioritized", "verified", "assigned", "repaired", "closed"]
+    lifecycle = ["pending_verification", "verified", "assigned", "under_repair", "repaired", "closed"]
     for next_status in lifecycle:
-        res_patch = client.patch(f"/api/v1/reports/{report_id}/status", json={"status": next_status})
+        res_patch = client.patch(f"/api/v1/reports/{report_id}/status", json={"status": next_status}, headers=auth_headers)
         assert res_patch.status_code == 200
         assert res_patch.json()["status"] == next_status
     print(f"   [OK] Successfully tested full workflow lifecycle transitions -> {lifecycle}")
@@ -135,7 +157,7 @@ def test_report_crud(user_id: int):
     # DELETE REPORT
     res_del_rep = client.delete(f"/api/v1/reports/{report_id}")
     assert res_del_rep.status_code == 200
-    res_check = client.get(f"/api/v1/reports/{report_id}")
+    res_check = client.get(f"/api/v1/reports/{report_id}", headers=auth_headers)
     assert res_check.status_code == 404
     print(f"   [OK] Deleted Report ID={report_id} and verified 404")
 

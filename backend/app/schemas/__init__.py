@@ -14,6 +14,8 @@ from app.schemas.schemas import (
     ReportUpdate,
     ReportStatusUpdate,
     ReportResponse,
+    DetectionResultResponse,
+    ReportMLStatusResponse,
 )
 from app.models.models import UserRole, ReportStatus
 
@@ -32,5 +34,7 @@ __all__ = [
     "ReportUpdate",
     "ReportStatusUpdate",
     "ReportResponse",
+    "DetectionResultResponse",
+    "ReportMLStatusResponse",
     "ReportStatus",
 ]
