@@ -9,4 +9,4 @@ Name: Laksh Garg
 - [Week 4 — Status UI, Report-Flow testing and YOLO training](./week-4.md)
 - [Week 5 — Report APIs and Municipal Access](./week-5.md)
 - [Week 6 — Report Verification and Lifecycle Interface](./week-6.md)
-
+- [Week 7 — FastAPI and YOLO Integration](./week-7.md)

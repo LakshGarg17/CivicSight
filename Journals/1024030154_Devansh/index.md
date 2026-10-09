@@ -9,4 +9,5 @@ Name: Devansh Thapar
 - [Week 4 — UI development, API testing and sample detection](./week-4.md)
 - [Week 5 — YOLO Baseline and Dashboard Integration](./week-5.md)
 - [Week 6 — Initial Model Finalization and Report Workflow](./week-6.md)
+- [Week 7 — YOLO Model Integration and Inference](./week-7.md)
 

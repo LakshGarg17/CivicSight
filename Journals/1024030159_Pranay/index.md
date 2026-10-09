@@ -9,4 +9,4 @@ Name: Pranay Mittal
 - [Week 4 —  API integration, PostgreSQL setup and Image Preparation](./week-4.md)
 - [Week 5 — Municipal Dashboard and Report Management](./week-5.md)
 - [Week 6 — Report Status and Workflow APIs](./week-6.md)
-
+- [Week 7 — ML Results in the CivicSight Dashboard ](./week-7.md)
