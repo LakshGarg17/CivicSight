@@ -282,7 +282,142 @@ document.addEventListener('DOMContentLoaded', () => {
   latitudeInput?.addEventListener('change', handleManualCoordChange);
   longitudeInput?.addEventListener('change', handleManualCoordChange);
 
-  // --- 4. Photo Selection & Preview Handler ---
+  // --- 4. Photo Selection & Real-Time ML Inference Handler ---
+  let activeInferenceRequestId = 0;
+  let selectedImageFile = null;
+  let selectedImageDataUri = null;
+  let isAnalysisConfirmed = false;
+
+  const aiDamageResultsSection = document.getElementById('aiDamageResultsSection');
+  const confirmDescriptionBtn = document.getElementById('confirmDescriptionBtn');
+  const mlScanningState = document.getElementById('mlScanningState');
+  const mlDetectionResultsSlot = document.getElementById('mlDetectionResultsSlot');
+
+  function invalidateAnalysis() {
+    activeInferenceRequestId++;
+    isAnalysisConfirmed = false;
+    if (aiDamageResultsSection) aiDamageResultsSection.style.display = 'none';
+    if (mlScanningState) mlScanningState.style.display = 'none';
+    if (mlDetectionResultsSlot) mlDetectionResultsSlot.innerHTML = '';
+  }
+
+  async function triggerImageInference(file, dataUri) {
+    if (!file || !dataUri) return;
+    const requestId = ++activeInferenceRequestId;
+    const apiBase = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.API_BASE : 'http://127.0.0.1:8000';
+
+    if (aiDamageResultsSection) aiDamageResultsSection.style.display = 'block';
+    if (mlScanningState) mlScanningState.style.display = 'flex';
+    if (typeof CivicSightMLViewer !== 'undefined' && mlDetectionResultsSlot) {
+      CivicSightMLViewer.render(mlDetectionResultsSlot, {
+        imageUrl: dataUri,
+        mlStatus: 'ML_PENDING',
+      });
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch(`${apiBase}/api/v1/reports/detect`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      // Avoid race conditions if user changed image or invalidated while request was in flight
+      if (requestId !== activeInferenceRequestId) return;
+
+      if (mlScanningState) mlScanningState.style.display = 'none';
+
+      if (!res.ok) {
+        let errText = 'Inference could not be completed';
+        try {
+          const errData = await res.json();
+          errText = errData.detail || errText;
+        } catch (_) {}
+
+        if (typeof CivicSightMLViewer !== 'undefined' && mlDetectionResultsSlot) {
+          CivicSightMLViewer.render(mlDetectionResultsSlot, {
+            imageUrl: dataUri,
+            mlStatus: 'ML_FAILED',
+            errorMessage: errText,
+          });
+        }
+        return;
+      }
+
+      const detectionResult = await res.json();
+      const rawDetections = detectionResult.detections || [];
+      const numDetections = detectionResult.num_detections !== undefined ? detectionResult.num_detections : rawDetections.length;
+      const mlStatus = (numDetections > 0) ? 'ML_COMPLETE' : 'ML_NO_DETECTIONS';
+
+      const formattedDetections = rawDetections.map(d => ({
+        type: d.class_name || d.detected_class,
+        label: d.description || d.label || d.class_name,
+        confidence: d.confidence,
+        bbox: d.bbox_normalized || d.bbox,
+        bboxFormat: 'xyxy',
+        severity: d.severity,
+      }));
+
+      if (typeof CivicSightMLViewer !== 'undefined' && mlDetectionResultsSlot) {
+        CivicSightMLViewer.render(mlDetectionResultsSlot, {
+          imageUrl: dataUri,
+          mlStatus: mlStatus,
+          detections: formattedDetections,
+          modelVersion: detectionResult.model_version || 'YOLOv8n-CivicSight-4Class',
+          inferenceTimeMs: detectionResult.inference_time_ms,
+        });
+      }
+
+    } catch (err) {
+      if (requestId !== activeInferenceRequestId) return;
+      if (mlScanningState) mlScanningState.style.display = 'none';
+      if (typeof CivicSightMLViewer !== 'undefined' && mlDetectionResultsSlot) {
+        CivicSightMLViewer.render(mlDetectionResultsSlot, {
+          imageUrl: dataUri,
+          mlStatus: 'ML_FAILED',
+          errorMessage: 'Backend detection service is currently unreachable (Ensure FastAPI server is running on port 8000).',
+        });
+      }
+    }
+  }
+
+  function handleConfirmDescription() {
+    let hasError = false;
+
+    // Check Step 1: Image
+    if (!selectedImageFile || !selectedImageDataUri) {
+      showToast('Please upload a damage photo in Step 1 first.', 'error');
+      if (imageInputError) imageInputError.textContent = 'Please select a damage photo.';
+      uploadDropzone?.focus();
+      hasError = true;
+    } else {
+      if (imageInputError) imageInputError.textContent = '';
+    }
+
+    // Check Step 2: Description
+    const desc = (damageDescription?.value || '').trim();
+    if (!desc) {
+      showToast('Please provide a problem description in Step 2.', 'error');
+      if (descriptionError) descriptionError.textContent = 'Description is required and cannot be empty.';
+      damageDescription?.focus();
+      hasError = true;
+    } else {
+      if (descriptionError) descriptionError.textContent = '';
+    }
+
+    if (hasError) return;
+
+    isAnalysisConfirmed = true;
+    if (aiDamageResultsSection) {
+      aiDamageResultsSection.style.display = 'block';
+      aiDamageResultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    triggerImageInference(selectedImageFile, selectedImageDataUri);
+  }
+
   function handleFileSelect(file) {
     if (!file) return;
 
@@ -304,60 +439,57 @@ document.addEventListener('DOMContentLoaded', () => {
     previewFilename.textContent = file.name;
     previewFilesize.textContent = `${sizeInMB} MB`;
 
+    // Invalidate prior analysis when image is changed or replaced
+    invalidateAnalysis();
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUri = e.target.result;
+      selectedImageFile = file;
+      selectedImageDataUri = dataUri;
       imagePreview.src = dataUri;
       dropzoneIdle.style.display = 'none';
       previewContainer.style.display = 'flex';
 
-      // ML analysis in progress Lottie scanning animation
-      triggerMLAnalysis(dataUri);
+      // Step 1: Do NOT run inference yet, do NOT display AI results card yet
     };
     reader.readAsDataURL(file);
   }
 
-  // ML analysis scanning trigger + visual ML detection preview
-  const mlScanningState = document.getElementById('mlScanningState');
-  const mlDetectionResultsSlot = document.getElementById('mlDetectionResultsSlot');
-
-  function triggerMLAnalysis(dataUri) {
-    if (mlScanningState) mlScanningState.style.display = 'flex';
-    if (mlDetectionResultsSlot) mlDetectionResultsSlot.innerHTML = '';
-
-    // Simulate / execute detection pipeline timing
-    setTimeout(() => {
-      if (mlScanningState) mlScanningState.style.display = 'none';
-
-      // Check current selected damage radio or default
-      const selectedType = document.querySelector('input[name="damage_type"]:checked')?.value || 'D40';
-      const latVal = parseFloat(latitudeInput?.value) || DEFAULT_COORDS[0];
-      const lonVal = parseFloat(longitudeInput?.value) || DEFAULT_COORDS[1];
-      const address = addressTextInput?.value || 'Field Pinpoint';
-
-      if (typeof CivicSightMLViewer !== 'undefined' && mlDetectionResultsSlot) {
-        const syntheticDetections = CivicSightMLViewer.generateSyntheticDetections(selectedType);
-        CivicSightMLViewer.render(mlDetectionResultsSlot, {
-          imageUrl: dataUri,
-          detections: syntheticDetections,
-          latitude: latVal,
-          longitude: lonVal,
-          address: address,
-        });
-        showToast('Defect analysis preview generated.', 'info');
-      }
-    }, 1100);
-  }
-
   function clearImageSelection() {
+    selectedImageFile = null;
+    selectedImageDataUri = null;
     damageImageInput.value = '';
     imagePreview.src = '';
     dropzoneIdle.style.display = 'block';
     previewContainer.style.display = 'none';
     if (imageInputError) imageInputError.textContent = '';
-    if (mlScanningState) mlScanningState.style.display = 'none';
-    if (mlDetectionResultsSlot) mlDetectionResultsSlot.innerHTML = '';
+    invalidateAnalysis();
   }
+
+  // Confirm description button and keyboard listener
+  confirmDescriptionBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    handleConfirmDescription();
+  });
+
+  damageDescription?.addEventListener('keydown', (e) => {
+    // Ctrl+Enter or Cmd+Enter explicitly confirms description without interfering with multiline typing
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleConfirmDescription();
+    }
+  });
+
+  damageDescription?.addEventListener('input', () => {
+    if (descriptionError && damageDescription.value.trim()) {
+      descriptionError.textContent = '';
+    }
+    // Invalidate stale AI results if description is modified after analysis was triggered
+    if (isAnalysisConfirmed) {
+      invalidateAnalysis();
+    }
+  });
 
   if (uploadDropzone && damageImageInput) {
     uploadDropzone.addEventListener('click', (e) => {
@@ -556,7 +688,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const latVal = parseFloat(latitudeInput.value);
       const lonVal = parseFloat(longitudeInput.value);
       const addressText = addressTextInput.value.trim();
-      const damageType = document.querySelector('input[name="damage_type"]:checked')?.value || 'OTHER';
 
       // 1. Client-side UX Validation
       let hasError = false;
@@ -748,13 +879,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 : `${apiBase}${reportData.image_url}`;
             }
 
-            const detections = (reportData.detection_results || []).map(d => ({
-              type: d.detected_class,
-              label: d.class_name,
-              confidence: d.confidence,
-              bbox: d.bbox_normalized || [d.bbox_ymin, d.bbox_xmin, d.bbox_ymax, d.bbox_xmax],
-              severity: d.severity,
-            }));
+            const detections = (reportData.detection_results || []).map(d => {
+              let parsedBbox = d.bbox_normalized;
+              if (typeof parsedBbox === 'string') {
+                try { parsedBbox = JSON.parse(parsedBbox); } catch (_) {}
+              }
+              return {
+                type: d.detected_class,
+                label: d.class_name,
+                confidence: d.confidence,
+                bbox: parsedBbox || [d.bbox_ymin, d.bbox_xmin, d.bbox_ymax, d.bbox_xmax],
+                severity: d.severity,
+              };
+            });
 
             CivicSightMLViewer.render(slot, {
               imageUrl: fullImageUrl,
@@ -764,7 +901,7 @@ document.addEventListener('DOMContentLoaded', () => {
               longitude: reportData.longitude,
               address: reportData.address_text,
               reportId: reportData.id,
-              modelVersion: reportData.ml_model_version || 'YOLOv8n-experiment2_week5',
+              modelVersion: reportData.ml_model_version || 'YOLOv8n-CivicSight-4Class',
               inferenceTimeMs: reportData.ml_inference_time_ms,
               errorMessage: reportData.ml_error_message,
             });

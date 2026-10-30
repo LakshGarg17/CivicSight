@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivicSight — Frontend Pothole Detection Test</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    body {
+      background: var(--bg-primary, #0f172a);
+      color: var(--text-primary, #f8fafc);
+      font-family: var(--font-main, system-ui, sans-serif);
+      padding: 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .test-header {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color, #334155);
+      padding-bottom: 1.5rem;
+    }
+    .test-header h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.75rem;
+      color: var(--text-primary, #f8fafc);
+    }
+    .test-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      background: #ef444422;
+      color: #ef4444;
+      border: 1px solid #ef444455;
+    }
+    .test-results-card {
+      background: var(--bg-card, #1e293b);
+      border: 1px solid var(--border-color, #334155);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+    .test-step {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #33415544;
+      font-size: 0.95rem;
+    }
+    .test-step:last-child {
+      border-bottom: none;
+    }
+    .icon-pass {
+      color: #10b981;
+      font-weight: bold;
+    }
+    .icon-fail {
+      color: #ef4444;
+      font-weight: bold;
+    }
+    .viewer-container-wrapper {
+      background: var(--bg-card, #1e293b);
+      border: 1px solid var(--border-color, #334155);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="test-header">
+    <span class="test-badge">Automated Frontend Verification</span>
+    <h1>Real-Time Frontend Pothole Detection &amp; Bounding Box Test</h1>
+    <p style="color: var(--text-secondary, #94a3b8); margin: 0.25rem 0 0 0;">
+      Validates live YOLO inference, SVG bounding-box rendering, class-specific red styling (D40), and 1:1 image alignment directly in the browser DOM.
+    </p>
+  </div>
+
+  <!-- Target Container where CivicSightMLViewer renders -->
+  <div class="viewer-container-wrapper">
+    <div id="potholeViewerContainer">
+      <div style="padding: 2rem; text-align: center; color: var(--text-muted, #64748b);">
+        <span>Initializing Pothole Detection Test...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Results Log Card -->
+  <div class="test-results-card">
+    <h3 style="margin: 0 0 1rem 0; font-size: 1.2rem;">Frontend Verification Checklist</h3>
+    <div id="testStepsLog">
+      <div class="test-step"><span>Fetching sample pothole image and requesting inference...</span></div>
+    </div>
+  </div>
+
+  <!-- Load CivicSight ML Viewer Component -->
+  <script src="../js/ml-viewer.js"></script>
+
+  <script>
+    (async function runFrontendPotholeTest() {
+      const logContainer = document.getElementById('testStepsLog');
+      const targetSlot = document.getElementById('potholeViewerContainer');
+
+      function logAssertion(description, passed, details = '') {
+        const row = document.createElement('div');
+        row.className = 'test-step';
+        row.innerHTML = `
+          <span class="${passed ? 'icon-pass' : 'icon-fail'}">${passed ? '✓ PASSED' : '✗ FAILED'}</span>
+          <span><strong>${description}</strong> ${details ? `<code style="font-size: 0.85rem; color: #94a3b8;">(${details})</code>` : ''}</span>
+        `;
+        logContainer.appendChild(row);
+        return passed;
+      }
+
+      try {
+        logContainer.innerHTML = '';
+
+        // 1. Fetch sample pothole image
+        const imgUrl = '../assets/sample_pothole_d40.jpg';
+        const imgBlob = await fetch(imgUrl).then(r => r.blob());
+        const dataUri = await new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.readAsDataURL(imgBlob);
+        });
+        logAssertion('1. Pothole Image Loaded', true, `Blob size: ${imgBlob.size} bytes`);
+
+        // 2. Execute live backend inference via /api/v1/reports/detect
+        const formData = new FormData();
+        formData.append('image', imgBlob, 'sample_pothole_d40.jpg');
+
+        const apiResp = await fetch('http://127.0.0.1:8000/api/v1/reports/detect', {
+          method: 'POST',
+          body: formData
+        });
+        const detectData = await apiResp.json();
+        const apiSuccess = apiResp.ok && detectData.ml_status === 'ML_COMPLETE';
+        logAssertion('2. Live API Detection Call', apiSuccess, `HTTP ${apiResp.status}, ml_status: ${detectData.ml_status}`);
+
+        // 3. Render results into DOM using CivicSightMLViewer
+        const detections = (detectData.detections || []).map(d => ({
+          type: d.type || d.detected_class,
+          label: d.label || d.class_name,
+          confidence: d.confidence,
+          bbox: d.bbox,
+          severity: d.severity,
+          coordinates_pixel: d.coordinates_pixel,
+        }));
+
+        CivicSightMLViewer.render(targetSlot, {
+          mlStatus: detectData.ml_status,
+          imageUrl: dataUri,
+          detections: detections,
+          modelVersion: detectData.model_version || 'YOLOv8n-experiment2_week5',
+          inferenceTimeMs: detectData.inference_time_ms,
+          latitude: 37.774929,
+          longitude: -122.419416,
+          address: '4th Street & Market St, San Francisco, CA'
+        });
+
+        // 4. Assert Root Card & Title
+        const cardComplete = targetSlot.querySelector('.ml-card-complete');
+        logAssertion('3. Component Root Rendered', !!cardComplete, 'Class .ml-card-complete present');
+
+        const titleEl = targetSlot.querySelector('.ml-viewer-title');
+        const titleMatch = titleEl && titleEl.textContent.trim() === 'AI Damage Detection Results';
+        logAssertion('4. Title Verification', titleMatch, 'AI Damage Detection Results');
+
+        // 5. Assert Status Badge & Priority Level
+        const statusBadge = targetSlot.querySelector('.status-badge');
+        const hasDamageBadge = statusBadge && statusBadge.textContent.includes('Damage Detected');
+        logAssertion('5. Detection Status Badge', hasDamageBadge, statusBadge?.textContent.trim());
+
+        const priorityBadge = targetSlot.querySelector('.ml-severity-badge');
+        const hasHighPriority = priorityBadge && priorityBadge.textContent.includes('HIGH PRIORITY');
+        logAssertion('6. Municipal Triage Priority', hasHighPriority, priorityBadge?.textContent.trim());
+
+        // 6. Assert Visual SVG Overlays & Bounding Boxes
+        const svgOverlay = targetSlot.querySelector('#mlSvgOverlay');
+        const bboxGroup = targetSlot.querySelector('.bbox-d40');
+        const bboxRect = targetSlot.querySelector('.bbox-rect-d40');
+        const bboxCorners = targetSlot.querySelector('.bbox-corners-d40');
+        const bboxTagBg = targetSlot.querySelector('.bbox-tag-bg-d40');
+        const bboxTagText = targetSlot.querySelector('.bbox-tag-text');
+
+        const hasBBoxElements = !!(svgOverlay && bboxGroup && bboxRect && bboxCorners && bboxTagBg && bboxTagText);
+        logAssertion('7. SVG Bounding Box Structure', hasBBoxElements, 'Group, Rect, Corners, Tag all found');
+
+        // 7. Assert Class-Specific Crimson Red Color Styling (#ef4444)
+        const rectStroke = bboxRect?.style?.stroke || '';
+        const rectStrokeMatch = rectStroke.includes('239') || rectStroke.includes('ef4444');
+        logAssertion('8. Bounding Box Color Coding', rectStrokeMatch, `Stroke color: ${rectStroke} (Expected Crimson Red #ef4444)`);
+
+        // 8. Assert Detection Tag Content & Confidence
+        const tagContent = bboxTagText ? bboxTagText.textContent.trim() : '';
+        const tagValid = tagContent.startsWith('D40') && tagContent.includes('%');
+        logAssertion('9. Defect Tag & Confidence Label', tagValid, `Rendered text: "${tagContent}"`);
+
+        // 9. Assert Classified Defects List
+        const listItems = targetSlot.querySelectorAll('.ml-detection-item');
+        const firstItemCode = targetSlot.querySelector('.detection-code-chip')?.textContent.trim();
+        const firstItemName = targetSlot.querySelector('.detection-name')?.textContent.trim();
+        const firstItemConf = targetSlot.querySelector('.confidence-val')?.textContent.trim();
+        const listValid = listItems.length >= 1 && firstItemCode === 'D40' && firstItemName === 'Pothole';
+        logAssertion('10. Classified Defects Detail Card', listValid, `Class: ${firstItemCode}, Name: ${firstItemName}, Conf: ${firstItemConf}`);
+
+        // 10. Assert Image 1:1 Pixel Containment Wrapper
+        const imageWrapper = targetSlot.querySelector('#mlImageWrapper');
+        const analyzedImage = targetSlot.querySelector('#mlAnalyzedImage');
+        const imgWrapperValid = !!(imageWrapper && analyzedImage);
+        logAssertion('11. 1:1 Image Containment Layout', imgWrapperValid, 'Image container verified');
+
+        // Overall Final Status
+        const allPassed = apiSuccess && !!cardComplete && titleMatch && hasDamageBadge && hasHighPriority && hasBBoxElements && rectStrokeMatch && tagValid && listValid;
+        document.body.setAttribute('data-test-status', allPassed ? 'PASSED' : 'FAILED');
+
+        const summaryRow = document.createElement('div');
+        summaryRow.style.marginTop = '1rem';
+        summaryRow.style.padding = '0.75rem 1rem';
+        summaryRow.style.borderRadius = '8px';
+        summaryRow.style.fontWeight = 'bold';
+        summaryRow.style.background = allPassed ? '#10b98122' : '#ef444422';
+        summaryRow.style.color = allPassed ? '#10b981' : '#ef4444';
+        summaryRow.style.border = `1px solid ${allPassed ? '#10b98155' : '#ef444455'}`;
+        summaryRow.innerHTML = allPassed
+          ? '★ ALL 11 FRONTEND POTHOLE DETECTION ASSERTIONS VERIFIED SUCCESSFULLY!'
+          : '⚠ ONE OR MORE FRONTEND ASSERTIONS FAILED.';
+        logContainer.appendChild(summaryRow);
+
+      } catch (err) {
+        logAssertion('Execution Exception', false, err.message);
+        document.body.setAttribute('data-test-status', 'ERROR: ' + err.message);
+      }
+    })();
+  </script>
+</body>
+</html>

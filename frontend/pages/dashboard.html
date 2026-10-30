@@ -147,6 +147,7 @@
         </div>
 
         <!-- Filter Controls -->
+        <!-- Filter Controls -->
         <div class="dashboard-filter-bar">
           <div class="filter-group">
             <label for="statusFilter" class="filter-label">Status:</label>
@@ -172,6 +173,19 @@
               <option value="LOW">Low Priority</option>
             </select>
           </div>
+          <div class="filter-group">
+            <button type="button" id="highPriorityToggleBtn" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 0.4rem;">
+              <span class="legend-dot red"></span> High Priority Only
+            </button>
+          </div>
+          <div class="filter-group">
+            <label for="sortBySelect" class="filter-label">Sort By:</label>
+            <select id="sortBySelect" class="form-select filter-select">
+              <option value="created_at">Newest First</option>
+              <option value="priority">Priority (High first)</option>
+              <option value="score">Score (Highest first)</option>
+            </select>
+          </div>
           <button type="button" id="resetFiltersBtn" class="btn btn-secondary btn-sm" style="margin-left: auto;">
             Reset Filters
           </button>
@@ -185,6 +199,8 @@
                 <th>Defect Type</th>
                 <th>Coordinates / Street</th>
                 <th>Priority</th>
+                <th>Severity</th>
+                <th>Nearby</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -210,9 +226,47 @@
         <button type="button" class="modal-close-btn" id="closeInspectionModalBtn" aria-label="Close modal">&times;</button>
       </div>
 
-      <!-- ML Detection Viewer Slot -->
+      <!-- 1. ML Detection Viewer Slot (AI Assessment) -->
       <div id="modalMLViewerSlot">
         <!-- Injected via CivicSightMLViewer.render() -->
+      </div>
+
+      <!-- 2. Priority Engine Assessment Panel (Rule-Based Scoring & Reasons) -->
+      <div class="priority-assessment-panel" id="modalPriorityPanel" style="margin-top: 1.25rem; padding: 1.25rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+          <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            Automated Priority Assessment
+          </h4>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span id="modalPriorityOverrideBadge" style="display: none;" class="badge-pill">
+              <span class="badge-dot" style="background: var(--accent-color);"></span>
+              <span>Manual Override</span>
+            </span>
+            <button type="button" class="btn btn-secondary btn-sm" id="modalRecalculatePriorityBtn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              Recalculate
+            </button>
+          </div>
+        </div>
+
+        <div id="modalPriorityContent">
+          <!-- Populated dynamically: Priority badge, Severity badge, Score, Reasons list -->
+        </div>
+      </div>
+
+      <!-- 3. Related & Nearby Reports Panel (Spatial Proximity & Duplicates) -->
+      <div class="related-reports-panel" id="modalRelatedReportsPanel" style="margin-top: 1.25rem; padding: 1.25rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+          <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+            Related & Nearby Reports
+          </h4>
+          <span class="history-count-badge" id="relatedReportsCountBadge">0 found</span>
+        </div>
+        <div id="modalRelatedReportsList">
+          <!-- Populated dynamically: List of related cards or empty state -->
+        </div>
       </div>
 
       <!-- Real Status Transition History Audit Timeline -->
@@ -229,7 +283,7 @@
         </div>
       </div>
 
-      <!-- Municipal Verification & Operations Action Panel (Strictly Separate from AI Assessment) -->
+      <!-- 4. Municipal Verification & Operations Action Panel (Strictly Separate from AI & Priority) -->
       <div class="municipal-verification-panel" style="margin-top: 1.5rem; padding: 1.25rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
           <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
@@ -331,6 +385,25 @@
           <button type="submit" class="btn btn-primary btn-sm" id="confirmDuplicateBtn">Mark as Duplicate</button>
         </div>
       </form>
+    </div>
+  <!-- Relation Duplicate Confirmation Modal -->
+  <div class="modal-overlay" id="relationConfirmModal" role="dialog" aria-modal="true" aria-labelledby="relationConfirmTitle">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="relationConfirmTitle">Confirm Duplicate Report</h3>
+        <button type="button" class="modal-close-btn" id="closeRelationConfirmBtn" aria-label="Close modal">&times;</button>
+      </div>
+      <p id="relationConfirmDesc" style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+        Are you sure you want to confirm this relation as a duplicate? The newer report will be transitioned to DUPLICATE status while the original primary report remains intact.
+      </p>
+      <div class="action-dialog-group">
+        <label for="relationReviewNote">Optional Review Note</label>
+        <input type="text" id="relationReviewNote" class="action-dialog-input" placeholder="e.g. Verified identical defect in close proximity">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary btn-sm" id="cancelRelationConfirmBtn">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="executeRelationConfirmBtn">Confirm Duplicate</button>
+      </div>
     </div>
   </div>
 

@@ -126,7 +126,26 @@ document.addEventListener('DOMContentLoaded', () => {
   // Filter Elements
   const statusFilter = document.getElementById('statusFilter');
   const priorityFilter = document.getElementById('priorityFilter');
+  const highPriorityToggleBtn = document.getElementById('highPriorityToggleBtn');
+  const sortBySelect = document.getElementById('sortBySelect');
   const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+
+  // Week 8 Priority & Related Reports Panel Elements
+  const modalPriorityPanel = document.getElementById('modalPriorityPanel');
+  const modalPriorityContent = document.getElementById('modalPriorityContent');
+  const modalPriorityOverrideBadge = document.getElementById('modalPriorityOverrideBadge');
+  const modalRecalculatePriorityBtn = document.getElementById('modalRecalculatePriorityBtn');
+  const modalRelatedReportsPanel = document.getElementById('modalRelatedReportsPanel');
+  const modalRelatedReportsList = document.getElementById('modalRelatedReportsList');
+  const relatedReportsCountBadge = document.getElementById('relatedReportsCountBadge');
+
+  // Week 8 Relation Review Modal Elements
+  const relationConfirmModal = document.getElementById('relationConfirmModal');
+  const closeRelationConfirmBtn = document.getElementById('closeRelationConfirmBtn');
+  const cancelRelationConfirmBtn = document.getElementById('cancelRelationConfirmBtn');
+  const executeRelationConfirmBtn = document.getElementById('executeRelationConfirmBtn');
+  const relationReviewNote = document.getElementById('relationReviewNote');
+  const relationConfirmDesc = document.getElementById('relationConfirmDesc');
 
   // Metrics Elements
   const metricActiveTotal = document.getElementById('metricActiveTotal');
@@ -141,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let tileLayer = null;
   let activeReports = [];
   let currentlyInspectedReportId = null;
+  let activeReviewRelationId = null;
 
   // --------------------------------------------------------------------------
   // Utility & Formatting Helpers
@@ -223,15 +243,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Severity Pin Generator
   // --------------------------------------------------------------------------
   function createSeverityIcon(priority) {
-    let pinColor = '#d97706'; // Medium Amber
+    let pinColor = 'var(--color-warning)'; // Medium
     const norm = (priority || '').toUpperCase();
-    if (norm === 'HIGH') pinColor = '#dc2626'; // High Red
-    else if (norm === 'LOW') pinColor = '#16a34a'; // Low Green
+    if (norm === 'HIGH') pinColor = 'var(--color-danger)'; // High
+    else if (norm === 'LOW') pinColor = 'var(--color-success)'; // Low
 
     const svgHtml = `
       <svg class="severity-pin-svg" width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17 41C17 41 31 25.5 31 16C31 7.71573 24.732 1 17 1C9.26801 1 3 7.71573 3 16C3 25.5 17 41 17 41Z" fill="${pinColor}" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
-        <circle cx="17" cy="15" r="5.5" fill="#ffffff"/>
+        <path d="M17 41C17 41 31 25.5 31 16C31 7.71573 24.732 1 17 1C9.26801 1 3 7.71573 3 16C3 25.5 17 41 17 41Z" fill="${pinColor}" stroke="var(--bg-primary)" stroke-width="2.2" stroke-linejoin="round"/>
+        <circle cx="17" cy="15" r="5.5" fill="var(--bg-primary)"/>
       </svg>
     `;
 
@@ -359,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeReports.length === 0) {
       const emptyTr = document.createElement('tr');
       emptyTr.innerHTML = `
-        <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+        <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
           No municipal road hazard reports found matching current filter criteria.
         </td>
       `;
@@ -370,12 +390,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     activeReports.forEach((report) => {
       const priority = report.priority || 'MEDIUM';
+      const severity = report.severity || 'UNKNOWN';
       const damageCode = report.damage_type || 'D40';
       const status = (report.status || 'submitted').toLowerCase();
+      const nearbyCount = report.nearby_report_count || 0;
+      const hasPending = Boolean(report.has_pending_relations);
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>#${report.id}</strong></td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <strong>#${report.id}</strong>
+            ${hasPending ? `
+              <span class="badge-pill badge-pill-pending" title="Has pending relation for duplicate review" style="padding: 0.1rem 0.35rem; font-size: 0.68rem;">
+                <span class="badge-dot" style="background: var(--color-warning);"></span> Review
+              </span>
+            ` : ''}
+          </div>
+        </td>
         <td>
           <span class="detection-code-chip">${damageCode}</span>
         </td>
@@ -387,6 +419,17 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="ml-severity-badge severity-${priority.toLowerCase()}">
             <span class="severity-bullet"></span>
             ${priority}
+          </span>
+        </td>
+        <td>
+          <span class="ml-severity-badge severity-${severity.toLowerCase()}">
+            <span class="severity-bullet"></span>
+            ${severity}
+          </span>
+        </td>
+        <td>
+          <span class="badge-pill ${nearbyCount > 0 ? (hasPending ? 'badge-pill-pending' : '') : ''}" style="font-size: 0.78rem; padding: 0.2rem 0.5rem;" title="${nearbyCount} nearby report(s)">
+            ${nearbyCount}
           </span>
         </td>
         <td>
@@ -448,9 +491,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams();
       const statusVal = statusFilter ? statusFilter.value.trim() : '';
       const priorityVal = priorityFilter ? priorityFilter.value.trim() : '';
+      const sortByVal = sortBySelect ? sortBySelect.value.trim() : '';
 
       if (statusVal) params.append('status', statusVal);
       if (priorityVal) params.append('priority', priorityVal);
+      if (sortByVal) params.append('sort_by', sortByVal);
+
+      // Synchronize high priority quick-toggle visual state
+      if (highPriorityToggleBtn) {
+        if (priorityVal === 'HIGH') {
+          highPriorityToggleBtn.classList.add('active');
+        } else {
+          highPriorityToggleBtn.classList.remove('active');
+        }
+      }
 
       let url = `${API_BASE}/api/v1/reports`;
       if (params.toString()) {
@@ -550,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
         longitude: report.longitude,
         address: report.address_text,
         reportId: report.id,
-        modelVersion: report.ml_model_version || 'YOLOv8n-experiment2_week5',
+        modelVersion: report.ml_model_version || 'YOLOv8n-CivicSight-4Class',
         inferenceTimeMs: report.ml_inference_time_ms,
         errorMessage: report.ml_error_message,
       });
@@ -561,13 +615,252 @@ document.addEventListener('DOMContentLoaded', () => {
       pollModalMLStatus(report.id);
     }
 
-    // Update Modal Verification & Action Buttons state
+    // 2. Render Priority Engine Assessment Panel (Strictly Separate from AI & Verification)
+    renderPriorityAssessmentPanel(report);
+
+    // 3. Render Related & Nearby Reports Panel (Spatial Proximity & Duplicates)
+    renderRelatedReportsPanel(report);
+
+    // 4. Update Modal Verification & Action Buttons state
     updateModalVerificationState(report);
 
     // Load REAL Status Transition History from Backend
     await loadReportHistory(reportId);
 
     if (inspectionModal) inspectionModal.classList.add('open');
+  }
+
+  // --------------------------------------------------------------------------
+  // Priority Assessment Panel (Rule-Based Explainability)
+  // --------------------------------------------------------------------------
+  function renderPriorityAssessmentPanel(report) {
+    if (!modalPriorityContent) return;
+
+    const priority = report.priority;
+    const severity = report.severity || 'UNKNOWN';
+    const score = report.priority_score;
+    const reasons = report.priority_reasons || [];
+    const isOverridden = Boolean(report.is_priority_overridden);
+
+    if (modalPriorityOverrideBadge) {
+      modalPriorityOverrideBadge.style.display = isOverridden ? 'inline-flex' : 'none';
+    }
+
+    if (modalRecalculatePriorityBtn) {
+      modalRecalculatePriorityBtn.onclick = async () => {
+        modalRecalculatePriorityBtn.disabled = true;
+        try {
+          const res = await fetch(`${API_BASE}/api/v1/reports/${report.id}/recalculate-priority`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            }
+          });
+          if (res.ok) {
+            showToast(`Priority recalculated for Report #${report.id}.`, 'success');
+            await openInspectionModal(report.id);
+            fetchReports();
+          } else {
+            showToast('Failed to recalculate priority.', 'error');
+          }
+        } catch (e) {
+          showToast('Network error during recalculation.', 'error');
+        } finally {
+          modalRecalculatePriorityBtn.disabled = false;
+        }
+      };
+    }
+
+    if (!priority && (!reasons || reasons.length === 0)) {
+      modalPriorityContent.innerHTML = `
+        <div style="color: var(--text-muted); font-size: 0.88rem; padding: 0.5rem 0;">
+          Automated priority assessment unavailable or calculation pending.
+        </div>
+      `;
+      return;
+    }
+
+    const priorityClass = priority ? `severity-${priority.toLowerCase()}` : 'severity-unknown';
+    const severityClass = severity ? `severity-${severity.toLowerCase()}` : 'severity-unknown';
+    const scoreDisplay = (score !== null && score !== undefined)
+      ? `${score.toFixed(1)} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">/ 100</span>`
+      : 'N/A';
+
+    modalPriorityContent.innerHTML = `
+      <div style="display: flex; gap: 1.25rem; align-items: flex-start; flex-wrap: wrap; margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+        <div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">Priority</span>
+          <span class="ml-severity-badge ${priorityClass}">
+            <span class="severity-bullet"></span>
+            ${escapeHtml(priority || 'NOT SET')}
+          </span>
+        </div>
+        <div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">Damage Severity</span>
+          <span class="ml-severity-badge ${severityClass}">
+            <span class="severity-bullet"></span>
+            ${escapeHtml(severity)}
+          </span>
+        </div>
+        <div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">Composite Score</span>
+          <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">${scoreDisplay}</div>
+        </div>
+        <div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">Nearby Reports</span>
+          <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">${report.nearby_report_count || 0}</div>
+        </div>
+        ${isOverridden ? `
+          <div style="flex: 1 1 100%; font-size: 0.8rem; color: var(--accent-color); background: var(--accent-subtle); padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <strong>Manual Override:</strong> ${escapeHtml(report.priority_override_reason || 'Officer override active.')}
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="priority-reasons-wrap">
+        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem;">
+          Why this priority:
+        </div>
+        ${reasons.length > 0 ? `
+          <ul class="priority-reasons-list">
+            ${reasons.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
+          </ul>
+        ` : `
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Automated assessment unavailable</p>
+        `}
+      </div>
+    `;
+  }
+
+  // --------------------------------------------------------------------------
+  // Related & Nearby Reports Panel
+  // --------------------------------------------------------------------------
+  function renderRelatedReportsPanel(report) {
+    if (!modalRelatedReportsList) return;
+
+    const related = report.related_reports || [];
+    if (relatedReportsCountBadge) {
+      relatedReportsCountBadge.textContent = `${related.length} ${related.length === 1 ? 'report' : 'reports'}`;
+    }
+
+    if (related.length === 0) {
+      modalRelatedReportsList.innerHTML = `
+        <div style="color: var(--text-muted); font-size: 0.88rem; padding: 0.5rem 0;">
+          No related reports found nearby.
+        </div>
+      `;
+      return;
+    }
+
+    modalRelatedReportsList.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        ${related.map(item => {
+          const isPending = item.review_status === 'PENDING';
+          const isDuplicateType = item.relation_type === 'POTENTIAL_DUPLICATE';
+          const typeLabel = isDuplicateType ? 'Potential Duplicate' : 'Nearby Related';
+          const isConfirmed = item.review_status === 'CONFIRMED_DUPLICATE';
+
+          let reviewStatusBadge = `<span class="badge-pill" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">Status: ${escapeHtml(item.review_status)}</span>`;
+          if (isPending) {
+            reviewStatusBadge = `<span class="badge-pill badge-pill-pending" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;"><span class="badge-dot" style="background: var(--color-warning);"></span> Pending Review</span>`;
+          } else if (isConfirmed) {
+            reviewStatusBadge = `<span class="badge-pill" style="font-size: 0.72rem; padding: 0.15rem 0.45rem; border-color: var(--color-danger); color: var(--color-danger);">Confirmed Duplicate</span>`;
+          }
+
+          return `
+            <div class="related-report-card" style="padding: 0.85rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap;">
+                  <button type="button" class="btn-link" onclick="CivicSightDashboard.openInspection(${item.related_report_id})" style="font-weight: 700; color: var(--accent-color); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; font-size: 0.9rem;">
+                    Report #${item.related_report_id}
+                  </button>
+                  <span class="badge-pill" style="font-size: 0.72rem; padding: 0.15rem 0.45rem;">
+                    ${Math.round(item.distance_meters)}m away
+                  </span>
+                  <span class="badge-pill" style="font-size: 0.72rem; padding: 0.15rem 0.45rem; font-weight: 600;">
+                    ${escapeHtml(typeLabel)}
+                  </span>
+                  ${reviewStatusBadge}
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                  ${escapeHtml(item.damage_type || 'Hazard')} &bull; Status: ${escapeHtml(item.status || 'unknown')} &bull; Priority: ${escapeHtml(item.priority || 'UNKNOWN')}
+                  ${item.note ? ` &bull; <em>"${escapeHtml(item.note)}"</em>` : ''}
+                </div>
+              </div>
+
+              ${isPending ? `
+                <div style="display: flex; gap: 0.4rem; align-items: center;">
+                  <button type="button" class="btn btn-primary btn-sm" onclick="CivicSightDashboard.promptConfirmDuplicate(${item.relation_id}, ${item.related_report_id}, ${Math.round(item.distance_meters)})" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">
+                    Confirm Duplicate
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.dismissRelation(${item.relation_id})" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">
+                    Dismiss
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // --------------------------------------------------------------------------
+  // Relation Review Actions (Confirm Duplicate & Dismiss)
+  // --------------------------------------------------------------------------
+  function promptConfirmDuplicate(relationId, otherReportId, distanceMeters) {
+    activeReviewRelationId = relationId;
+    if (relationConfirmDesc) {
+      relationConfirmDesc.textContent = `Are you sure you want to confirm Report #${otherReportId} (${distanceMeters}m away) as a duplicate? The duplicate report will transition to DUPLICATE status while the primary report remains active.`;
+    }
+    if (relationReviewNote) relationReviewNote.value = '';
+    if (relationConfirmModal) relationConfirmModal.classList.add('open');
+  }
+
+  function closeRelationConfirmModal() {
+    if (relationConfirmModal) relationConfirmModal.classList.remove('open');
+    activeReviewRelationId = null;
+  }
+
+  async function executeRelationReview(reviewStatus, note) {
+    if (!activeReviewRelationId) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/report-relations/${activeReviewRelationId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          review_status: reviewStatus,
+          note: note || undefined,
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.detail || `Review action failed (${res.status})`, 'error');
+        return;
+      }
+
+      showToast(`Relation ${reviewStatus === 'CONFIRMED_DUPLICATE' ? 'confirmed as duplicate' : 'dismissed'}.`, 'success');
+      closeRelationConfirmModal();
+
+      if (currentlyInspectedReportId) {
+        await openInspectionModal(currentlyInspectedReportId);
+      }
+      fetchReports();
+    } catch (err) {
+      console.error('Error reviewing relation:', err);
+      showToast('Network error while reviewing relation.', 'error');
+    }
+  }
+
+  async function dismissRelation(relationId) {
+    activeReviewRelationId = relationId;
+    await executeRelationReview('DISMISSED', 'Dismissed by municipal officer');
   }
 
   // --------------------------------------------------------------------------
@@ -1179,14 +1472,44 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // Filter Event Listeners
   // --------------------------------------------------------------------------
   statusFilter?.addEventListener('change', () => fetchReports());
   priorityFilter?.addEventListener('change', () => fetchReports());
+  sortBySelect?.addEventListener('change', () => fetchReports());
+
+  highPriorityToggleBtn?.addEventListener('click', () => {
+    if (priorityFilter) {
+      if (priorityFilter.value === 'HIGH') {
+        priorityFilter.value = '';
+      } else {
+        priorityFilter.value = 'HIGH';
+      }
+    }
+    fetchReports();
+  });
+
   resetFiltersBtn?.addEventListener('click', () => {
     if (statusFilter) statusFilter.value = '';
     if (priorityFilter) priorityFilter.value = '';
+    if (sortBySelect) sortBySelect.value = 'created_at';
+    if (highPriorityToggleBtn) highPriorityToggleBtn.classList.remove('active');
     fetchReports();
+  });
+
+  // --------------------------------------------------------------------------
+  // Relation Review Confirmation Modal Listeners
+  // --------------------------------------------------------------------------
+  closeRelationConfirmBtn?.addEventListener('click', closeRelationConfirmModal);
+  cancelRelationConfirmBtn?.addEventListener('click', closeRelationConfirmModal);
+  relationConfirmModal?.addEventListener('click', (e) => {
+    if (e.target === relationConfirmModal) closeRelationConfirmModal();
+  });
+
+  executeRelationConfirmBtn?.addEventListener('click', () => {
+    const noteVal = relationReviewNote ? relationReviewNote.value.trim() : '';
+    executeRelationReview('CONFIRMED_DUPLICATE', noteVal);
   });
 
   // --------------------------------------------------------------------------
@@ -1217,12 +1540,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 4000);
   }
 
-  // Global methods for table row actions
+  // Global methods for table row actions & modal callbacks
   window.CivicSightDashboard = {
     openInspection: openInspectionModal,
     verifyReport: verifyReport,
     openAssignModal: openAssignModal,
     transitionStatus: transitionStatus,
+    promptConfirmDuplicate: promptConfirmDuplicate,
+    dismissRelation: dismissRelation,
   };
 
   // Initialize

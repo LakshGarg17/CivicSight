@@ -3022,3 +3022,48 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .hero-3d-wrapper { height: 300px; }
   .section-title { font-size: 1.6rem; }
 }
+
+/* ==========================================================================
+   Week 8: Priority Engine & Related Reports Polish (CSS Tokens Only)
+   ========================================================================== */
+.btn-toggle-active,
+#highPriorityToggleBtn.active {
+  background: var(--color-danger-subtle) !important;
+  border-color: var(--color-danger) !important;
+  color: var(--color-danger) !important;
+  font-weight: 600;
+}
+
+.priority-reasons-list {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0 0 0;
+}
+
+.priority-reasons-list li {
+  margin-bottom: 0.25rem;
+  line-height: 1.5;
+}
+
+.related-report-card {
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.related-report-card:hover {
+  border-color: var(--accent-color);
+}
+
+.badge-pill-pending {
+  border-color: var(--color-warning-border) !important;
+  background: var(--color-warning-subtle) !important;
+  color: var(--color-warning) !important;
+}
+
+.severity-unknown {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.severity-unknown .severity-bullet {
+  background: var(--text-muted);
+}

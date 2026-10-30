@@ -2,21 +2,57 @@
  * CivicSight — Reusable Visual ML Detection Results Component
  *
  * ML detection viewer:
- * - Image container with animated SVG bounding box overlays in --accent-color
+ * - Image container with animated SVG bounding box overlays color-coded by class:
+ *     * D00 (Longitudinal Crack): Sky Blue (#38bdf8)
+ *     * D10 (Transverse Crack): Teal (#2dd4bf)
+ *     * D20 (Alligator Crack): Amber (#f59e0b)
+ *     * D40 (Pothole Hazard): Crimson (#ef4444)
  * - Results list sorted by confidence descending with defect classification
- * - Derived severity rating (HIGH / MEDIUM / LOW) with visual indicator bar
+ * - Derived severity rating (HIGH / MEDIUM / LOW) based on genuine defect taxonomy
+ * - Clear 4-state lifecycle handling: ML_PENDING, ML_COMPLETE, ML_NO_DETECTIONS, ML_FAILED
+ * - Zero synthetic/fake bounding box generation
  * - Incident coordinates & geospatial metadata
  * - Fully theme-responsive (both light and dark modes)
  */
 
 const CivicSightMLViewer = (() => {
-  // Classification dictionary mapping standard RDD2022 codes to plain descriptions
+  // Classification dictionary mapping standard RDD2022 codes to plain descriptions & theme colors
   const DAMAGE_TYPES = {
-    D00: { code: 'D00', name: 'Longitudinal Crack', baseSeverity: 'MEDIUM' },
-    D10: { code: 'D10', name: 'Transverse Crack', baseSeverity: 'MEDIUM' },
-    D20: { code: 'D20', name: 'Alligator / Fatigue Crack', baseSeverity: 'HIGH' },
-    D40: { code: 'D40', name: 'Pothole Hazard', baseSeverity: 'HIGH' },
-    OTHER: { code: 'OTHER', name: 'Surface Defect', baseSeverity: 'LOW' },
+    D00: {
+      code: 'D00',
+      name: 'Longitudinal Crack',
+      baseSeverity: 'MEDIUM',
+      color: '#38bdf8',
+      category: 'Surface Fracture',
+    },
+    D10: {
+      code: 'D10',
+      name: 'Transverse Crack',
+      baseSeverity: 'MEDIUM',
+      color: '#2dd4bf',
+      category: 'Surface Fracture',
+    },
+    D20: {
+      code: 'D20',
+      name: 'Alligator / Fatigue Crack',
+      baseSeverity: 'HIGH',
+      color: '#f59e0b',
+      category: 'Structural Fatigue',
+    },
+    D40: {
+      code: 'D40',
+      name: 'Pothole Hazard',
+      baseSeverity: 'HIGH',
+      color: '#ef4444',
+      category: 'Cavity / Pavement Loss',
+    },
+    OTHER: {
+      code: 'OTHER',
+      name: 'Surface Defect',
+      baseSeverity: 'LOW',
+      color: '#94a3b8',
+      category: 'General Wear',
+    },
   };
 
   /**
@@ -24,29 +60,44 @@ const CivicSightMLViewer = (() => {
    */
   function calculateSeverity(detections) {
     if (!detections || detections.length === 0) {
-      return { level: 'LOW', score: 25, label: 'Low Severity' };
+      return { level: 'LOW', score: 0, label: 'Clean Surface / No Defects' };
     }
 
     let maxScore = 0;
-    for (const d of detections) {
-      const typeInfo = DAMAGE_TYPES[d.type] || DAMAGE_TYPES.OTHER;
-      const conf = d.confidence || 0.5;
+    let hasD40 = false;
+    let hasD20 = false;
 
-      let score = 30;
-      if (typeInfo.code === 'D40') {
-        score = conf >= 0.8 ? 95 : 85; // Potholes are inherently high-impact
-      } else if (typeInfo.code === 'D20') {
-        score = conf >= 0.75 ? 80 : 70;
-      } else if (typeInfo.code === 'D00' || typeInfo.code === 'D10') {
-        score = conf >= 0.8 ? 65 : 50;
+    for (const d of detections) {
+      const typeCode = (d.type || d.detected_class || '').toUpperCase();
+      const conf = Math.max(0.0, Math.min(1.0, d.confidence || 0.5));
+
+      let score = 20;
+      if (typeCode === 'D40') {
+        hasD40 = true;
+        // Pothole: cavity hazard, score 70-88 depending on confidence
+        score = Math.round(70 + conf * 18);
+      } else if (typeCode === 'D20') {
+        hasD20 = true;
+        // Alligator crack: structural fatigue, score 55-75 depending on confidence
+        score = Math.round(55 + conf * 20);
+      } else if (typeCode === 'D00' || typeCode === 'D10') {
+        // Linear cracks: surface fracture, score 35-55 depending on confidence
+        score = Math.round(35 + conf * 20);
+      } else {
+        score = Math.round(20 + conf * 20);
       }
 
       if (score > maxScore) maxScore = score;
     }
 
-    if (maxScore >= 75) {
+    // Adjust for multiple detections (aggregate damage extent)
+    if (detections.length > 1) {
+      maxScore = Math.min(92, maxScore + (detections.length - 1) * 3);
+    }
+
+    if (maxScore >= 70 || hasD40) {
       return { level: 'HIGH', score: maxScore, label: 'High Priority Remediation' };
-    } else if (maxScore >= 50) {
+    } else if (maxScore >= 45 || hasD20) {
       return { level: 'MEDIUM', score: maxScore, label: 'Moderate Impact' };
     }
     return { level: 'LOW', score: maxScore, label: 'Routine Maintenance' };
@@ -93,7 +144,7 @@ const CivicSightMLViewer = (() => {
       longitude,
       address = 'Pinned Location',
       reportId = null,
-      modelVersion = 'YOLOv8n-experiment2_week5',
+      modelVersion = 'YOLOv8n-CivicSight-4Class',
       inferenceTimeMs = null,
       errorMessage = null,
     } = options;
@@ -139,7 +190,7 @@ const CivicSightMLViewer = (() => {
             <div>
               <h4 style="margin: 0 0 0.35rem 0; font-size: 1.05rem; color: var(--text-primary); font-family: var(--font-display);">Automated Analysis in Progress...</h4>
               <p style="margin: 0; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5;">
-                The YOLOv8 road defect detection pipeline is analyzing uploaded road surface imagery. Results will appear automatically upon completion.
+                The 4-class road defect detection pipeline is analyzing uploaded road surface imagery. Results will appear automatically upon completion.
               </p>
             </div>
           </div>
@@ -149,7 +200,7 @@ const CivicSightMLViewer = (() => {
     }
 
     // ------------------------------------------------------------------------
-    // STATE 2: ML_NO_DETECTIONS — Model ran fine, no defects detected
+    // STATE 2: ML_NO_DETECTIONS — Clean road surface, zero damage detected
     // ------------------------------------------------------------------------
     if (mlStatus === 'ML_NO_DETECTIONS') {
       container.innerHTML = `
@@ -163,8 +214,8 @@ const CivicSightMLViewer = (() => {
               <h3 class="ml-viewer-title">${reportId ? `Report #${reportId} AI Triage` : 'Automated Analysis'}</h3>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-              <span class="status-badge" style="font-size: 0.75rem; background: var(--color-success-bg); color: var(--color-success-text); border: 1px solid var(--color-success-border);">
-                <span class="status-badge-dot" style="background: var(--color-success);"></span>
+              <span class="status-badge" style="font-size: 0.75rem; background: var(--color-success-bg, rgba(34,197,94,0.1)); color: var(--color-success, #16a34a); border: 1px solid var(--color-success-border, rgba(34,197,94,0.25));">
+                <span class="status-badge-dot" style="background: var(--color-success, #16a34a);"></span>
                 ML_NO_DETECTIONS
               </span>
               <span class="ml-severity-badge severity-low">
@@ -185,17 +236,17 @@ const CivicSightMLViewer = (() => {
             </div>
             <div>
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-success, #16a34a)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                   <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
-                <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary); font-family: var(--font-display);">No damage detected by automated analysis</h4>
+                <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary); font-family: var(--font-display);">No qualifying defects detected</h4>
               </div>
               <p style="margin: 0 0 0.75rem 0; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.55;">
-                The automated computer vision pipeline evaluated the road surface image and identified no structural defects (potholes, longitudinal, transverse, or alligator cracking) exceeding confidence thresholds.
+                The 4-class road damage detection model evaluated the road surface imagery and found no qualifying structural damage (D00 longitudinal cracks, D10 transverse cracks, D20 alligator cracks, or D40 potholes) exceeding detection confidence thresholds.
               </p>
-              <div style="font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border-left: 3px solid var(--color-success);">
-                <strong>Municipal Verification Required:</strong> This report remains registered and valid. Municipal officers must inspect the report to confirm conditions before closing or verifying.
+              <div style="font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border-left: 3px solid var(--color-success, #16a34a);">
+                <strong>Municipal Verification:</strong> Field personnel may still inspect and verify road condition if citizen reported concerns.
               </div>
             </div>
           </div>
@@ -213,13 +264,13 @@ const CivicSightMLViewer = (() => {
           <div class="ml-viewer-header">
             <div class="ml-viewer-title-group">
               <span class="ml-status-pill">
-                <span class="ml-status-dot" style="background-color: var(--color-danger);"></span>
+                <span class="ml-status-dot" style="background-color: var(--color-danger, #ef4444);"></span>
                 AI Assessment (Decision Support)
               </span>
               <h3 class="ml-viewer-title">${reportId ? `Report #${reportId} AI Triage` : 'Automated Analysis'}</h3>
             </div>
-            <span class="status-badge" style="font-size: 0.75rem; background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger-border);">
-              <span class="status-badge-dot" style="background: var(--color-danger);"></span>
+            <span class="status-badge" style="font-size: 0.75rem; background: var(--color-danger-bg, rgba(239,68,68,0.1)); color: var(--color-danger, #ef4444); border: 1px solid var(--color-danger-border, rgba(239,68,68,0.25));">
+              <span class="status-badge-dot" style="background: var(--color-danger, #ef4444);"></span>
               ML_FAILED
             </span>
           </div>
@@ -236,18 +287,18 @@ const CivicSightMLViewer = (() => {
             ` : ''}
             <div>
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger, #ef4444)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="8" x2="12" y2="12"></line>
                   <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
-                <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary); font-family: var(--font-display);">Automated analysis is unavailable for this report</h4>
+                <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary); font-family: var(--font-display);">Automated analysis could not be completed</h4>
               </div>
               <p style="margin: 0 0 0.65rem 0; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.55;">
-                Automated ML inference was unable to evaluate this image (${escapeHtml(errorMessage || 'File formatting or inference timeout')}). <strong>The report itself is fully registered and valid.</strong>
+                ML inference was unable to evaluate this image (${escapeHtml(errorMessage || 'File format or inference timeout')}). <strong>The citizen report remains fully registered and valid.</strong>
               </p>
-              <div style="font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border-left: 3px solid var(--color-danger);">
-                <strong>Notice to Municipal Officers:</strong> Automated triage is temporarily bypassed for this entry. Please inspect the attached photograph manually and record your municipal verification determination.
+              <div style="font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border-left: 3px solid var(--color-danger, #ef4444);">
+                <strong>Manual Review Required:</strong> Please inspect the attached photograph manually in the municipal dashboard.
               </div>
             </div>
           </div>
@@ -259,11 +310,9 @@ const CivicSightMLViewer = (() => {
     // ------------------------------------------------------------------------
     // STATE 4: ML_COMPLETE — Detections present with bounding boxes & classes
     // ------------------------------------------------------------------------
-    // Sort detections by confidence descending
     const sortedDetections = [...detections].sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
     const severity = calculateSeverity(sortedDetections);
 
-    // Build markup
     const html = `
       <div class="ml-viewer-card ml-card-complete" role="region" aria-label="AI damage detection assessment">
         <div class="ml-viewer-header">
@@ -272,7 +321,7 @@ const CivicSightMLViewer = (() => {
               <span class="ml-status-dot"></span>
               AI Assessment (Decision Support)
             </span>
-            <h3 class="ml-viewer-title">${reportId ? `Report #${reportId} AI Triage` : 'Defect Analysis Preview'}</h3>
+            <h3 class="ml-viewer-title">${reportId ? `Report #${reportId} AI Triage` : 'Defect Analysis'}</h3>
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <span class="status-badge" style="font-size: 0.75rem; background: var(--accent-subtle); color: var(--accent-color); border: 1px solid var(--accent-subtle-border);">
@@ -320,27 +369,31 @@ const CivicSightMLViewer = (() => {
             <h4 class="ml-pane-title">Classified Defects (${sortedDetections.length})</h4>
             <div class="ml-detections-list">
               ${sortedDetections.length > 0 ? sortedDetections.map((det, index) => {
-                const typeCode = det.type || det.detected_class || 'D40';
-                const typeInfo = DAMAGE_TYPES[typeCode] || { code: typeCode, name: det.label || det.class_name || 'Road Defect' };
-                const confPercent = Math.round((det.confidence || 0) * 100);
+                const typeCode = (det.type || det.detected_class || det.class_name || 'OTHER').toUpperCase();
+                const typeInfo = DAMAGE_TYPES[typeCode] || {
+                  code: typeCode,
+                  name: det.label || det.class_name || 'Road Defect',
+                  color: '#94a3b8',
+                };
+                const confPercent = Math.round((det.confidence !== undefined ? det.confidence : 0) * 100);
                 return `
                   <div class="ml-detection-item" data-box-index="${index}" tabindex="0">
                     <div class="detection-item-left">
-                      <span class="detection-code-chip">${typeInfo.code}</span>
+                      <span class="detection-code-chip" style="background-color: ${typeInfo.color}22; color: ${typeInfo.color}; border: 1px solid ${typeInfo.color}66;">${typeInfo.code}</span>
                       <div>
                         <strong class="detection-name">${escapeHtml(typeInfo.name)}</strong>
-                        <span class="detection-model-tag">${escapeHtml(modelVersion)}</span>
+                        <span class="detection-model-tag" style="display: block; font-size: 0.725rem; color: var(--text-muted);">${escapeHtml(typeInfo.category || 'Road Hazard')}</span>
                       </div>
                     </div>
                     <div class="detection-confidence-wrap">
-                      <span class="confidence-val">${confPercent}%</span>
+                      <span class="confidence-val" style="color: ${typeInfo.color}; font-weight: 700;">${confPercent}%</span>
                       <span class="confidence-label">Confidence</span>
                     </div>
                   </div>
                 `;
               }).join('') : `
                 <div class="ml-empty-detections">
-                  <p>No critical structural hazards identified in this frame.</p>
+                  <p>No structural hazards identified in this frame.</p>
                 </div>
               `}
             </div>
@@ -370,35 +423,39 @@ const CivicSightMLViewer = (() => {
 
     container.innerHTML = html;
 
-    // Populate animated SVG bounding boxes
+    // Populate animated SVG bounding boxes with per-class colors
     const svgOverlay = container.querySelector('#mlSvgOverlay');
     if (svgOverlay && sortedDetections.length > 0) {
       svgOverlay.innerHTML = '';
 
       sortedDetections.forEach((det, idx) => {
-        // det.bbox: [ymin, xmin, ymax, xmax] in normalized coordinates (0 to 1) or [x, y, w, h]
         let x, y, w, h;
         if (det.bbox && det.bbox.length === 4) {
           if (det.bboxFormat === 'xywh') {
             [x, y, w, h] = det.bbox.map(v => v * 100);
+          } else if (det.bboxFormat === 'xyxy') {
+            const [xmin, ymin, xmax, ymax] = det.bbox;
+            x = Math.max(0, Math.min(100, xmin * 100));
+            y = Math.max(0, Math.min(100, ymin * 100));
+            w = Math.max(0.5, Math.min(100 - x, (xmax - xmin) * 100));
+            h = Math.max(0.5, Math.min(100 - y, (ymax - ymin) * 100));
           } else {
-            // Default ymin, xmin, ymax, xmax
+            // Normalized [ymin, xmin, ymax, xmax] convention
             const [ymin, xmin, ymax, xmax] = det.bbox;
-            x = xmin * 100;
-            y = ymin * 100;
-            w = (xmax - xmin) * 100;
-            h = (ymax - ymin) * 100;
+            x = Math.max(0, Math.min(100, xmin * 100));
+            y = Math.max(0, Math.min(100, ymin * 100));
+            w = Math.max(0.5, Math.min(100 - x, (xmax - xmin) * 100));
+            h = Math.max(0.5, Math.min(100 - y, (ymax - ymin) * 100));
           }
         } else {
-          // Standard center placement fallback
-          x = 20 + (idx * 15);
-          y = 25 + (idx * 10);
-          w = 40;
-          h = 35;
+          // Zero fake/synthetic box generation: if bbox is missing, do not draw synthetic box
+          return;
         }
 
-        const typeInfo = DAMAGE_TYPES[det.type] || { code: det.type, name: 'Defect' };
-        const confPercent = Math.round((det.confidence || 0.9) * 100);
+        const typeCode = (det.type || det.detected_class || det.class_name || 'OTHER').toUpperCase();
+        const typeInfo = DAMAGE_TYPES[typeCode] || { code: typeCode, name: det.label || det.class_name || 'Defect', color: '#94a3b8' };
+        const boxColor = typeInfo.color || '#38bdf8';
+        const confPercent = Math.round((det.confidence !== undefined ? det.confidence : 0) * 100);
 
         // Create SVG Group
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -413,8 +470,9 @@ const CivicSightMLViewer = (() => {
         rect.setAttribute('height', h);
         rect.setAttribute('rx', '1.5');
         rect.setAttribute('class', 'bbox-rect');
-        // Add animation delay based on index
-        rect.style.animationDelay = `${idx * 0.25}s`;
+        rect.style.stroke = boxColor;
+        rect.style.fill = `${boxColor}18`;
+        rect.style.animationDelay = `${idx * 0.15}s`;
 
         // Corner bracket accents
         const cornerSize = Math.min(w, h) * 0.25;
@@ -426,26 +484,31 @@ const CivicSightMLViewer = (() => {
           M ${x + cornerSize} ${y + h} L ${x} ${y + h} L ${x} ${y + h - cornerSize}
         `);
         cornerPath.setAttribute('class', 'bbox-corners');
-        cornerPath.style.animationDelay = `${idx * 0.25 + 0.15}s`;
+        cornerPath.style.stroke = boxColor;
+        cornerPath.style.animationDelay = `${idx * 0.15 + 0.1}s`;
 
         // Tag label above or inside the box
-        const labelY = Math.max(y - 2, 4);
+        const labelY = Math.max(y - 1, 4.5);
         const tagGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         tagGroup.setAttribute('class', 'bbox-tag-group');
-        tagGroup.style.animationDelay = `${idx * 0.25 + 0.3}s`;
+        tagGroup.style.animationDelay = `${idx * 0.15 + 0.2}s`;
 
         const tagBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         tagBg.setAttribute('x', x);
-        tagBg.setAttribute('y', labelY - 4.5);
-        tagBg.setAttribute('width', Math.min(w, 32));
-        tagBg.setAttribute('height', 4.5);
+        tagBg.setAttribute('y', labelY - 4.2);
+        tagBg.setAttribute('width', Math.min(w, 30));
+        tagBg.setAttribute('height', 4.2);
         tagBg.setAttribute('rx', '0.8');
         tagBg.setAttribute('class', 'bbox-tag-bg');
+        tagBg.style.fill = boxColor;
 
         const tagText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         tagText.setAttribute('x', x + 1);
         tagText.setAttribute('y', labelY - 1.2);
         tagText.setAttribute('class', 'bbox-tag-text');
+        tagText.style.fill = '#ffffff';
+        tagText.style.fontSize = '3px';
+        tagText.style.fontWeight = 'bold';
         tagText.textContent = `${typeInfo.code} ${confPercent}%`;
 
         tagGroup.appendChild(tagBg);
@@ -472,37 +535,9 @@ const CivicSightMLViewer = (() => {
     }
   }
 
-  /**
-   * Helper to simulate or synthesize detections from an image when live backend ML is offline
-   */
-  function generateSyntheticDetections(damageTypeHint = 'D40') {
-    if (damageTypeHint === 'D40') {
-      return [
-        { type: 'D40', confidence: 0.948, bbox: [0.38, 0.28, 0.72, 0.68] },
-        { type: 'D20', confidence: 0.814, bbox: [0.65, 0.60, 0.88, 0.85] },
-      ];
-    } else if (damageTypeHint === 'D00') {
-      return [
-        { type: 'D00', confidence: 0.912, bbox: [0.20, 0.45, 0.82, 0.58] },
-      ];
-    } else if (damageTypeHint === 'D10') {
-      return [
-        { type: 'D10', confidence: 0.887, bbox: [0.42, 0.18, 0.58, 0.82] },
-      ];
-    } else if (damageTypeHint === 'D20') {
-      return [
-        { type: 'D20', confidence: 0.931, bbox: [0.25, 0.22, 0.78, 0.75] },
-      ];
-    }
-    return [
-      { type: 'D40', confidence: 0.892, bbox: [0.32, 0.30, 0.68, 0.70] },
-    ];
-  }
-
   return {
     render,
     calculateSeverity,
-    generateSyntheticDetections,
     DAMAGE_TYPES,
   };
 })();

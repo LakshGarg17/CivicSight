@@ -126,9 +126,59 @@
             </div>
           </div>
           <span class="input-error-text" id="imageInputError"></span>
+        </section>
 
-          <!-- ML Analysis in Progress (Scanning Lottie) -->
-          <div id="mlScanningState" class="submission-status-banner status-submitting" style="display: none; margin-top: 1rem;">
+        <!-- Step 2: Problem Description & Details -->
+        <section class="form-section">
+          <div class="section-title-wrap">
+            <span class="section-step-badge">2</span>
+            <div>
+              <h2 class="form-section-title">Problem Description & Details <span class="label-required">*</span></h2>
+              <p class="form-section-desc">Provide context to assist maintenance triage and crew dispatch.</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="damageDescription" class="form-label">
+              Description <span class="label-required">*</span>
+            </label>
+            <textarea 
+              id="damageDescription" 
+              name="description" 
+              class="form-textarea" 
+              rows="4" 
+              placeholder="E.g., Deep pothole on right traffic lane near pedestrian crossing. Edges are sharp and pose a risk to vehicles..."
+              required
+            ></textarea>
+            <span class="input-error-text" id="descriptionError"></span>
+          </div>
+
+          <div class="step-completion-action" style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+            <p style="margin: 0; font-size: 0.8125rem; color: var(--text-muted);">
+              Press <kbd style="background: var(--surface-secondary, rgba(255,255,255,0.08)); padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid var(--border-color, rgba(255,255,255,0.15)); font-size: 0.75rem;">Ctrl</kbd> + <kbd style="background: var(--surface-secondary, rgba(255,255,255,0.08)); padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid var(--border-color, rgba(255,255,255,0.15)); font-size: 0.75rem;">Enter</kbd> or click to confirm details and trigger AI analysis.
+            </p>
+            <button type="button" class="btn btn-primary" id="confirmDescriptionBtn">
+              <span>Continue to AI Analysis</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </button>
+          </div>
+        </section>
+
+        <!-- Section: AI Damage Detection Results -->
+        <section class="form-section ml-results-section" id="aiDamageResultsSection" style="display: none;">
+          <div class="section-title-wrap">
+            <span class="section-step-badge section-step-ai">AI</span>
+            <div>
+              <h2 class="form-section-title">AI Damage Detection Results</h2>
+              <p class="form-section-desc">CivicSight analyses the uploaded image to identify road damage and estimate detection confidence.</p>
+            </div>
+          </div>
+
+          <!-- ML Analysis in Progress (Scanning State) -->
+          <div id="mlScanningState" class="submission-status-banner status-submitting" style="display: none; margin-bottom: 1rem;">
             <div class="lottie-status-layout">
               <div class="lottie-wrap lottie-ml-scanning">
                 <lottie-player src="../assets/lottie/scanning.json" background="transparent" speed="1" loop autoplay aria-hidden="true"></lottie-player>
@@ -142,58 +192,6 @@
 
           <!-- Visual ML Detection Results Component Container -->
           <div id="mlDetectionResultsSlot"></div>
-        </section>
-
-        <!-- Step 2: Damage Description & Category -->
-        <section class="form-section">
-          <div class="section-title-wrap">
-            <span class="section-step-badge">2</span>
-            <div>
-              <h2 class="form-section-title">Problem Description & Details <span class="label-required">*</span></h2>
-              <p class="form-section-desc">Provide context to assist maintenance triage and crew dispatch.</p>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="damageDescription" class="form-label">
-              Detailed Description <span class="label-required">*</span>
-            </label>
-            <textarea 
-              id="damageDescription" 
-              name="description" 
-              class="form-textarea" 
-              rows="4" 
-              placeholder="E.g., Deep pothole on right traffic lane near pedestrian crossing. Edges are sharp and pose a risk to vehicles..."
-              required
-            ></textarea>
-            <span class="input-error-text" id="descriptionError"></span>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Observed Defect Category <span class="label-optional">(Optional)</span></label>
-            <div class="damage-category-chips" id="damageTypeChips">
-              <label class="chip-option">
-                <input type="radio" name="damage_type" value="D40" id="chip_d40">
-                <span class="chip-label"><strong>D40</strong> Pothole</span>
-              </label>
-              <label class="chip-option">
-                <input type="radio" name="damage_type" value="D00" id="chip_d00">
-                <span class="chip-label"><strong>D00</strong> Longitudinal Crack</span>
-              </label>
-              <label class="chip-option">
-                <input type="radio" name="damage_type" value="D10" id="chip_d10">
-                <span class="chip-label"><strong>D10</strong> Transverse Crack</span>
-              </label>
-              <label class="chip-option">
-                <input type="radio" name="damage_type" value="D20" id="chip_d20">
-                <span class="chip-label"><strong>D20</strong> Alligator Crack</span>
-              </label>
-              <label class="chip-option">
-                <input type="radio" name="damage_type" value="OTHER" id="chip_other" checked>
-                <span class="chip-label">Unsure / Automatic AI Detection</span>
-              </label>
-            </div>
-          </div>
         </section>
 
         <!-- Step 3: Interactive Location Section (Leaflet Map & Geolocation) -->
