@@ -640,5 +640,234 @@ python backend/test_prototype_e2e_week7.py
 pytest -v backend/
 ```
 
+---
+
+## 🚀 Week 8: Priority Engine & Duplicate / Related-Report Detection
+
+Week 8 delivers an explainable, rule-based triage and spatial clustering subsystem that automatically calculates hazard priority, identifies potential duplicate or nearby reports, and provides municipal officers with review actions while maintaining report integrity.
+
+```text
+               [ Citizen Report Submitted ]
+                            │
+                            ▼
+               [ YOLOv8n ML Inference ]
+              (D40, D20, D10, D00 BBoxes)
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+    [ Proximity Engine ]        [ Priority Engine ]
+    - Haversine Distance        - Pure, Isolated Logic
+    - Bounding-Box Prefilter    - Explainable Reasons List
+    - 50 m Nearby Cluster       - Configurable Weights & Thresholds
+    - 15 m Potential Duplicate  - Deterministic Scoring
+              │                           │
+              └─────────────┬─────────────┘
+                            ▼
+      [ Database Synchronization & Audit Logging ]
+      - Update reports: severity, priority, score, reasons
+      - Log transitions to priority_history table
+      - Store unordered pairs in report_relations
+                            │
+                            ▼
+           [ Municipal Dashboard Triage ]
+      - High Priority Filter & Priority Sorting
+      - "Why This Priority" Explainability Panel
+      - Related Reports Panel (Confirm Duplicate / Dismiss)
+      - Independent Municipal Verification Status
+```
+
+---
+
+### 1. Backend Priority Engine Architecture (`app/services/priority.py`)
+
+The priority engine is engineered as an **isolated, pure scoring module with zero database or HTTP network calls**. It accepts structured inputs and produces deterministic, explainable priority outputs.
+
+#### Inputs:
+- **`detections`**: List of bounding-box detections (`class`, `confidence`, `bbox_area`).
+- **`ml_status`**: Pipeline state (`ML_COMPLETE`, `ML_PENDING`, `ML_NO_DETECTIONS`, `ML_FAILED`).
+- **`nearby_report_count`**: Number of other active reports within the proximity radius.
+- **`report_age_days`**: Time elapsed since submission without municipal resolution.
+- **`location_risk`**: Optional risk modifier for critical transit corridors (default neutral).
+
+#### Outputs:
+```json
+{
+  "severity": "HIGH",
+  "priority": "HIGH",
+  "score": 68.5,
+  "reasons": [
+    "Pothole detected at 88% confidence (high impact)",
+    "Large defect area covering 14% of the image",
+    "3 other reports within 50 m",
+    "Open for 8 days without resolution"
+  ]
+}
+```
+
+#### Scoring Rules & Weights:
+1. **Severity Derivation**:
+   - Derived from the worst detection present above `min_confidence` (default `0.25`). Detections below this threshold are ignored with a reason explicitly noted.
+   - **Class Base Weights**:
+     - `D40 (Pothole)`: Highest base weight (50.0)
+     - `D20 (Alligator Crack)`: High base weight (35.0)
+     - `D10 (Transverse Crack)`: Medium base weight (20.0)
+     - `D00 (Longitudinal Crack)`: Low-medium base weight (12.0)
+   - **Area & Confidence Scaling**: Scaled by detection confidence (`0.0 - 1.0`) and relative bounding box area fraction.
+   - **Severity Tiers**: `HIGH` (score >= 40.0), `MEDIUM` (score >= 20.0), `LOW` (score < 20.0), or `UNKNOWN` (when ML assessment is unavailable).
+
+2. **Priority Composite Scoring**:
+   - `priority_score = severity_score + nearby_report_score + persistence_score + location_risk`
+   - **High Priority** triggered by:
+     - Severe structural road damage (confident pothole `D40` or severe fatigue cracking `D20`), OR
+     - Recurring community hazard confirmed by multiple repeated citizen reports (score >= `threshold_high`, default `55.0`).
+   - **Medium Priority** triggered by:
+     - Moderate road surface damage (`D10`), OR multiple nearby reports suggesting a growing hazard (score >= `threshold_medium`, default `30.0`).
+   - **Low Priority** triggered by:
+     - Minor damage (`D00`) with little evidence of urgency or isolated single reports.
+
+3. **Safe Fallbacks for Missing or Unreliable Inputs**:
+   - `ML_FAILED` / `ML_PENDING`: Severity set to `UNKNOWN`. Priority falls back to citizen report count and persistence rules with reason *"Automated assessment unavailable"*.
+   - `ML_NO_DETECTIONS`: Severity `LOW`. Priority `LOW` unless multiple citizen reports raise it, noting *"No road damage detected by automated assessment"*.
+   - **Invalid or Out-of-Range Coordinates**: Proximity analysis skipped cleanly without crashing, noting *"Proximity analysis skipped: coordinates unavailable or invalid"*.
+   - **Failed Calculations**: Priority calculation failures never abort report creation; the report saves safely with priority logged as null.
+
+---
+
+### 2. Proximity & Duplicate Detection Subsystem (`app/services/proximity.py`)
+
+The spatial engine identifies geographic clusters and potential duplicate submissions using the **Haversine formula** optimized with a **latitude/longitude bounding box prefilter** to eliminate full-table scans.
+
+#### Proximity Workflow:
+1. **Bounding-Box Prefilter**: Computes minimum and maximum latitude/longitude boundaries for `NEARBY_DISTANCE_METERS` (50 m) using Earth's radius (`R = 6,371,000 m`).
+2. **Exclusion Criteria**: Excludes the report itself and any reports with status `rejected`.
+3. **Relation Classification**:
+   - If distance <= `DUPLICATE_DISTANCE_METERS` (15 m) **AND** damage classes are similar (e.g., both potholes or cracking types), classified as `POTENTIAL_DUPLICATE`.
+   - If distance <= `NEARBY_DISTANCE_METERS` (50 m), classified as `NEARBY_RELATED`.
+4. **Bidirectional Pair Integrity**: Relational pairs are saved in `report_relations` with the unique unordered constraint `report_id < related_report_id` to guarantee no duplicate links or reflexive relations (`A -> B` stored once, never `B -> A`).
+5. **Bidirectional Recalculation**:
+   - Updates `nearby_report_count` on the new report and all affected existing reports.
+   - Recalculates priority on the new report and all affected existing reports without triggering recalculation loops.
+   - Creates a new `priority_history` audit row whenever priority, severity, or score changes.
+
+> [!IMPORTANT]
+> **Zero Auto-Merge / Zero Auto-Delete Guarantee:**  
+> Nearby does **not** mean duplicate (e.g., two potholes can exist 10 meters apart on the same lane). The system **never auto-merges, auto-deletes, or auto-closes** original citizen reports. Only an authorized municipal officer can review and confirm a duplicate.
+
+---
+
+### 3. Database Schema Extensions & Migration
+
+#### New Columns on `reports`:
+- `severity` (VARCHAR 20): `HIGH`, `MEDIUM`, `LOW`, `UNKNOWN`
+- `priority` (VARCHAR 20): `HIGH`, `MEDIUM`, `LOW`
+- `priority_score` (FLOAT): Composite numerical priority score (0.0 - 100.0)
+- `priority_reasons` (TEXT / JSON): Plain-English array of explainability strings
+- `priority_updated_at` (DATETIME): Timestamp of last priority evaluation
+- `nearby_report_count` (INTEGER): Number of active reports within 50 meters
+- `is_priority_overridden` (BOOLEAN): Flag indicating manual municipal officer override
+- `priority_override_reason` (TEXT): Mandatory explanation string provided during override
+
+#### Table `priority_history`:
+| Field | Type | Description |
+|:---|:---|:---|
+| `id` | INTEGER PRIMARY KEY | Autoincrementing history record ID |
+| `report_id` | INTEGER FK | Foreign key to `reports.id` (Indexed) |
+| `previous_priority` | VARCHAR(20) | Prior priority tier |
+| `new_priority` | VARCHAR(20) | New priority tier |
+| `previous_severity` | VARCHAR(20) | Prior severity tier |
+| `new_severity` | VARCHAR(20) | New severity tier |
+| `score` | FLOAT | Calculated numerical score |
+| `reasons_snapshot` | TEXT (JSON) | Snapshot of reason strings |
+| `trigger` | VARCHAR(50) | Event trigger (`created`, `nearby_report_added`, `recalculated`, `manual_override`) |
+| `created_at` | DATETIME | Timestamp of audit entry |
+
+#### Table `report_relations`:
+| Field | Type | Description |
+|:---|:---|:---|
+| `id` | INTEGER PRIMARY KEY | Autoincrementing relation ID |
+| `report_id` | INTEGER FK | Lower report ID in canonical pair (Indexed) |
+| `related_report_id`| INTEGER FK | Higher report ID in canonical pair (Indexed) |
+| `distance_meters` | FLOAT | Exact Haversine surface distance |
+| `relation_type` | VARCHAR(30) | `POTENTIAL_DUPLICATE` or `NEARBY_RELATED` |
+| `review_status` | VARCHAR(30) | `PENDING`, `CONFIRMED_DUPLICATE`, or `DISMISSED` (Indexed) |
+| `reviewed_by` | INTEGER FK | User ID of reviewing Municipal Officer |
+| `reviewed_at` | DATETIME | Timestamp of officer action |
+| `note` | TEXT | Review note or justification |
+| `created_at` | DATETIME | Timestamp when relation was discovered |
+
+*Unique Constraint:* `uq_report_relations_pair UNIQUE (report_id, related_report_id)` where `report_id < related_report_id`.
+
+---
+
+### 4. API Endpoints & Access Control Matrix
+
+| Endpoint | Method | Allowed Roles | Description |
+|:---|:---:|:---:|:---|
+| `/reports` / `/api/v1/reports` | `GET` | All (Citizens scoped) | Filter by `?priority=HIGH`, `?severity=`, `?status=`. Sort by `?sort_by=priority` or `score`. Returns `has_pending_relations`. |
+| `/reports/{id}` / `/api/v1/reports/{id}` | `GET` | All (Citizens own only) | Returns priority, severity, reasons, nearby count, and relation details. Citizens cannot view other citizens' related reports. |
+| `/reports/{id}/related` | `GET` | Municipal Officer, Admin | Lists all spatial relations with distance, review status, and target report metadata. |
+| `/report-relations/{relation_id}` | `PATCH` | Municipal Officer, Admin | Review relation: sets `review_status` to `CONFIRMED_DUPLICATE` or `DISMISSED`. Reuses Week 6 state machine. Reject 2nd review with 400. |
+| `/reports/{id}/priority-history` | `GET` | Municipal Officer, Admin | Returns complete chronological audit history of priority changes. |
+| `/reports/{id}/recalculate-priority` | `POST` | Municipal Officer, Admin | Triggers on-demand re-scoring without cascading infinite loops. |
+| `/reports/{id}/override-priority` | `POST` | Municipal Officer, Admin | Manually sets priority with mandatory justification note; preserved from auto-recalculation overwrite. |
+
+---
+
+### 5. Configuration Settings (`PriorityConfig` & `app/core/config.py`)
+
+All engine thresholds and parameters live in centralized configuration objects with zero hardcoded values in logic:
+
+| Config Variable | Default Value | Description |
+|:---|:---:|:---|
+| `NEARBY_DISTANCE_METERS` | `50.0` | Maximum radius in meters to consider reports as nearby cluster |
+| `DUPLICATE_DISTANCE_METERS` | `15.0` | Proximity radius in meters to flag potential duplicate submissions |
+| `DUPLICATE_TIME_WINDOW_DAYS` | `None` (Optional) | Optional time window in days for duplicate eligibility |
+| `IMAGE_SIMILARITY_ENABLED` | `False` | Feature flag toggle for perceptual hash image comparison |
+| `PRIORITY_MIN_CONFIDENCE` | `0.25` | Minimum YOLO detection confidence threshold for severity scoring |
+| `PRIORITY_THRESHOLD_HIGH` | `55.0` | Composite score threshold to trigger `HIGH` priority |
+| `PRIORITY_THRESHOLD_MEDIUM` | `30.0` | Composite score threshold to trigger `MEDIUM` priority |
+| `WEIGHT_D40_POTHOLE` | `50.0` | Base severity weight for pothole hazards |
+| `WEIGHT_D20_ALLIGATOR` | `35.0` | Base severity weight for fatigue/alligator cracking |
+| `WEIGHT_D10_TRANSVERSE` | `20.0` | Base severity weight for transverse cracks |
+| `WEIGHT_D00_LONGITUDINAL` | `12.0` | Base severity weight for longitudinal cracks |
+| `WEIGHT_NEARBY_REPORT` | `7.0` | Score bonus added per nearby active citizen report (capped at 35.0) |
+| `WEIGHT_AGE_PER_DAY` | `1.5` | Persistence score bonus per day open without resolution (capped at 20.0) |
+
+---
+
+### 6. Verification & Test Suite Execution
+
+#### Running the Priority Backfill Script:
+To populate priority, severity, and spatial relations for all existing reports created in earlier weeks:
+```bash
+python backend/scripts/backfill_priority.py
+```
+
+#### Running the Automated Test Suite (Pytest):
+```bash
+# Run Week 8 Priority Engine & Proximity Test Suite (20 tests)
+pytest backend/test_priority_and_relations.py -v
+
+# Run Week 6 & Week 7 Integration Regression Suite (4 tests)
+pytest backend/test_integration_sanity_week6.py -v
+```
+
+#### Running the End-to-End Requirement 8 Manual Verification Script:
+```bash
+python scripts/manual_verification_week8.py
+```
+
+---
+
+### 7. Known Limitations & Engineering Tradeoffs
+
+1. **Rule-Based vs. Civil Engineering Standards**:  
+   The current priority engine weights are operational civic heuristics designed for triage and workflow routing. They do not constitute formal AASHTO or ASTM pavement condition index (PCI) ratings.
+2. **Spatial Proximity vs. Ground Truth Duplication**:  
+   Geographic proximity (e.g. within 15 meters) provides a strong indicator of potential duplication, but multiple distinct defects frequently co-exist in close proximity. The system deliberately mandates human municipal officer verification (`CONFIRMED_DUPLICATE` vs. `DISMISSED`) rather than automated report merges.
+3. **Computer Vision Noise & Confidence Distortion**:  
+   Extreme weather conditions, lighting glares, or low camera angles can yield false positives or lower confidence. The engine explicitly mitigates this through a configurable minimum confidence threshold (`0.25`), fallback to citizen report volume, and human officer override capabilities.
+
+
 
 
