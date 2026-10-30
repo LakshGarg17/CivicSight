@@ -14,7 +14,11 @@ from sqlalchemy import (
     Text,
     Float,
     DateTime,
+    Boolean,
     ForeignKey,
+    UniqueConstraint,
+    CheckConstraint,
+    Index,
     Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship
@@ -94,8 +98,8 @@ class Report(Base):
     description = Column(Text, nullable=True)
     
     # Location fields (flexible for manual text, GPS coords, or future GIS layers)
-    latitude = Column(Float, nullable=True)
-    longitude = Column(Float, nullable=True)
+    latitude = Column(Float, nullable=True, index=True)
+    longitude = Column(Float, nullable=True, index=True)
     address_text = Column(String(255), nullable=True)
     
     # Image attachment reference
@@ -113,6 +117,15 @@ class Report(Base):
     damage_type = Column(String(50), nullable=True)
     priority = Column(String(20), nullable=True, default="MEDIUM", index=True)
     ml_detections = Column(Text, nullable=True)
+
+    # Week 8 Priority Engine Fields
+    severity = Column(String(20), nullable=True, default="UNKNOWN")
+    priority_score = Column(Float, nullable=True)
+    priority_reasons = Column(Text, nullable=True)
+    priority_updated_at = Column(DateTime, nullable=True)
+    nearby_report_count = Column(Integer, default=0, nullable=False)
+    is_priority_overridden = Column(Boolean, default=False, nullable=False)
+    priority_override_reason = Column(Text, nullable=True)
 
     # ML Pipeline Enrichment (Week 7)
     ml_status = Column(
@@ -167,6 +180,24 @@ class Report(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
         order_by="DetectionResult.confidence.desc()",
+    )
+    priority_history = relationship(
+        "PriorityHistory",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="PriorityHistory.created_at.desc()",
+    )
+    outgoing_relations = relationship(
+        "ReportRelation",
+        foreign_keys="ReportRelation.report_id",
+        back_populates="report",
+        cascade="all, delete-orphan",
+    )
+    incoming_relations = relationship(
+        "ReportRelation",
+        foreign_keys="ReportRelation.related_report_id",
+        back_populates="related_report",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self):
@@ -236,3 +267,94 @@ class ReportStatusHistory(Base):
 
     def __repr__(self):
         return f"<ReportStatusHistory id={self.id} report_id={self.report_id} {self.from_status}->{self.to_status}>"
+
+
+class PriorityHistory(Base):
+    """Audit log recording every recalculation, change, or manual override of priority/severity (Week 8)."""
+    __tablename__ = "priority_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(
+        Integer,
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    previous_priority = Column(String(20), nullable=True)
+    new_priority = Column(String(20), nullable=True)
+    previous_severity = Column(String(20), nullable=True)
+    new_severity = Column(String(20), nullable=True)
+    score = Column(Float, nullable=True)
+    reasons_snapshot = Column(Text, nullable=True)
+    reasons = Column(Text, nullable=True)
+    trigger = Column(String(50), nullable=False)  # "created", "nearby_report_added", "recalculated", "manual_override"
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    report = relationship("Report", back_populates="priority_history")
+
+    def __init__(self, **kwargs):
+        # Support both reasons and reasons_snapshot transparently
+        if "reasons_snapshot" in kwargs and "reasons" not in kwargs:
+            kwargs["reasons"] = kwargs["reasons_snapshot"]
+        elif "reasons" in kwargs and "reasons_snapshot" not in kwargs:
+            kwargs["reasons_snapshot"] = kwargs["reasons"]
+        super().__init__(**kwargs)
+
+    def __repr__(self):
+        return (
+            f"<PriorityHistory id={self.id} report_id={self.report_id} "
+            f"trigger='{self.trigger}' {self.previous_priority}->{self.new_priority}>"
+        )
+
+
+class ReportRelation(Base):
+    """Spatial and duplicate relationship between two reports (Week 8)."""
+    __tablename__ = "report_relations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(
+        Integer,
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    related_report_id = Column(
+        Integer,
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    distance_meters = Column(Float, nullable=False)
+    relation_type = Column(String(50), nullable=False)  # POTENTIAL_DUPLICATE / NEARBY_RELATED
+    review_status = Column(
+        String(50),
+        default="PENDING",
+        nullable=False,
+        index=True,
+    )  # PENDING / CONFIRMED_DUPLICATE / DISMISSED
+    reviewed_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reviewed_at = Column(DateTime, nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("report_id", "related_report_id", name="uq_report_relations_pair"),
+        CheckConstraint("report_id != related_report_id", name="ck_report_relations_no_self"),
+    )
+
+    # Relationships
+    report = relationship("Report", foreign_keys=[report_id], back_populates="outgoing_relations")
+    related_report = relationship("Report", foreign_keys=[related_report_id], back_populates="incoming_relations")
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+
+    def __repr__(self):
+        return (
+            f"<ReportRelation id={self.id} {self.report_id}<->{self.related_report_id} "
+            f"type='{self.relation_type}' status='{self.review_status}'>"
+        )
+

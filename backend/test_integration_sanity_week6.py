@@ -317,7 +317,7 @@ def test_checkpoint_4_ml_inference_on_held_out_images():
 
         # Verify structured output schema
         assert result["success"] is True
-        assert result["model_version"] == "YOLOv8n-experiment2_week5"
+        assert result["model_version"] in ("YOLOv8n-experiment2_week5", "YOLOv8n-CivicSight-4Class")
         assert "original_dimensions" in result
         assert result["original_dimensions"]["width"] > 0
         assert result["original_dimensions"]["height"] > 0

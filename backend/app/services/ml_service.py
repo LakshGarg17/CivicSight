@@ -1,9 +1,9 @@
 """CivicSight ML Pipeline Service (Week 7 Prototype Integration)
 
 Orchestrates end-to-end integration between FastAPI report ingestion and
-the finalized YOLOv8n road defect detection subsystem:
-1. Reuses Week 4 preprocessing pipeline (ml.src.preprocess.preprocess_report_image)
-2. Reuses Week 6 finalized inference module (ml.src.inference.detect_road_damage)
+the finalized YOLOv8n 4-class road defect detection subsystem:
+1. Preprocessing pipeline (ml.src.preprocess.preprocess_report_image)
+2. Finalized inference module (ml.src.inference.detect_road_damage)
 3. Persists detection findings in detection_results table (1:N relationship with reports)
 4. Manages explicit lifecycle states: ML_PENDING, ML_COMPLETE, ML_NO_DETECTIONS, ML_FAILED
 5. Enforces zero-failure policy: ML exceptions or timeouts never crash report creation
@@ -31,8 +31,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # Canonical model identifiers
-DEFAULT_MODEL_VERSION = "YOLOv8n-experiment2_week5"
-INFERENCE_TIMEOUT_SECONDS = 12.0
+DEFAULT_MODEL_VERSION = "YOLOv8n-CivicSight-4Class"
+INFERENCE_TIMEOUT_SECONDS = 30.0
 
 
 def resolve_image_disk_path(image_url: Optional[str]) -> Optional[Path]:
@@ -71,24 +71,26 @@ def resolve_image_disk_path(image_url: Optional[str]) -> Optional[Path]:
     return None
 
 
-def run_ml_inference_guarded(image_path: Path, timeout_seconds: float = INFERENCE_TIMEOUT_SECONDS) -> Dict[str, Any]:
-    """Executes Week 4 preprocessing and Week 6 YOLO inference inside a guarded thread with strict timeout.
-    
-    Raises:
-        FileNotFoundError: If model weights or image file cannot be accessed.
-        ValueError / TypeError: If image data is invalid or corrupt.
-        FutureTimeoutError: If execution exceeds timeout_seconds.
-        Exception: Any runtime inference errors.
-    """
+def run_ml_inference_guarded(
+    image_path: Path,
+    confidence_threshold: float = 0.25,
+    iou_threshold: float = 0.45,
+    timeout_seconds: float = INFERENCE_TIMEOUT_SECONDS,
+) -> Dict[str, Any]:
+    """Executes preprocessing and YOLO inference inside a guarded thread with strict timeout."""
     from ml.src.preprocess import preprocess_report_image
     from ml.src.inference import detect_road_damage
 
     def _execute() -> Dict[str, Any]:
-        # Step 1: Preprocess using Week 4 module
+        # Step 1: Preprocess using module
         preprocessed = preprocess_report_image(image_path)
 
-        # Step 2: Run inference using Week 6 finalized model
-        result = detect_road_damage(preprocessed, confidence_threshold=0.10)
+        # Step 2: Run inference using 4-class model with validated confidence threshold
+        result = detect_road_damage(
+            preprocessed,
+            confidence_threshold=confidence_threshold,
+            iou_threshold=iou_threshold,
+        )
         return result
 
     # Execute within ThreadPoolExecutor to prevent long hangs
@@ -104,14 +106,10 @@ def process_report_image_ml(
 ) -> Dict[str, Any]:
     """Processes a report's attached photo through the complete ML pipeline and stores results.
     
-    Can be invoked synchronously or via FastAPI BackgroundTasks.
     Guarantees that database records are updated to one of:
       - ML_COMPLETE: Model detected road damage, records created in detection_results
       - ML_NO_DETECTIONS: Model executed normally, 0 defects detected
       - ML_FAILED: Image missing/corrupt, model load failure, or timeout
-    
-    Returns:
-        Dict summarising processing outcome and status.
     """
     managed_session = False
     if db is None:
@@ -129,6 +127,8 @@ def process_report_image_ml(
             report.ml_status = "ML_FAILED"
             report.ml_error_message = "No photo attached to report"
             report.ml_processed_at = datetime.utcnow()
+            from app.services.proximity import process_report_proximity
+            process_report_proximity(report, db, recalculate_neighbors=False)
             db.commit()
             return {"success": False, "report_id": report_id, "ml_status": "ML_FAILED", "error": report.ml_error_message}
 
@@ -140,6 +140,8 @@ def process_report_image_ml(
             report.ml_status = "ML_FAILED"
             report.ml_error_message = err_msg
             report.ml_processed_at = datetime.utcnow()
+            from app.services.proximity import process_report_proximity
+            process_report_proximity(report, db, recalculate_neighbors=False)
             db.commit()
             return {"success": False, "report_id": report_id, "ml_status": "ML_FAILED", "error": err_msg}
 
@@ -148,12 +150,16 @@ def process_report_image_ml(
         # Execute guarded inference
         try:
             inference_output = run_ml_inference_guarded(disk_path, timeout_seconds=timeout_seconds)
+            if not inference_output.get("success", False):
+                raise RuntimeError(inference_output.get("error", "Inference reported failure"))
         except FutureTimeoutError:
             err_msg = f"ML inference timed out after {timeout_seconds:.1f} seconds"
             logger.error(f"[ML Pipeline] Report #{report_id}: {err_msg}")
             report.ml_status = "ML_FAILED"
             report.ml_error_message = err_msg
             report.ml_processed_at = datetime.utcnow()
+            from app.services.proximity import process_report_proximity
+            process_report_proximity(report, db, recalculate_neighbors=False)
             db.commit()
             return {"success": False, "report_id": report_id, "ml_status": "ML_FAILED", "error": err_msg}
         except Exception as e:
@@ -162,6 +168,8 @@ def process_report_image_ml(
             report.ml_status = "ML_FAILED"
             report.ml_error_message = err_msg
             report.ml_processed_at = datetime.utcnow()
+            from app.services.proximity import process_report_proximity
+            process_report_proximity(report, db, recalculate_neighbors=False)
             db.commit()
             return {"success": False, "report_id": report_id, "ml_status": "ML_FAILED", "error": err_msg}
 
@@ -180,11 +188,14 @@ def process_report_image_ml(
         report.ml_processed_at = now
         report.ml_error_message = None
 
+        from app.services.proximity import process_report_proximity
+
         if len(raw_detections) == 0:
-            # Case: Zero detections returned (valid, different from failure)
+            # Case: Zero detections returned (clean road surface)
             logger.info(f"[ML Pipeline] Report #{report_id}: 0 defects detected. Marked as ML_NO_DETECTIONS.")
             report.ml_status = "ML_NO_DETECTIONS"
             report.ml_detections = "[]"
+            process_report_proximity(report, db, recalculate_neighbors=True)
             db.commit()
             db.refresh(report)
             return {
@@ -192,10 +203,12 @@ def process_report_image_ml(
                 "report_id": report_id,
                 "ml_status": "ML_NO_DETECTIONS",
                 "num_detections": 0,
+                "primary_damage_type": "NONE",
+                "primary_priority": report.priority or "LOW",
                 "inference_time_ms": inference_time_ms,
             }
 
-        # Case: Detections found -> Store ALL detections
+        # Case: Detections found -> Store genuine detections
         stored_detections: List[Dict[str, Any]] = []
         for det in raw_detections:
             cls_code = det.get("class_name", "OTHER")
@@ -240,16 +253,13 @@ def process_report_image_ml(
         report.ml_detections = json.dumps(stored_detections)
 
         # Smart classification enrichment:
-        # If the report didn't have a specific damage type set (or was OTHER), update with primary detected type
+        # If citizen report didn't have specific damage type, update with dominant detected type
         if not report.damage_type or report.damage_type.upper() in ["OTHER", "NONE", "UNSURE"]:
             if primary_damage and primary_damage != "NONE":
                 report.damage_type = primary_damage
 
-        # If report priority is still default MEDIUM and AI identified a HIGH severity hazard (e.g. Pothole / D40),
-        # elevate the initial triage recommendation
-        if report.priority in ["MEDIUM", "LOW"] and primary_priority == "HIGH":
-            report.priority = "HIGH"
-
+        # Run Week 8 Priority Engine & Proximity Analysis
+        process_report_proximity(report, db, recalculate_neighbors=True)
         db.commit()
         db.refresh(report)
 

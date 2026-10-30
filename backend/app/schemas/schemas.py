@@ -250,6 +250,98 @@ class DetectionResultResponse(BaseModel):
         return data
 
 
+# ============================================================================
+# Week 8 Priority Engine & Proximity Schemas
+# ============================================================================
+
+class RelatedReportItemResponse(BaseModel):
+    """Schema for a related report reference linked to a target report."""
+    relation_id: int
+    report_id: int
+    related_report_id: int
+    distance_meters: float
+    relation_type: str  # POTENTIAL_DUPLICATE | NEARBY_RELATED
+    review_status: str  # PENDING | CONFIRMED_DUPLICATE | DISMISSED
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    note: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    severity: Optional[str] = None
+    damage_type: Optional[str] = None
+    description: Optional[str] = None
+    address_text: Optional[str] = None
+    image_url: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PriorityHistoryResponse(BaseModel):
+    """Audit log entry for priority/severity recalculation or manual override."""
+    id: int
+    report_id: int
+    previous_priority: Optional[str] = None
+    new_priority: Optional[str] = None
+    previous_severity: Optional[str] = None
+    new_severity: Optional[str] = None
+    score: Optional[float] = None
+    reasons: Optional[List[str]] = []
+    trigger: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("reasons", mode="before")
+    @classmethod
+    def parse_reasons(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+                return [str(parsed)]
+            except Exception:
+                return [v]
+        return v or []
+
+
+class ReportRelationReviewRequest(BaseModel):
+    """Payload for PATCH /report-relations/{relation_id}."""
+    review_status: str = Field(..., description="Target review status: CONFIRMED_DUPLICATE or DISMISSED")
+    note: Optional[str] = Field(None, description="Optional officer review note or justification")
+
+    @field_validator("review_status")
+    @classmethod
+    def validate_review_status(cls, v: str) -> str:
+        val = v.strip().upper()
+        if val not in ("CONFIRMED_DUPLICATE", "DISMISSED"):
+            raise ValueError("review_status must be either 'CONFIRMED_DUPLICATE' or 'DISMISSED'")
+        return val
+
+
+class PriorityOverrideRequest(BaseModel):
+    """Payload for POST /reports/{id}/override-priority."""
+    priority: str = Field(..., description="Target manual priority: HIGH, MEDIUM, or LOW")
+    reason: str = Field(..., min_length=1, description="Required justification for manual priority override")
+
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, v: str) -> str:
+        val = v.strip().upper()
+        if val not in ("HIGH", "MEDIUM", "LOW"):
+            raise ValueError("priority must be 'HIGH', 'MEDIUM', or 'LOW'")
+        return val
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, v: str) -> str:
+        val = v.strip()
+        if not val:
+            raise ValueError("Override reason cannot be empty")
+        return val
+
+
 class ReportResponse(ReportBase):
     id: int
     reporter_id: Optional[int] = None
@@ -259,6 +351,17 @@ class ReportResponse(ReportBase):
     assigned_to_id: Optional[int] = None
     duplicate_of_id: Optional[int] = None
     rejection_reason: Optional[str] = None
+
+    # Week 8: Priority & Relations
+    severity: Optional[str] = "UNKNOWN"
+    priority_score: Optional[float] = None
+    priority_reasons: Optional[List[str]] = []
+    priority_updated_at: Optional[datetime] = None
+    nearby_report_count: int = 0
+    is_priority_overridden: bool = False
+    priority_override_reason: Optional[str] = None
+    has_pending_relations: bool = False
+    related_reports: List[RelatedReportItemResponse] = []
 
     # ML Pipeline Enrichment (Week 7)
     ml_status: Optional[str] = "ML_PENDING"
@@ -284,6 +387,19 @@ class ReportResponse(ReportBase):
                 return v
         return v
 
+    @field_validator("priority_reasons", mode="before")
+    @classmethod
+    def parse_priority_reasons(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+                return [str(parsed)]
+            except Exception:
+                return [v]
+        return v or []
+
 
 class ReportMLStatusResponse(BaseModel):
     """Targeted response schema for ML inference status polling."""
@@ -300,4 +416,5 @@ class ReportMLStatusResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 

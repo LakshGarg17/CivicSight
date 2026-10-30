@@ -16,6 +16,10 @@ from app.schemas.schemas import (
     ReportResponse,
     DetectionResultResponse,
     ReportMLStatusResponse,
+    RelatedReportItemResponse,
+    PriorityHistoryResponse,
+    ReportRelationReviewRequest,
+    PriorityOverrideRequest,
 )
 from app.models.models import UserRole, ReportStatus
 
@@ -36,5 +40,9 @@ __all__ = [
     "ReportResponse",
     "DetectionResultResponse",
     "ReportMLStatusResponse",
+    "RelatedReportItemResponse",
+    "PriorityHistoryResponse",
+    "ReportRelationReviewRequest",
+    "PriorityOverrideRequest",
     "ReportStatus",
 ]

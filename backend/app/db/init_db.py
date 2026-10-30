@@ -117,6 +117,63 @@ def init_db() -> None:
                     conn.execute(text("ALTER TABLE reports ADD COLUMN ml_error_message TEXT;"))
                     conn.commit()
 
+                # Week 8 additions: Priority Engine & Proximity
+                if "severity" not in existing_report_cols:
+                    logger.info("Adding 'severity' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN severity VARCHAR(20) DEFAULT 'UNKNOWN';"))
+                    conn.commit()
+
+                if "priority_score" not in existing_report_cols:
+                    logger.info("Adding 'priority_score' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN priority_score FLOAT;"))
+                    conn.commit()
+
+                if "priority_reasons" not in existing_report_cols:
+                    logger.info("Adding 'priority_reasons' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN priority_reasons TEXT;"))
+                    conn.commit()
+
+                if "priority_updated_at" not in existing_report_cols:
+                    logger.info("Adding 'priority_updated_at' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN priority_updated_at TIMESTAMP;"))
+                    conn.commit()
+
+                if "nearby_report_count" not in existing_report_cols:
+                    logger.info("Adding 'nearby_report_count' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN nearby_report_count INTEGER DEFAULT 0;"))
+                    conn.commit()
+
+                if "is_priority_overridden" not in existing_report_cols:
+                    logger.info("Adding 'is_priority_overridden' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN is_priority_overridden BOOLEAN DEFAULT 0;"))
+                    conn.commit()
+
+                if "priority_override_reason" not in existing_report_cols:
+                    logger.info("Adding 'priority_override_reason' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN priority_override_reason TEXT;"))
+                    conn.commit()
+
+            if "priority_history" in inspector.get_table_names():
+                existing_ph_cols = [c["name"] for c in inspector.get_columns("priority_history")]
+                if "reasons_snapshot" not in existing_ph_cols:
+                    logger.info("Adding 'reasons_snapshot' column to priority_history table...")
+                    conn.execute(text("ALTER TABLE priority_history ADD COLUMN reasons_snapshot TEXT;"))
+                    conn.commit()
+                if "reasons" not in existing_ph_cols:
+                    logger.info("Adding 'reasons' column to priority_history table...")
+                    conn.execute(text("ALTER TABLE priority_history ADD COLUMN reasons TEXT;"))
+                    conn.commit()
+
+            # Ensure Week 8 Indexes exist
+            try:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_latitude ON reports (latitude);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_longitude ON reports (longitude);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_priority ON reports (priority);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_report_relations_review_status ON report_relations (review_status);"))
+                conn.commit()
+            except Exception as idx_err:
+                logger.debug(f"Index creation note: {idx_err}")
+
         # Seed standard prototype and test users
         from app.db.database import SessionLocal
         from app.models.models import User, UserRole

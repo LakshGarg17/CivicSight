@@ -4,9 +4,18 @@ import uuid
 from datetime import datetime
 from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, BackgroundTasks
+from sqlalchemy import or_, case
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.models import Report, User, ReportStatus, UserRole, ReportStatusHistory
+from app.models.models import (
+    Report,
+    User,
+    ReportStatus,
+    UserRole,
+    ReportStatusHistory,
+    PriorityHistory,
+    ReportRelation,
+)
 from app.core.dependencies import require_roles, get_current_user
 from app.schemas.schemas import (
     ReportCreate,
@@ -20,8 +29,12 @@ from app.schemas.schemas import (
     ReportStatusHistoryResponse,
     ReportMLStatusResponse,
     DetectionResultResponse,
+    RelatedReportItemResponse,
+    PriorityHistoryResponse,
+    PriorityOverrideRequest,
 )
 from app.services.ml_service import process_report_image_ml
+from app.services.proximity import process_report_proximity, update_single_report_priority
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -192,9 +205,116 @@ def record_status_history(
     return history_entry
 
 
+def populate_report_relations(report: Report, db: Session, is_privileged: bool = False) -> None:
+    """Populates related_reports list and has_pending_relations flag on a Report instance."""
+    relations = (
+        db.query(ReportRelation)
+        .filter(
+            or_(
+                ReportRelation.report_id == report.id,
+                ReportRelation.related_report_id == report.id,
+            )
+        )
+        .all()
+    )
+    report.has_pending_relations = any(r.review_status == "PENDING" for r in relations)
+
+    # Citizens must not receive other people's report data
+    if not is_privileged:
+        report.related_reports = []
+        return
+
+    related_items: List[RelatedReportItemResponse] = []
+    for rel in relations:
+        other_id = rel.related_report_id if rel.report_id == report.id else rel.report_id
+        other = db.query(Report).filter(Report.id == other_id).first()
+        if other:
+            related_items.append(
+                RelatedReportItemResponse(
+                    relation_id=rel.id,
+                    report_id=report.id,
+                    related_report_id=other_id,
+                    distance_meters=rel.distance_meters,
+                    relation_type=rel.relation_type,
+                    review_status=rel.review_status,
+                    reviewed_by=rel.reviewed_by,
+                    reviewed_at=rel.reviewed_at,
+                    note=rel.note,
+                    status=other.status.value if hasattr(other.status, "value") else str(other.status),
+                    priority=other.priority,
+                    severity=other.severity,
+                    damage_type=other.damage_type,
+                    description=other.description,
+                    address_text=other.address_text,
+                    image_url=other.image_url,
+                    created_at=other.created_at,
+                )
+            )
+    report.related_reports = related_items
+
+
+
 # ============================================================================
 # Report Creation
 # ============================================================================
+
+@router.post(
+    "/detect",
+    summary="Run pre-submission road damage detection on an uploaded photo",
+)
+async def detect_damage_on_image(
+    request: Request,
+):
+    """Executes real-time YOLO damage detection on an uploaded image before report creation.
+    
+    Accepts multipart/form-data with 'image' or 'file'.
+    Returns detected bounding boxes, class names (D00, D10, D20, D40), confidence, and priority.
+    """
+    form = await request.form()
+    image_file = form.get("image") or form.get("file")
+    if not image_file or not hasattr(image_file, "filename") or not image_file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Image file is required for defect detection.",
+        )
+
+    ext = os.path.splitext(image_file.filename.lower())[1]
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid image format '{ext}'. Allowed formats: JPG, JPEG, PNG, WEBP.",
+        )
+
+    try:
+        contents = await image_file.read()
+        if not contents or len(contents) == 0:
+            raise ValueError("Empty image file provided.")
+
+        import cv2
+        import numpy as np
+        from ml.src.inference import detect_road_damage
+
+        nparr = np.frombuffer(contents, np.uint8)
+        img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img_bgr is None:
+            raise ValueError("Could not decode image file bytes.")
+
+        conf_raw = form.get("confidence_threshold")
+        try:
+            conf_thresh = float(conf_raw) if conf_raw else 0.25
+            conf_thresh = max(0.05, min(0.95, conf_thresh))
+        except (ValueError, TypeError):
+            conf_thresh = 0.25
+
+        result = detect_road_damage(img_bgr, confidence_threshold=conf_thresh, iou_threshold=0.45)
+        return result
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to process image with detection model: {str(e)}",
+        )
+
 
 @router.post(
     "",
@@ -301,6 +421,18 @@ async def create_report(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Reporter user with ID {reporter_id} does not exist.",
                 )
+        else:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                try:
+                    token = auth_header.split(" ")[1]
+                    from app.core.security import decode_access_token
+                    payload = decode_access_token(token)
+                    if payload and "sub" in payload:
+                        reporter_id = int(payload["sub"])
+                        reporter_user = db.query(User).filter(User.id == reporter_id).first()
+                except Exception:
+                    pass
 
         # 6. Save image to disk safely
         safe_filename = f"{uuid.uuid4().hex}{ext}"
@@ -362,9 +494,17 @@ async def create_report(
         db.commit()
         db.refresh(report)
 
+        # Initial proximity analysis and priority scoring (guarded so failure never blocks creation)
+        try:
+            process_report_proximity(report, db, recalculate_neighbors=True)
+            db.refresh(report)
+        except Exception as prox_err:
+            logger.error(f"[Proximity] Initial proximity failure for report #{report.id}: {prox_err}", exc_info=True)
+
         # 9. Asynchronously process image with YOLO defect detection
         background_tasks.add_task(process_report_image_ml, report.id)
 
+        populate_report_relations(report, db, is_privileged=True)
         return report
 
     else:
@@ -379,13 +519,26 @@ async def create_report(
             )
 
         reporter_user = None
-        if report_in.reporter_id:
-            reporter_user = db.query(User).filter(User.id == report_in.reporter_id).first()
+        effective_reporter_id = report_in.reporter_id
+        if effective_reporter_id:
+            reporter_user = db.query(User).filter(User.id == effective_reporter_id).first()
             if not reporter_user:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Reporter user with ID {report_in.reporter_id} does not exist.",
+                    detail=f"Reporter user with ID {effective_reporter_id} does not exist.",
                 )
+        else:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                try:
+                    token = auth_header.split(" ")[1]
+                    from app.core.security import decode_access_token
+                    payload = decode_access_token(token)
+                    if payload and "sub" in payload:
+                        effective_reporter_id = int(payload["sub"])
+                        reporter_user = db.query(User).filter(User.id == effective_reporter_id).first()
+                except Exception:
+                    pass
 
         priority_val = report_in.priority
         if not priority_val or not str(priority_val).strip():
@@ -404,7 +557,7 @@ async def create_report(
         initial_status = report_in.status or ReportStatus.SUBMITTED
         ml_status_init = "ML_PENDING" if report_in.image_url else None
         report = Report(
-            reporter_id=report_in.reporter_id,
+            reporter_id=effective_reporter_id,
             description=report_in.description,
             latitude=report_in.latitude,
             longitude=report_in.longitude,
@@ -432,9 +585,16 @@ async def create_report(
         db.commit()
         db.refresh(report)
 
+        # Initial proximity analysis and priority scoring (guarded so failure never blocks creation)
+        try:
+            process_report_proximity(report, db, recalculate_neighbors=True)
+        except Exception as prox_err:
+            logger.error(f"[Proximity] Initial proximity failure for report #{report.id}: {prox_err}", exc_info=True)
+
         if report_in.image_url:
             background_tasks.add_task(process_report_image_ml, report.id)
 
+        populate_report_relations(report, db, is_privileged=True)
         return report
 
 
@@ -450,6 +610,9 @@ async def create_report(
 def list_reports(
     status_filter: Optional[ReportStatus] = Query(None, alias="status", description="Filter by lifecycle status"),
     priority_filter: Optional[str] = Query(None, alias="priority", description="Filter by priority (HIGH, MEDIUM, LOW)"),
+    severity_filter: Optional[str] = Query(None, alias="severity", description="Filter by severity (HIGH, MEDIUM, LOW, UNKNOWN)"),
+    sort_by: Optional[str] = Query(None, description="Sort field: priority, score, priority_score, created_at"),
+    sort_order: Optional[str] = Query("desc", description="Sort order: asc, desc"),
     reporter_id: Optional[int] = Query(None, description="Filter by reporter user ID"),
     skip: int = Query(0, ge=0, description="Pagination skip offset"),
     limit: int = Query(100, ge=1, le=200, description="Max results per page"),
@@ -458,17 +621,55 @@ def list_reports(
 ):
     """Retrieves road damage reports with role-gated access (Municipal Officer / Admin ONLY).
 
-    Supports independent or combined filtering by status and priority query parameters.
+    Supports independent or combined filtering by status, priority, and severity query parameters.
+    Supports sorting by priority (HIGH first), score, or creation timestamp.
     """
     query = db.query(Report)
     if status_filter:
         query = query.filter(Report.status == status_filter)
     if priority_filter:
         query = query.filter(Report.priority == priority_filter.strip().upper())
+    if severity_filter:
+        query = query.filter(Report.severity == severity_filter.strip().upper())
     if reporter_id:
         query = query.filter(Report.reporter_id == reporter_id)
 
-    reports = query.order_by(Report.created_at.desc()).offset(skip).limit(limit).all()
+    if sort_by == "priority":
+        p_order = case(
+            (Report.priority == "HIGH", 1),
+            (Report.priority == "MEDIUM", 2),
+            (Report.priority == "LOW", 3),
+            else_=4,
+        )
+        if sort_order and sort_order.lower() == "asc":
+            query = query.order_by(p_order.desc(), Report.created_at.desc())
+        else:
+            query = query.order_by(p_order.asc(), Report.priority_score.desc().nullslast(), Report.created_at.desc())
+    elif sort_by in ["score", "priority_score"]:
+        if sort_order and sort_order.lower() == "asc":
+            query = query.order_by(Report.priority_score.asc().nullsfirst(), Report.created_at.asc())
+        else:
+            query = query.order_by(Report.priority_score.desc().nullslast(), Report.created_at.desc())
+    else:
+        query = query.order_by(Report.created_at.desc())
+
+    reports = query.offset(skip).limit(limit).all()
+
+    # Pre-fetch pending relations to populate has_pending_relations flag efficiently
+    pending_relations = (
+        db.query(ReportRelation.report_id, ReportRelation.related_report_id)
+        .filter(ReportRelation.review_status == "PENDING")
+        .all()
+    )
+    pending_relation_report_ids = set()
+    for r1, r2 in pending_relations:
+        pending_relation_report_ids.add(r1)
+        pending_relation_report_ids.add(r2)
+
+    for rep in reports:
+        rep.has_pending_relations = rep.id in pending_relation_report_ids
+        rep.related_reports = []
+
     return reports
 
 
@@ -485,6 +686,7 @@ def get_report(
     """Retrieves full detailed information for a single road damage report.
     
     Accessible by Municipal Officers, Admins, or the Citizen who authored the report.
+    Citizens see their report's priority and assessment, but never other citizens' reports.
     """
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
@@ -503,6 +705,7 @@ def get_report(
             detail="User is not authorized to access this report.",
         )
 
+    populate_report_relations(report, db, is_privileged=is_privileged)
     return report
 
 
@@ -569,6 +772,162 @@ def trigger_report_ml_inference(
         if background_tasks:
             background_tasks.add_task(process_report_image_ml, report.id)
         return report
+
+
+# ============================================================================
+# Priority & Spatial Relations Endpoints (Municipal Officer & Admin Only)
+# ============================================================================
+
+@router.get(
+    "/{report_id}/related",
+    response_model=List[RelatedReportItemResponse],
+    summary="Get spatial relations and potential duplicates for a report (Municipal/Admin only)",
+)
+def get_report_related_reports(
+    report_id: int,
+    current_user: User = Depends(require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Retrieves spatial neighbors and potential duplicate relations for a report.
+    
+    Restricted to Municipal Officers and Admins (403 for Citizen, 401 unauthenticated).
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+
+    populate_report_relations(report, db, is_privileged=True)
+    return report.related_reports
+
+
+@router.get(
+    "/{report_id}/priority-history",
+    response_model=List[PriorityHistoryResponse],
+    summary="Get priority and severity audit history for a report (Municipal/Admin only)",
+)
+def get_report_priority_history(
+    report_id: int,
+    current_user: User = Depends(require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Returns the immutable chronological log of priority/severity scoring updates."""
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+
+    history = (
+        db.query(PriorityHistory)
+        .filter(PriorityHistory.report_id == report_id)
+        .order_by(PriorityHistory.created_at.asc())
+        .all()
+    )
+    return history
+
+
+@router.post(
+    "/{report_id}/recalculate-priority",
+    response_model=ReportResponse,
+    summary="Recalculate report priority and update spatial neighbors (Municipal/Admin only)",
+)
+def recalculate_report_priority(
+    report_id: int,
+    current_user: User = Depends(require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Manually triggers recalculation of spatial proximity and priority scoring."""
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+
+    process_report_proximity(report, db, recalculate_neighbors=True)
+    update_single_report_priority(report, db, trigger="recalculated")
+
+    db.refresh(report)
+    populate_report_relations(report, db, is_privileged=True)
+    return report
+
+
+@router.post(
+    "/{report_id}/override-priority",
+    response_model=ReportResponse,
+    summary="Manually override report priority with audit reason (Municipal/Admin only)",
+)
+def override_report_priority(
+    report_id: int,
+    body: PriorityOverrideRequest,
+    current_user: User = Depends(require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Manually sets report priority. Overridden priorities are flagged and protected from automatic recalculations."""
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+
+    if not body.reason or not body.reason.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="A non-empty reason is required for manual priority override.",
+        )
+
+    target_priority = body.priority.strip().upper()
+    if target_priority not in ["HIGH", "MEDIUM", "LOW"]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid priority '{body.priority}'. Must be HIGH, MEDIUM, or LOW.",
+        )
+
+    prev_priority = report.priority
+    prev_severity = report.severity
+
+    report.priority = target_priority
+    report.is_priority_overridden = True
+    report.priority_override_reason = body.reason.strip()
+    report.priority_updated_at = datetime.utcnow()
+
+    raw_reasons = report.priority_reasons
+    if isinstance(raw_reasons, str):
+        try:
+            reasons_list = json.loads(raw_reasons)
+        except Exception:
+            reasons_list = [raw_reasons] if raw_reasons else []
+    elif isinstance(raw_reasons, list):
+        reasons_list = raw_reasons
+    else:
+        reasons_list = []
+
+    override_label = f"Manual override by {current_user.name or 'Officer'}: {body.reason.strip()}"
+    new_reasons = [override_label] + [r for r in reasons_list if not str(r).startswith("Manual override")]
+    report.priority_reasons = json.dumps(new_reasons)
+
+    history_row = PriorityHistory(
+        report_id=report.id,
+        previous_priority=prev_priority,
+        new_priority=report.priority,
+        previous_severity=prev_severity,
+        new_severity=report.severity,
+        score=report.priority_score,
+        reasons_snapshot=json.dumps(new_reasons),
+        trigger="manual_override",
+        created_at=datetime.utcnow(),
+    )
+    db.add(history_row)
+    db.commit()
+    db.refresh(report)
+
+    populate_report_relations(report, db, is_privileged=True)
+    return report
 
 
 # ============================================================================

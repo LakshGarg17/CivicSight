@@ -11,6 +11,7 @@ from app.db.init_db import init_db
 from app.api.v1.router import api_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.reports import router as reports_router
+from app.api.v1.endpoints.relations import router as relations_router
 
 
 # Ensure base upload directories exist
@@ -62,6 +63,9 @@ app.include_router(auth_router)
 
 # Mount /reports at root level as well for direct POST /reports requests
 app.include_router(reports_router)
+
+# Mount /report-relations at root level for direct PATCH /report-relations/{id} requests
+app.include_router(relations_router)
 
 
 @app.get("/", tags=["System"])
