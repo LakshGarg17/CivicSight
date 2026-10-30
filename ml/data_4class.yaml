@@ -1,0 +1,10 @@
+path: D:/CivicSight-Midsem_W7/CivicSight-main/ml/data_4class
+train: train/images
+val: val/images
+test: test/images
+nc: 4
+names:
+  0: D00
+  1: D10
+  2: D20
+  3: D40
