@@ -10,4 +10,6 @@ Name: Devansh Thapar
 - [Week 5 — YOLO Baseline and Dashboard Integration](./week-5.md)
 - [Week 6 — Initial Model Finalization and Report Workflow](./week-6.md)
 - [Week 7 — YOLO Model Integration and Inference](./week-7.md)
+- [Week 8 — Priority Display and Related Reports](./week-8.md)
+
 

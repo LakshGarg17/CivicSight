@@ -10,3 +10,4 @@ Name: Pranay Mittal
 - [Week 5 — Municipal Dashboard and Report Management](./week-5.md)
 - [Week 6 — Report Status and Workflow APIs](./week-6.md)
 - [Week 7 — ML Results in the CivicSight Dashboard ](./week-7.md)
+- [Week 8 — ML Assessment and Priority Testing](./week-8.md)

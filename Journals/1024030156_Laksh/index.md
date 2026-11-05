@@ -10,3 +10,4 @@ Name: Laksh Garg
 - [Week 5 — Report APIs and Municipal Access](./week-5.md)
 - [Week 6 — Report Verification and Lifecycle Interface](./week-6.md)
 - [Week 7 — FastAPI and YOLO Integration](./week-7.md)
+- [Week 8 — Priority Calculation and Duplicate Detection](./week-8.md)
