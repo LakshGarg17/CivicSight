@@ -1,0 +1,48 @@
+{
+  "experiment_name": "Experiment 2: 512px Cosine-LR Optimization",
+  "timestamp": "2026-09-19T04:38:11.989017",
+  "configuration": {
+    "experiment_name": "Experiment 2: 512px Cosine-LR Optimization",
+    "model_variant": "YOLOv8n",
+    "pretrained_weights": "D:\\Projects\\CivicSight\\yolov8n.pt",
+    "epochs": 3,
+    "imgsz": 512,
+    "batch_size": 8,
+    "device": "cpu",
+    "lr0": 0.01,
+    "cos_lr": true,
+    "classes": [
+      "D00",
+      "D10",
+      "D20",
+      "D40"
+    ],
+    "dataset": "RDD2022 Baseline Partition (250 train / 60 val)",
+    "timestamp": "2026-09-19T04:38:11.989017",
+    "deliberate_changes": [
+      "Resolution changed from 640 to 512 to test faster spatial receptive field convergence",
+      "Epoch count increased from 2 to 3 (+50% training updates)",
+      "Cosine learning rate annealing enabled (cos_lr=True) to prevent gradient overshoot"
+    ]
+  },
+  "metrics": {
+    "overall_mAP50": 0.1176,
+    "overall_mAP50_95": 0.053,
+    "mean_precision": 0.6541,
+    "mean_recall": 0.1254,
+    "per_class_mAP50": {
+      "D00": 0.0419,
+      "D10": 0.0419,
+      "D20": 0.0001,
+      "D40": 0.1281
+    }
+  },
+  "loss_metrics": {
+    "metrics/precision(B)": 0.6541,
+    "metrics/recall(B)": 0.1254,
+    "metrics/mAP50(B)": 0.1176,
+    "metrics/mAP50-95(B)": 0.053,
+    "fitness": 0.053
+  },
+  "save_dir": "D:\\Projects\\CivicSight\\ml\\runs\\detect\\experiment2_week5"
+}

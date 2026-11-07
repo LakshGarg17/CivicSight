@@ -1,0 +1,31 @@
+{
+  "model_name": "CivicSight YOLOv8n 4-Class Road Damage Detector",
+  "timestamp": "2026-10-09T12:08:59.376324",
+  "checkpoint": "D:\\CivicSight-Midsem_W7\\CivicSight-main\\ml\\runs\\detect\\civicsight_yolov8n_4class\\weights\\best.pt",
+  "configuration": {
+    "epochs": 5,
+    "imgsz": 512,
+    "batch_size": 16,
+    "lr0": 0.01,
+    "cos_lr": true,
+    "classes": [
+      "D00",
+      "D10",
+      "D20",
+      "D40"
+    ],
+    "dataset": "RDD2022 4-Class Balanced Partition (680 train / 190 val / 190 test)"
+  },
+  "metrics": {
+    "overall_mAP50": 0.0862,
+    "overall_mAP50_95": 0.0316,
+    "mean_precision": 0.1872,
+    "mean_recall": 0.1126,
+    "per_class_mAP50": {
+      "D00": 0.0148,
+      "D10": 0.0337,
+      "D20": 0.0191,
+      "D40": 0.0587
+    }
+  }
+}
