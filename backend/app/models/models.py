@@ -25,6 +25,9 @@ from sqlalchemy.orm import relationship
 from app.db.database import Base
 
 
+from app.core.state_machine import ReportStatus
+
+
 class UserRole(str, enum.Enum):
     """Supported user roles for RBAC in CivicSight."""
     CITIZEN = "Citizen"
@@ -33,19 +36,17 @@ class UserRole(str, enum.Enum):
     ADMIN = "Admin"
 
 
-class ReportStatus(str, enum.Enum):
-    """Lifecycle stages of a road damage report."""
-    SUBMITTED = "submitted"
-    PENDING_VERIFICATION = "pending_verification"
-    DETECTED = "detected"
-    PRIORITIZED = "prioritized"
-    VERIFIED = "verified"
-    ASSIGNED = "assigned"
-    UNDER_REPAIR = "under_repair"
-    REPAIRED = "repaired"
-    CLOSED = "closed"
-    REJECTED = "rejected"
-    DUPLICATE = "duplicate"
+class EvidenceKind(str, enum.Enum):
+    """Categorization for repair evidence photos."""
+    BEFORE = "BEFORE"
+    AFTER = "AFTER"
+    PROGRESS = "PROGRESS"
+
+
+class VerificationDecision(str, enum.Enum):
+    """Decision outcomes for municipal final verification."""
+    APPROVED = "APPROVED"
+    SENT_BACK = "SENT_BACK"
 
 
 class User(Base):
@@ -63,6 +64,7 @@ class User(Base):
         nullable=False,
         index=True,
     )
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
         DateTime,
@@ -147,6 +149,12 @@ class Report(Base):
         nullable=True,
         index=True,
     )
+    current_assignee_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     duplicate_of_id = Column(
         Integer,
         ForeignKey("reports.id", ondelete="SET NULL"),
@@ -154,6 +162,18 @@ class Report(Base):
         index=True,
     )
     rejection_reason = Column(Text, nullable=True)
+
+    # Week 9 Lifecycle Timestamps & Concurrency Version
+    repair_started_at = Column(DateTime, nullable=True)
+    repair_submitted_at = Column(DateTime, nullable=True)
+    final_verified_at = Column(DateTime, nullable=True)
+    final_verified_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    closed_at = Column(DateTime, nullable=True)
+    version = Column(Integer, default=1, nullable=False)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -198,6 +218,26 @@ class Report(Base):
         foreign_keys="ReportRelation.related_report_id",
         back_populates="related_report",
         cascade="all, delete-orphan",
+    )
+    current_assignee = relationship("User", foreign_keys=[current_assignee_id])
+    final_verifier = relationship("User", foreign_keys=[final_verified_by])
+    assignments = relationship(
+        "Assignment",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="Assignment.assigned_at.desc()",
+    )
+    repair_evidence = relationship(
+        "RepairEvidence",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="RepairEvidence.uploaded_at.asc()",
+    )
+    final_verifications = relationship(
+        "FinalVerification",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="FinalVerification.created_at.desc()",
     )
 
     def __repr__(self):
@@ -357,4 +397,109 @@ class ReportRelation(Base):
             f"<ReportRelation id={self.id} {self.report_id}<->{self.related_report_id} "
             f"type='{self.relation_type}' status='{self.review_status}'>"
         )
+
+
+class Assignment(Base):
+    """Historical and active assignment records linking reports to maintenance staff."""
+    __tablename__ = "assignments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(
+        Integer,
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    assigned_to = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    assigned_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    assigned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    unassigned_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    note = Column(Text, nullable=True)
+
+    # Relationships
+    report = relationship("Report", back_populates="assignments", foreign_keys=[report_id])
+    assignee = relationship("User", foreign_keys=[assigned_to])
+    assigner = relationship("User", foreign_keys=[assigned_by])
+
+    def __repr__(self):
+        return f"<Assignment id={self.id} report_id={self.report_id} staff_id={self.assigned_to} active={self.is_active}>"
+
+
+class RepairEvidence(Base):
+    """Photographic evidence uploaded for road hazard remediation."""
+    __tablename__ = "repair_evidence"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(
+        Integer,
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    uploaded_by = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    kind = Column(
+        SQLEnum(EvidenceKind, values_callable=lambda obj: [e.value for e in obj]),
+        default=EvidenceKind.AFTER,
+        nullable=False,
+    )
+    file_path = Column(String(500), nullable=False)
+    original_filename = Column(String(255), nullable=False)
+    mime_type = Column(String(100), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    checksum = Column(String(64), nullable=False)  # SHA-256
+    note = Column(Text, nullable=True)
+    uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    report = relationship("Report", back_populates="repair_evidence", foreign_keys=[report_id])
+    uploader = relationship("User", foreign_keys=[uploaded_by])
+
+    def __repr__(self):
+        return f"<RepairEvidence id={self.id} report_id={self.report_id} kind='{self.kind}' file='{self.file_path}'>"
+
+
+class FinalVerification(Base):
+    """Municipal officer final inspection and closure decision record."""
+    __tablename__ = "final_verifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(
+        Integer,
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    officer_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    decision = Column(
+        SQLEnum(VerificationDecision, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+    )
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    report = relationship("Report", back_populates="final_verifications", foreign_keys=[report_id])
+    officer = relationship("User", foreign_keys=[officer_id])
+
+    def __repr__(self):
+        return f"<FinalVerification id={self.id} report_id={self.report_id} decision='{self.decision}'>"
+
 

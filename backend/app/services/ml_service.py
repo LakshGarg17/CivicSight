@@ -19,6 +19,7 @@ from typing import Optional, Dict, Any, List
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
 from sqlalchemy.orm import Session
+from app.core.config import settings
 from app.db.database import SessionLocal
 from app.models.models import Report, DetectionResult
 
@@ -149,7 +150,11 @@ def process_report_image_ml(
 
         # Execute guarded inference
         try:
-            inference_output = run_ml_inference_guarded(disk_path, timeout_seconds=timeout_seconds)
+            inference_output = run_ml_inference_guarded(
+                disk_path,
+                confidence_threshold=settings.PRIORITY_MIN_CONFIDENCE,
+                timeout_seconds=timeout_seconds,
+            )
             if not inference_output.get("success", False):
                 raise RuntimeError(inference_output.get("error", "Inference reported failure"))
         except FutureTimeoutError:

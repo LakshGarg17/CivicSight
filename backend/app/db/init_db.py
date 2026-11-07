@@ -38,6 +38,11 @@ def init_db() -> None:
                 except Exception:
                     pass
 
+                if "is_active" not in existing_cols:
+                    logger.info("Adding 'is_active' column to users table...")
+                    conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1 NOT NULL;"))
+                    conn.commit()
+
                 if "hashed_password" not in existing_cols:
                     logger.info("Adding 'hashed_password' column to users table...")
                     conn.execute(text("ALTER TABLE users ADD COLUMN hashed_password VARCHAR(255);"))
@@ -153,6 +158,51 @@ def init_db() -> None:
                     conn.execute(text("ALTER TABLE reports ADD COLUMN priority_override_reason TEXT;"))
                     conn.commit()
 
+                # Week 9 Lifecycle additions
+                if "current_assignee_id" not in existing_report_cols:
+                    logger.info("Adding 'current_assignee_id' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN current_assignee_id INTEGER;"))
+                    conn.commit()
+
+                if "repair_started_at" not in existing_report_cols:
+                    logger.info("Adding 'repair_started_at' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN repair_started_at TIMESTAMP;"))
+                    conn.commit()
+
+                if "repair_submitted_at" not in existing_report_cols:
+                    logger.info("Adding 'repair_submitted_at' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN repair_submitted_at TIMESTAMP;"))
+                    conn.commit()
+
+                if "final_verified_at" not in existing_report_cols:
+                    logger.info("Adding 'final_verified_at' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN final_verified_at TIMESTAMP;"))
+                    conn.commit()
+
+                if "final_verified_by" not in existing_report_cols:
+                    logger.info("Adding 'final_verified_by' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN final_verified_by INTEGER;"))
+                    conn.commit()
+
+                if "closed_at" not in existing_report_cols:
+                    logger.info("Adding 'closed_at' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN closed_at TIMESTAMP;"))
+                    conn.commit()
+
+                if "version" not in existing_report_cols:
+                    logger.info("Adding 'version' column to reports table...")
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN version INTEGER DEFAULT 1 NOT NULL;"))
+                    conn.commit()
+
+                # Week 9 Reversible Legacy Status Migration:
+                # Map any legacy statuses (e.g. 'repaired' -> 'repair_evidence_submitted', 'detected' -> 'pending_verification')
+                try:
+                    conn.execute(text("UPDATE reports SET status = 'repair_evidence_submitted' WHERE status = 'repaired';"))
+                    conn.execute(text("UPDATE reports SET status = 'pending_verification' WHERE status IN ('detected', 'prioritized');"))
+                    conn.commit()
+                except Exception as mig_err:
+                    logger.warning(f"Legacy status migration note: {mig_err}")
+
             if "priority_history" in inspector.get_table_names():
                 existing_ph_cols = [c["name"] for c in inspector.get_columns("priority_history")]
                 if "reasons_snapshot" not in existing_ph_cols:
@@ -164,15 +214,34 @@ def init_db() -> None:
                     conn.execute(text("ALTER TABLE priority_history ADD COLUMN reasons TEXT;"))
                     conn.commit()
 
-            # Ensure Week 8 Indexes exist
+            # Ensure Week 8 & 9 Indexes exist
             try:
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_latitude ON reports (latitude);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_longitude ON reports (longitude);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_priority ON reports (priority);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_report_relations_review_status ON report_relations (review_status);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_assignments_report_id ON assignments (report_id);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_assignments_assigned_to ON assignments (assigned_to);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_repair_evidence_report_id ON repair_evidence (report_id);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_final_verifications_report_id ON final_verifications (report_id);"))
+
+                # Partial unique index: Only one active assignment per report
+                try:
+                    conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_assignments_active_report ON assignments (report_id) WHERE is_active = 1;"))
+                except Exception:
+                    try:
+                        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_assignments_active_report ON assignments (report_id) WHERE is_active = true;"))
+                    except Exception:
+                        pass
                 conn.commit()
             except Exception as idx_err:
                 logger.debug(f"Index creation note: {idx_err}")
+
+        # Ensure upload directories exist
+        import os
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        os.makedirs(os.path.join(backend_dir, "uploads", "evidence"), exist_ok=True)
+        os.makedirs(os.path.join(backend_dir, "uploads", "reports"), exist_ok=True)
 
         # Seed standard prototype and test users
         from app.db.database import SessionLocal
@@ -183,10 +252,16 @@ def init_db() -> None:
         try:
             demo_users = [
                 ("officer@civicsight.gov", "Sarah Chen", UserRole.MUNICIPAL_OFFICER, "Password123!"),
+                ("officer1@civicsight.gov", "Officer Sarah", UserRole.MUNICIPAL_OFFICER, "Password123!"),
                 ("officer_test_w5@example.com", "Officer Dave", UserRole.MUNICIPAL_OFFICER, "testpassword123"),
+                ("staff1@civicsight.gov", "Alex Rivera", UserRole.MAINTENANCE_STAFF, "Password123!"),
+                ("staff2@civicsight.gov", "Marcus Vance", UserRole.MAINTENANCE_STAFF, "Password123!") ,
                 ("citizen@civicsight.org", "Jane Citizen", UserRole.CITIZEN, "Password123!"),
+                ("citizen1@civicsight.org", "Citizen One", UserRole.CITIZEN, "Password123!"),
+                ("citizen2@civicsight.org", "Citizen Two", UserRole.CITIZEN, "Password123!"),
                 ("citizen_test_w5@example.com", "Citizen Jane", UserRole.CITIZEN, "testpassword123"),
                 ("admin@civicsight.gov", "Admin Director", UserRole.ADMIN, "Password123!"),
+                ("admin1@civicsight.gov", "Admin Director", UserRole.ADMIN, "Password123!"),
             ]
             for email, name, role, pwd in demo_users:
                 u = db.query(User).filter(User.email == email).first()

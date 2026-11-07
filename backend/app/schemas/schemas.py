@@ -1,4 +1,4 @@
-"""CivicSight Pydantic Schemas (Week 3)
+﻿"""CivicSight Pydantic Schemas (Week 3)
 
 Request and response validation models for Authentication, User, and Report CRUD operations.
 """
@@ -8,7 +8,7 @@ from typing import Optional, List, Union, Any
 import json
 import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from app.models.models import ReportStatus, UserRole
+from app.models.models import ReportStatus, UserRole, EvidenceKind, VerificationDecision
 
 
 # ============================================================================
@@ -76,8 +76,23 @@ class UserResponse(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     role: UserRole
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StaffUserResponse(BaseModel):
+    id: int
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: UserRole
+    is_active: bool = True
+    open_workload_count: int = 0
+    active_assignments_count: int = 0
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -156,16 +171,212 @@ class ReportDuplicateRequest(BaseModel):
 
 
 class ReportAssignRequest(BaseModel):
-    assigned_to: str = Field(..., min_length=1, description="Maintenance staff member or crew identifier")
+    assigned_to: Optional[str] = Field(None, description="Maintenance staff member or crew identifier")
     staff_id: Optional[int] = Field(None, description="Optional user ID of assigned maintenance staff")
     note: Optional[str] = Field(None, description="Optional assignment notes or instructions")
 
-    @field_validator("assigned_to")
+    @model_validator(mode="before")
     @classmethod
-    def validate_assigned_to_not_empty(cls, v: str) -> str:
+    def resolve_staff(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("staff_id") and data.get("assigned_to"):
+                val = str(data["assigned_to"]).strip()
+                if val.isdigit():
+                    data["staff_id"] = int(val)
+            elif not data.get("assigned_to") and data.get("staff_id"):
+                data["assigned_to"] = str(data["staff_id"])
+        return data
+
+
+class AssignmentCreate(BaseModel):
+    staff_id: Optional[int] = Field(None, description="ID of active maintenance staff user")
+    assigned_to: Optional[Union[str, int]] = Field(None, description="Staff identifier or name")
+    note: Optional[str] = Field(None, description="Optional assignment note or instructions")
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_staff(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("staff_id") and data.get("assigned_to"):
+                val = str(data["assigned_to"]).strip()
+                if val.isdigit():
+                    data["staff_id"] = int(val)
+            elif not data.get("assigned_to") and data.get("staff_id"):
+                data["assigned_to"] = str(data["staff_id"])
+        return data
+
+
+class AssignmentReassign(BaseModel):
+    staff_id: Optional[int] = Field(None, description="ID of new maintenance staff user")
+    new_staff_id: Optional[int] = Field(None, description="Alias for staff_id")
+    assigned_to: Optional[Union[str, int]] = Field(None, description="Staff identifier or name")
+    reason: str = Field(..., min_length=1, description="Mandatory reason for reassigning")
+    note: Optional[str] = Field(None, description="Optional reassignment note")
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_staff(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("staff_id") and data.get("new_staff_id"):
+                data["staff_id"] = data["new_staff_id"]
+            if not data.get("staff_id") and data.get("assigned_to"):
+                val = str(data["assigned_to"]).strip()
+                if val.isdigit():
+                    data["staff_id"] = int(val)
+            elif not data.get("assigned_to") and data.get("staff_id"):
+                data["assigned_to"] = str(data["staff_id"])
+        return data
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason_not_empty(cls, v: str) -> str:
         v = v.strip()
         if not v:
-            raise ValueError("Assigned staff identifier cannot be empty")
+            raise ValueError("Reassignment reason cannot be empty")
+        return v
+
+
+class AssignmentUnassign(BaseModel):
+    reason: str = Field(..., min_length=1, description="Mandatory reason for unassigning")
+    note: Optional[str] = Field(None, description="Optional note")
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Unassign reason cannot be empty")
+        return v
+
+
+class AssignmentResponse(BaseModel):
+    id: int
+    report_id: int
+    assigned_to: int
+    assigned_to_name: Optional[str] = None
+    assigned_to_email: Optional[str] = None
+    assigned_by: Optional[int] = None
+    assigned_by_name: Optional[str] = None
+    assigned_at: datetime
+    unassigned_at: Optional[datetime] = None
+    is_active: bool
+    note: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_orm_fields(cls, data: Any) -> Any:
+        if hasattr(data, "assignee"):
+            assignee = getattr(data, "assignee", None)
+            assigner = getattr(data, "assigner", None)
+            return {
+                "id": getattr(data, "id", 0),
+                "report_id": getattr(data, "report_id", 0),
+                "assigned_to": getattr(data, "assigned_to", 0),
+                "assigned_to_name": assignee.name if assignee else None,
+                "assigned_to_email": assignee.email if assignee else None,
+                "assigned_by": getattr(data, "assigned_by", None),
+                "assigned_by_name": assigner.name if assigner else None,
+                "assigned_at": getattr(data, "assigned_at", datetime.utcnow()),
+                "unassigned_at": getattr(data, "unassigned_at", None),
+                "is_active": getattr(data, "is_active", True),
+                "note": getattr(data, "note", None),
+            }
+        return data
+
+
+class RepairEvidenceResponse(BaseModel):
+    id: int
+    report_id: int
+    uploaded_by: Optional[int] = None
+    uploaded_by_name: Optional[str] = None
+    kind: str
+    file_path: str
+    original_filename: str
+    mime_type: str
+    size_bytes: int
+    checksum: str
+    note: Optional[str] = None
+    uploaded_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_orm_fields(cls, data: Any) -> Any:
+        if hasattr(data, "uploader") or hasattr(data, "kind"):
+            uploader = getattr(data, "uploader", None)
+            k = getattr(data, "kind", "AFTER")
+            k_str = k.value if hasattr(k, "value") else str(k)
+            return {
+                "id": getattr(data, "id", 0),
+                "report_id": getattr(data, "report_id", 0),
+                "uploaded_by": getattr(data, "uploaded_by", None),
+                "uploaded_by_name": uploader.name if uploader else None,
+                "kind": k_str,
+                "file_path": getattr(data, "file_path", ""),
+                "original_filename": getattr(data, "original_filename", ""),
+                "mime_type": getattr(data, "mime_type", ""),
+                "size_bytes": getattr(data, "size_bytes", 0),
+                "checksum": getattr(data, "checksum", ""),
+                "note": getattr(data, "note", None),
+                "uploaded_at": getattr(data, "uploaded_at", datetime.utcnow()),
+            }
+        return data
+
+
+class FinalVerificationRequest(BaseModel):
+    decision: VerificationDecision = Field(..., description="Decision: APPROVED or SENT_BACK")
+    note: Optional[str] = Field(None, description="Inspection feedback (mandatory if SENT_BACK)")
+
+    @model_validator(mode="after")
+    def check_sent_back_note(self):
+        if self.decision == VerificationDecision.SENT_BACK:
+            if not self.note or not self.note.strip():
+                raise ValueError("Note is required when sending report back for rework")
+        return self
+
+
+class FinalVerificationResponse(BaseModel):
+    id: int
+    report_id: int
+    officer_id: Optional[int] = None
+    officer_name: Optional[str] = None
+    decision: str
+    note: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_orm_fields(cls, data: Any) -> Any:
+        if hasattr(data, "officer") or hasattr(data, "decision"):
+            officer = getattr(data, "officer", None)
+            d = getattr(data, "decision", "")
+            d_str = d.value if hasattr(d, "value") else str(d)
+            return {
+                "id": getattr(data, "id", 0),
+                "report_id": getattr(data, "report_id", 0),
+                "officer_id": getattr(data, "officer_id", None),
+                "officer_name": officer.name if officer else None,
+                "decision": d_str,
+                "note": getattr(data, "note", None),
+                "created_at": getattr(data, "created_at", datetime.utcnow()),
+            }
+        return data
+
+
+class ReopenRequest(BaseModel):
+    reason: str = Field(..., min_length=1, description="Mandatory reason for reopening report")
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Reopen reason cannot be empty")
         return v
 
 
@@ -370,6 +581,21 @@ class ReportResponse(ReportBase):
     ml_processed_at: Optional[datetime] = None
     ml_error_message: Optional[str] = None
     detection_results: List[DetectionResultResponse] = []
+
+    # Week 9 Lifecycle Additions
+    current_assignee_id: Optional[int] = None
+    current_assignee_name: Optional[str] = None
+    repair_started_at: Optional[datetime] = None
+    repair_submitted_at: Optional[datetime] = None
+    final_verified_at: Optional[datetime] = None
+    final_verified_by: Optional[int] = None
+    final_verified_by_name: Optional[str] = None
+    closed_at: Optional[datetime] = None
+    version: int = 1
+    assignments: List[AssignmentResponse] = []
+    before_images: List[str] = []
+    after_images: List[RepairEvidenceResponse] = []
+    final_verifications: List[FinalVerificationResponse] = []
 
     created_at: datetime
     updated_at: datetime

@@ -1,10 +1,10 @@
 """CivicSight User CRUD Endpoints (Week 2)"""
 
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.models import User
+from app.models.models import User, UserRole
 from app.schemas.schemas import UserCreate, UserUpdate, UserResponse
 
 from app.core.security import get_password_hash
@@ -49,12 +49,18 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
     summary="List all users",
 )
 def list_users(
+    role: Optional[str] = Query(None, description="Filter by user role (e.g. 'Maintenance Staff', 'Citizen')"),
     skip: int = Query(0, ge=0, description="Pagination skip offset"),
-    limit: int = Query(50, ge=1, le=100, description="Max results per page"),
+    limit: int = Query(1000, ge=1, le=1000, description="Max results per page"),
     db: Session = Depends(get_db),
 ):
     """Retrieves a paginated list of registered users."""
-    users = db.query(User).offset(skip).limit(limit).all()
+    query = db.query(User)
+    if role:
+        # Match enum or case-insensitive name
+        normalized_role = role.strip().replace("_", " ").title()
+        query = query.filter(User.role == normalized_role)
+    users = query.offset(skip).limit(limit).all()
     return users
 
 

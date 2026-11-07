@@ -8,6 +8,7 @@ import os
 import time
 import requests
 import sqlite3
+import pytest
 
 BASE_URL = "http://127.0.0.1:8000"
 API_URL = f"{BASE_URL}/api/v1"
@@ -16,6 +17,15 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "civicsight.db")
 SAMPLE_DEFECT_IMG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ml", "samples", "sample_pothole_d40.jpg"))
 SAMPLE_CLEAN_IMG = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ml", "samples", "sample_road.jpg"))
 CORRUPT_IMG = os.path.abspath(os.path.join(os.path.dirname(__file__), "corrupt_test.jpg"))
+
+_CACHED_DEFECT_ID = None
+
+@pytest.fixture(scope="module")
+def defect_report_id():
+    global _CACHED_DEFECT_ID
+    if _CACHED_DEFECT_ID is None:
+        _CACHED_DEFECT_ID = test_check_1_and_2()
+    return _CACHED_DEFECT_ID
 
 def step(title):
     print("\n" + "=" * 70)
