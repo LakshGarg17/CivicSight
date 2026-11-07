@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maintenance Staff Portal - CivicSight</title>
+  <meta name="description" content="Field maintenance crew portal for managing assigned road hazard work orders, uploading repair evidence photos, and submitting repairs for verification.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  
+  <script src="../js/theme.js"></script>
+  <!-- Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="container navbar-inner">
+      <a href="../index.html" class="brand" aria-label="CivicSight Home">
+        <img src="../assets/logo-icon.png" alt="CivicSight Logo">
+        <span class="brand-text">Civic<span>Sight</span></span>
+      </a>
+
+      <nav>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="../index.html" class="nav-link">&larr; Overview</a></li>
+          <li><a href="maintenance.html" class="nav-link active">Maintenance Portal</a></li>
+        </ul>
+      </nav>
+
+      <div class="navbar-right">
+        <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme">
+          <!-- Injected by theme.js -->
+        </button>
+        <div class="nav-actions">
+          <!-- Injected by auth.js -->
+        </div>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu">
+          &#9776;
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="dashboard-main">
+    <div class="container">
+      
+      <!-- Page Header -->
+      <div class="dashboard-header">
+        <div>
+          <div class="badge-pill">
+            <span class="badge-dot"></span>
+            <span>Field Operations</span>
+          </div>
+          <h1 class="dashboard-title">Maintenance <span class="accent-text">Staff Portal</span></h1>
+          <p class="dashboard-subtitle">
+            Manage assigned hazard work orders, log physical repair progression, and upload photographic evidence for municipal verification.
+          </p>
+        </div>
+        <div class="dashboard-header-actions">
+          <button type="button" id="refreshAssignmentsBtn" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 0.4rem;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            Refresh Workload
+          </button>
+        </div>
+      </div>
+
+      <!-- Workload Summary Banner -->
+      <section class="workload-summary-bar">
+        <div class="workload-stat">
+          <div>
+            <div class="workload-label">Field Technician</div>
+            <div class="workload-num" id="staffUserName" style="font-size: 1.25rem;">Loading...</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
+          <div class="workload-stat">
+            <div class="workload-num" id="statActiveCount">0</div>
+            <div>
+              <div class="workload-label">Active Orders</div>
+              <div style="font-size: 0.78rem; color: var(--text-secondary);">Assigned &amp; In Progress</div>
+            </div>
+          </div>
+          <div class="workload-stat">
+            <div class="workload-num" id="statCompletedCount">0</div>
+            <div>
+              <div class="workload-label">Repaired / Closed</div>
+              <div style="font-size: 0.78rem; color: var(--text-secondary);">Verified by Municipality</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabs Navigation -->
+      <div class="tabs-nav-bar">
+        <button type="button" class="tab-nav-btn active" id="tabActiveBtn">Active Work Orders</button>
+        <button type="button" class="tab-nav-btn" id="tabCompletedBtn">Completed &amp; Closed</button>
+      </div>
+
+      <!-- Assignments Container -->
+      <div id="assignmentsLoading" style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
+        Loading assigned work orders...
+      </div>
+      <div id="assignmentsEmpty" style="display: none; text-align: center; padding: 4rem 1rem; background-color: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-muted); margin-bottom: 1rem;"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+        <h3 style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.5rem;">No Work Orders Assigned</h3>
+        <p style="font-size: 0.88rem; color: var(--text-secondary); max-width: 420px; margin: 0 auto;">
+          You currently have no work orders in this view. When a Municipal Officer assigns road damage repairs to your profile, they will appear here.
+        </p>
+      </div>
+
+      <div class="assignments-grid" id="assignmentsGrid" style="display: none;">
+        <!-- Assignment cards dynamically rendered by maintenance.js -->
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Evidence Upload & Progress Modal -->
+  <div class="modal-overlay" id="evidenceModal" role="dialog" aria-modal="true" aria-labelledby="evidenceModalTitle">
+    <div class="modal-card" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="evidenceModalTitle">Log Repair &amp; Evidence Photos</h3>
+        <button type="button" class="modal-close-btn" id="closeEvidenceModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+      
+      <div style="margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h4 style="margin: 0; font-size: 0.925rem; font-weight: 700; color: var(--text-primary);">Initial Citizen Hazard Report (Before)</h4>
+          <span class="badge-pill" id="evidenceModalReportBadge">Work Order #--</span>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.75rem;">
+          <img id="evidenceModalBeforeThumb" src="" alt="Initial citizen damage report" style="width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.85rem; color: var(--text-secondary);">
+            <div id="evidenceModalDefectTitle" style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem;">Road Defect</div>
+            <div id="evidenceModalLocation" style="font-size: 0.78rem; color: var(--text-muted);">Coordinates</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload Dropzone -->
+      <div class="action-dialog-group">
+        <label>Upload Completed Repair Photo (AFTER) <span style="color: var(--accent-color);">*</span></label>
+        <div class="evidence-dropzone" id="evidenceDropzone">
+          <svg class="evidence-dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">Drag &amp; drop repair photo or click to browse</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">Supports JPEG, PNG, WebP up to 15MB</div>
+          <input type="file" id="evidenceFileInput" accept="image/jpeg,image/png,image/webp" style="display: none;">
+        </div>
+      </div>
+
+      <div class="action-dialog-group" id="evidenceSelectedPreviewWrap" style="display: none;">
+        <label>Selected Photo Preview</label>
+        <div style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+          <img id="evidenceSelectedThumb" src="" alt="Selected repair photo" style="width: 64px; height: 64px; object-fit: cover; border-radius: var(--radius-sm);">
+          <div style="flex: 1; font-size: 0.825rem; color: var(--text-secondary);">
+            <div id="evidenceSelectedFilename" style="font-weight: 600; color: var(--text-primary);">filename.jpg</div>
+            <div id="evidenceSelectedFilesize" style="font-size: 0.75rem; color: var(--text-muted);">0 KB</div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="evidenceClearFileBtn">Remove</button>
+        </div>
+      </div>
+
+      <div class="action-dialog-group">
+        <label for="evidenceUploadNote">Repair Notes / Materials Used</label>
+        <input type="text" id="evidenceUploadNote" class="action-dialog-input" placeholder="e.g. Cleared debris, hot-mix asphalt compaction completed">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-bottom: 1.25rem;">
+        <button type="button" class="btn btn-secondary btn-sm" id="uploadEvidenceOnlyBtn">
+          Upload Photo Only
+        </button>
+      </div>
+
+      <!-- Existing Evidence Gallery -->
+      <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
+        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.875rem; font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+          <span>Uploaded Repair Evidence (<span id="evidenceCountBadge">0</span>)</span>
+          <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">&gt;=1 AFTER photo required to submit</span>
+        </h4>
+        <div class="evidence-previews-list" id="evidenceGalleryList">
+          <div style="font-size: 0.825rem; color: var(--text-muted);">No evidence photos uploaded yet.</div>
+        </div>
+      </div>
+
+      <!-- Action Footer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <button type="button" class="btn btn-secondary btn-sm" id="closeEvidenceModalFooterBtn">Close</button>
+        <button type="button" class="btn btn-primary btn-sm" id="submitForVerificationBtn" disabled>
+          Submit for Municipal Verification &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Side-by-Side Comparison Modal -->
+  <div class="modal-overlay" id="comparisonModal" role="dialog" aria-modal="true" aria-labelledby="comparisonModalTitle">
+    <div class="modal-card" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="comparisonModalTitle">Before &amp; After Repair Comparison</h3>
+        <button type="button" class="modal-close-btn" id="closeComparisonModalBtn" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="evidence-comparison-container">
+        <!-- Before Panel -->
+        <div class="evidence-panel">
+          <div class="evidence-panel-header">
+            <span class="evidence-panel-title">
+              <span class="legend-dot red"></span> BEFORE: Citizen Report
+            </span>
+          </div>
+          <div class="evidence-image-frame">
+            <img id="comparisonBeforeImg" src="" alt="Citizen initial hazard photo">
+          </div>
+          <div class="evidence-meta-text" id="comparisonBeforeMeta">
+            Reported by citizen
+          </div>
+        </div>
+
+        <!-- After Panel -->
+        <div class="evidence-panel">
+          <div class="evidence-panel-header">
+            <span class="evidence-panel-title">
+              <span class="legend-dot green"></span> AFTER: Field Repair
+            </span>
+          </div>
+          <div class="evidence-image-frame">
+            <img id="comparisonAfterImg" src="" alt="Field crew repair photo">
+          </div>
+          <div class="evidence-meta-text" id="comparisonAfterMeta">
+            Uploaded by maintenance staff
+          </div>
+          <!-- Multiple after thumbnails if available -->
+          <div class="evidence-gallery-thumbs" id="comparisonThumbs"></div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+        <button type="button" class="btn btn-secondary btn-sm" id="closeComparisonModalBottomBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Standard Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="brand">
+          <img src="../assets/logo-icon.png" alt="CivicSight Logo">
+          <span class="brand-text">Civic<span>Sight</span></span>
+        </div>
+        <p class="footer-note">&copy; 2026 CivicSight. Municipal Operations Center.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="../js/auth.js"></script>
+  <script src="../js/maintenance.js"></script>
+</body>
+</html>
+

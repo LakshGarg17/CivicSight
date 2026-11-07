@@ -1,5 +1,5 @@
-/* ==========================================================================
-   CivicSight — Design System & Stylesheet
+﻿/* ==========================================================================
+   CivicSight â Design System & Stylesheet
    Pure Flat Two-Theme Architecture: Plain White & Plain Black
    ========================================================================== */
 
@@ -12,7 +12,7 @@
   --font-primary: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
 
-  /* Backgrounds (Pure Neutral White & Gray — Zero Tints / Zero Gradients) */
+  /* Backgrounds (Pure Neutral White & Gray â Zero Tints / Zero Gradients) */
   --bg-primary: #ffffff;
   --bg-secondary: #f4f4f5;
   --bg-tertiary: #e4e4e7;
@@ -76,7 +76,7 @@
 }
 
 [data-theme="dark"] {
-  /* Backgrounds (Pure Neutral Solid Black & Charcoal — Zero Navy / Zero Purple) */
+  /* Backgrounds (Pure Neutral Solid Black & Charcoal â Zero Navy / Zero Purple) */
   --bg-primary: #0a0a0a;
   --bg-secondary: #171717;
   --bg-tertiary: #262626;
@@ -1103,7 +1103,7 @@ body {
   text-decoration: none;
 }
 
-/* Clean Dark Mode for Leaflet Map Tiles — No Neons, Inverted Greyscale */
+/* Clean Dark Mode for Leaflet Map Tiles â No Neons, Inverted Greyscale */
 [data-theme="dark"] .leaflet-tile-pane {
   filter: brightness(0.65) invert(1) contrast(1.6) hue-rotate(180deg) saturate(0.2);
 }
@@ -1770,7 +1770,7 @@ lottie-player {
   pointer-events: none;
 }
 
-/* Animated Bounding Box Outline — Uses ONLY --accent-color */
+/* Animated Bounding Box Outline â Uses ONLY --accent-color */
 .bbox-rect {
   stroke: var(--accent-color);
   stroke-width: 0.6;
@@ -2117,9 +2117,9 @@ lottie-player {
   border-radius: var(--radius-full);
 }
 
-.legend-dot.red { background-color: #dc2626; }
-.legend-dot.amber { background-color: #d97706; }
-.legend-dot.green { background-color: #16a34a; }
+.legend-dot.red { background-color: var(--color-danger); }
+.legend-dot.amber { background-color: var(--color-warning); }
+.legend-dot.green { background-color: var(--color-success); }
 
 .dashboard-map-canvas {
   width: 100%;
@@ -2460,7 +2460,7 @@ spline-viewer,
 }
 .hero-3d-badge .dot {
   width: 8px; height: 8px; border-radius: 50%;
-  background: #22c55e;
+  background: var(--color-success);
   box-shadow: 0 0 0 3px rgba(34,197,94,.25);
   animation: cs-pulse 1.8s ease-in-out infinite;
 }
@@ -2631,6 +2631,13 @@ spline-viewer,
   color: var(--color-warning-text);
 }
 .status-badge.status-under_repair .status-badge-dot { background-color: var(--color-warning); }
+
+.status-badge.status-repair_evidence_submitted {
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning-text);
+}
+.status-badge.status-repair_evidence_submitted .status-badge-dot { background-color: var(--color-warning); }
 
 .status-badge.status-repaired,
 .status-badge.status-closed {
@@ -2814,8 +2821,8 @@ spline-viewer,
   border: 1px solid var(--color-danger);
 }
 .btn-danger:hover {
-  background-color: #b91c1c;
-  border-color: #b91c1c;
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
   color: #ffffff;
 }
 
@@ -2828,7 +2835,7 @@ spline-viewer,
 
 
 /* ==========================================================================
-   13. Visual enhancement layer (v6) � same palette, more depth & polish
+   13. Visual enhancement layer (v6)  same palette, more depth & polish
    ========================================================================== */
 
 ::selection {
@@ -2932,9 +2939,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .chip-gps     { top: 16px;  left: 16px; animation: cs-float-b 5.2s ease-in-out infinite; }
 .chip-priority { bottom: 16px; right: 16px;  animation: cs-float-a 5.8s ease-in-out infinite; }
 .chip-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.chip-dot-red   { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.22); }
-.chip-dot-blue  { background: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.22); }
-.chip-dot-amber { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.22); }
+.chip-dot-red   { background: var(--color-danger); box-shadow: 0 0 0 3px rgba(220,38,38,.22); }
+.chip-dot-blue  { background: var(--accent-color); box-shadow: 0 0 0 3px rgba(37,99,235,.22); }
+.chip-dot-amber { background: var(--color-warning); box-shadow: 0 0 0 3px rgba(217,119,6,.22); }
 @keyframes cs-float-a { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-6px);} }
 @keyframes cs-float-b { 0%,100% { transform: translateY(0);} 50% { transform: translateY(5px);} }
 
@@ -3066,4 +3073,331 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 .severity-unknown .severity-bullet {
   background: var(--text-muted);
+}
+
+
+/* ==========================================================================
+   Week 9: Maintenance Portal & Repair Lifecycle System (CSS Tokens Only)
+   ========================================================================== */
+
+/* Workload Summary Bar */
+.workload-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 1.5rem;
+}
+
+.workload-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.workload-num {
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.workload-label {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Tab Filter Bar */
+.tabs-nav-bar {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1.5rem;
+}
+
+.tab-nav-btn {
+  padding: 0.65rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.tab-nav-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-nav-btn.active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+/* Assignment Card Grid */
+.assignments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .assignments-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.assignment-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: border-color var(--transition-fast);
+}
+
+.assignment-card:hover {
+  border-color: var(--border-color-hover);
+}
+
+.assignment-card.is-sent-back {
+  border-color: var(--color-warning-border);
+}
+
+.assignment-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.assignment-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.assignment-defect-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.assignment-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.assignment-officer-note {
+  background-color: var(--bg-secondary);
+  border-left: 3px solid var(--accent-color);
+  padding: 0.6rem 0.85rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+}
+
+.assignment-rework-banner {
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-warning-text);
+}
+
+.assignment-thumb-box {
+  width: 100%;
+  height: 180px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  position: relative;
+}
+
+.assignment-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.assignment-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Side-by-side Before/After Evidence Viewer */
+.evidence-comparison-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin: 1rem 0;
+}
+
+@media (max-width: 768px) {
+  .evidence-comparison-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.evidence-panel {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.evidence-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.evidence-panel-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.evidence-image-frame {
+  width: 100%;
+  height: 240px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.evidence-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: var(--bg-primary);
+}
+
+.evidence-meta-text {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Evidence Upload Dropzone */
+.evidence-dropzone {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  text-align: center;
+  background-color: var(--bg-secondary);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.evidence-dropzone:hover,
+.evidence-dropzone.drag-over {
+  border-color: var(--accent-color);
+  background-color: var(--accent-subtle);
+}
+
+.evidence-dropzone-icon {
+  width: 36px;
+  height: 36px;
+  stroke: var(--accent-color);
+  margin-bottom: 0.5rem;
+}
+
+.evidence-previews-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.evidence-preview-item {
+  width: 90px;
+  height: 90px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.evidence-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.evidence-preview-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--color-danger);
+  color: var(--bg-primary);
+  border: none;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.evidence-gallery-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.evidence-gallery-thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  object-fit: cover;
+  transition: border-color var(--transition-fast);
+}
+
+.evidence-gallery-thumb:hover,
+.evidence-gallery-thumb.selected {
+  border-color: var(--accent-color);
 }

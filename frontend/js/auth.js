@@ -234,11 +234,11 @@ const CivicSightAuth = (() => {
         
         let roleBadgeContent = '';
         if (user.role === 'Admin') {
-          roleBadgeContent = `<a href="#admin" class="nav-link role-active-link" data-placeholder="Admin Management Panel">[Admin Ops]</a>`;
+          roleBadgeContent = `<a href="${basePath}dashboard.html" class="nav-link role-active-link">[Admin Ops]</a>`;
         } else if (user.role === 'Municipal Officer') {
-          roleBadgeContent = `<a href="#officer" class="nav-link role-active-link" data-placeholder="Municipal Verification & Dispatch">[Officer Triage]</a>`;
+          roleBadgeContent = `<a href="${basePath}dashboard.html" class="nav-link role-active-link">[Officer Center]</a>`;
         } else if (user.role === 'Maintenance Staff') {
-          roleBadgeContent = `<a href="#staff" class="nav-link role-active-link" data-placeholder="Assigned Road Repairs">[Field Work Orders]</a>`;
+          roleBadgeContent = `<a href="${basePath}maintenance.html" class="nav-link role-active-link">[Staff Portal]</a>`;
         } else {
           roleBadgeContent = `<a href="${basePath}report.html" class="nav-link role-active-link">[Citizen Portal]</a>`;
         }

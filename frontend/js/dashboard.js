@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CivicSight — Municipal Operations Dashboard & Interactive Map
  *
  * Week 6 Enhanced Implementation:
@@ -89,6 +89,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalAssignBtn = document.getElementById('modalAssignBtn');
   const modalDuplicateBtn = document.getElementById('modalDuplicateBtn');
   const modalRejectBtn = document.getElementById('modalRejectBtn');
+  const modalReassignBtn = document.getElementById('modalReassignBtn');
+  const modalUnassignBtn = document.getElementById('modalUnassignBtn');
+  const modalFinalVerifyBtn = document.getElementById('modalFinalVerifyBtn');
+  const pendingFinalVerificationBtn = document.getElementById('pendingFinalVerificationBtn');
+
+  // Sub-Modal: Reassign
+  const reassignModal = document.getElementById('reassignModal');
+  const closeReassignModalBtn = document.getElementById('closeReassignModalBtn');
+  const cancelReassignBtn = document.getElementById('cancelReassignBtn');
+  const reassignForm = document.getElementById('reassignForm');
+  const reassignStaffSelect = document.getElementById('reassignStaffSelect');
+  const reassignReasonInput = document.getElementById('reassignReasonInput');
+
+  // Sub-Modal: Unassign
+  const unassignModal = document.getElementById('unassignModal');
+  const closeUnassignModalBtn = document.getElementById('closeUnassignModalBtn');
+  const cancelUnassignBtn = document.getElementById('cancelUnassignBtn');
+  const unassignForm = document.getElementById('unassignForm');
+  const unassignReasonInput = document.getElementById('unassignReasonInput');
+
+  // Sub-Modal: Final Verify and Evidence Review
+  const finalVerifyModal = document.getElementById('finalVerifyModal');
+  const closeFinalVerifyModalBtn = document.getElementById('closeFinalVerifyModalBtn');
+  const cancelFinalVerifyBtn = document.getElementById('cancelFinalVerifyBtn');
+  const verifyBeforeImg = document.getElementById('verifyBeforeImg');
+  const verifyBeforeMeta = document.getElementById('verifyBeforeMeta');
+  const verifyAfterImg = document.getElementById('verifyAfterImg');
+  const verifyAfterMeta = document.getElementById('verifyAfterMeta');
+  const verifyAfterThumbs = document.getElementById('verifyAfterThumbs');
+  const finalVerifyNoteInput = document.getElementById('finalVerifyNoteInput');
+  const sendBackReworkBtn = document.getElementById('sendBackReworkBtn');
+  const approveAndCloseBtn = document.getElementById('approveAndCloseBtn');
+
+  let staffUsersList = [];
 
   // Sub-Modal: Reject
   const rejectModal = document.getElementById('rejectModal');
@@ -449,12 +483,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 Assign Crew
               </button>
             ` : status === 'assigned' ? `
-              <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.transitionStatus(${report.id}, 'under_repair')">
-                Start Repair
+              <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.openReassignModal(${report.id})">
+                Reassign
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.openUnassignModal(${report.id})">
+                Unassign
               </button>
             ` : status === 'under_repair' ? `
-              <button type="button" class="btn btn-secondary btn-sm" onclick="CivicSightDashboard.transitionStatus(${report.id}, 'repaired')">
-                Mark Repaired
+              <span class="status-badge status-under_repair" style="font-size: 0.78rem;">
+                <span class="status-badge-dot"></span> Under Repair
+              </span>
+            ` : status === 'repair_evidence_submitted' ? `
+              <button type="button" class="btn btn-primary btn-sm" onclick="CivicSightDashboard.openFinalVerifyModal(${report.id})">
+                Final Verify
               </button>
             ` : `
               <span class="legend-dot green" title="Finished / Terminal State" style="margin: 0 0.5rem;"></span>
@@ -503,6 +544,14 @@ document.addEventListener('DOMContentLoaded', () => {
           highPriorityToggleBtn.classList.add('active');
         } else {
           highPriorityToggleBtn.classList.remove('active');
+        }
+      }
+
+      if (pendingFinalVerificationBtn) {
+        if (statusVal === 'repair_evidence_submitted') {
+          pendingFinalVerificationBtn.classList.add('btn-toggle-active');
+        } else {
+          pendingFinalVerificationBtn.classList.remove('btn-toggle-active');
         }
       }
 
@@ -931,6 +980,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    const isAssignedState = status === 'assigned';
+    const isEvidenceSubmittedState = status === 'repair_evidence_submitted';
+
     if (modalAssignBtn) {
       if (isVerified) {
         modalAssignBtn.style.display = 'inline-flex';
@@ -938,6 +990,18 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         modalAssignBtn.style.display = 'none';
       }
+    }
+
+    if (modalReassignBtn) {
+      modalReassignBtn.style.display = isAssignedState ? 'inline-flex' : 'none';
+    }
+
+    if (modalUnassignBtn) {
+      modalUnassignBtn.style.display = isAssignedState ? 'inline-flex' : 'none';
+    }
+
+    if (modalFinalVerifyBtn) {
+      modalFinalVerifyBtn.style.display = isEvidenceSubmittedState ? 'inline-flex' : 'none';
     }
   }
 
@@ -1375,7 +1439,7 @@ document.addEventListener('DOMContentLoaded', () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ assigned_to: assignee, note: note || null })
+        body: JSON.stringify((!isNaN(Number(assignee)) && Number(assignee) > 0) ? { staff_id: parseInt(assignee), note: note || null } : { assigned_to: assignee, note: note || null })
       });
 
       if (!res.ok) {
@@ -1540,11 +1604,363 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 4000);
   }
 
+  // --------------------------------------------------------------------------
+  // Week 9: Staff Loading & Dynamic Assignment Dropdowns
+  // --------------------------------------------------------------------------
+  async function loadStaffUsers() {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/staff`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (res.ok) {
+        staffUsersList = await res.json();
+        populateStaffSelects();
+      }
+    } catch (err) {
+      console.error('Failed to load maintenance staff:', err);
+    }
+  }
+
+  function populateStaffSelects() {
+    const optionsHtml = staffUsersList.map(s => 
+      `<option value="${s.id}">${escapeHtml(s.name)} (${s.active_workload} active)</option>`
+    ).join('');
+
+    if (assignStaffSelect) {
+      assignStaffSelect.innerHTML = optionsHtml + `
+        <option value="custom">-- Custom Crew / Technician... --</option>
+      `;
+    }
+    if (reassignStaffSelect) {
+      reassignStaffSelect.innerHTML = optionsHtml;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Week 9: Reassign Modal Logic
+  // --------------------------------------------------------------------------
+  function openReassignModal(reportId) {
+    currentlyInspectedReportId = reportId;
+    if (reassignStaffSelect && staffUsersList.length > 0) {
+      reassignStaffSelect.value = staffUsersList[0].id;
+    }
+    if (reassignReasonInput) reassignReasonInput.value = '';
+    if (reassignModal) reassignModal.classList.add('open');
+  }
+
+  function closeReassignModal() {
+    if (reassignModal) reassignModal.classList.remove('open');
+  }
+
+  closeReassignModalBtn?.addEventListener('click', closeReassignModal);
+  cancelReassignBtn?.addEventListener('click', closeReassignModal);
+  reassignModal?.addEventListener('click', (e) => {
+    if (e.target === reassignModal) closeReassignModal();
+  });
+
+  modalReassignBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) openReassignModal(currentlyInspectedReportId);
+  });
+
+  reassignForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reportId = currentlyInspectedReportId;
+    if (!reportId) return;
+
+    const staffId = reassignStaffSelect ? parseInt(reassignStaffSelect.value) : null;
+    const reason = reassignReasonInput ? reassignReasonInput.value.trim() : '';
+
+    if (!staffId) {
+      showToast('Please select a maintenance staff member.', 'error');
+      return;
+    }
+    if (!reason) {
+      showToast('A reason for reassignment is mandatory.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/reassign`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ new_staff_id: staffId, reason: reason })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || 'Reassignment failed', 'error');
+        return;
+      }
+
+      closeReassignModal();
+      if (inspectionModal?.classList.contains('open')) closeInspectionModal();
+      await fetchReports();
+      await loadStaffUsers();
+      showToast(`Work order #${reportId} reassigned successfully.`, 'success');
+    } catch (err) {
+      console.error('Error reassigning report:', err);
+      showToast('Network error during reassignment.', 'error');
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Week 9: Unassign Modal Logic
+  // --------------------------------------------------------------------------
+  function openUnassignModal(reportId) {
+    currentlyInspectedReportId = reportId;
+    if (unassignReasonInput) unassignReasonInput.value = '';
+    if (unassignModal) unassignModal.classList.add('open');
+  }
+
+  function closeUnassignModal() {
+    if (unassignModal) unassignModal.classList.remove('open');
+  }
+
+  closeUnassignModalBtn?.addEventListener('click', closeUnassignModal);
+  cancelUnassignBtn?.addEventListener('click', closeUnassignModal);
+  unassignModal?.addEventListener('click', (e) => {
+    if (e.target === unassignModal) closeUnassignModal();
+  });
+
+  modalUnassignBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) openUnassignModal(currentlyInspectedReportId);
+  });
+
+  unassignForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reportId = currentlyInspectedReportId;
+    if (!reportId) return;
+
+    const reason = unassignReasonInput ? unassignReasonInput.value.trim() : '';
+    if (!reason) {
+      showToast('A reason for unassigning is mandatory.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/unassign`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ reason: reason })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || 'Unassignment failed', 'error');
+        return;
+      }
+
+      closeUnassignModal();
+      if (inspectionModal?.classList.contains('open')) closeInspectionModal();
+      await fetchReports();
+      await loadStaffUsers();
+      showToast(`Work order #${reportId} returned to verified queue.`, 'success');
+    } catch (err) {
+      console.error('Error unassigning report:', err);
+      showToast('Network error during unassignment.', 'error');
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Week 9: Final Verification & Evidence Review Modal Logic
+  // --------------------------------------------------------------------------
+  async function openFinalVerifyModal(reportId) {
+    currentlyInspectedReportId = reportId;
+    const report = activeReports.find(r => r.id === reportId);
+    if (!report) return;
+
+    if (verifyBeforeImg) {
+      verifyBeforeImg.src = report.image_path ? `${API_BASE}/${report.image_path}` : '../assets/logo-icon.png';
+    }
+    if (verifyBeforeMeta) {
+      verifyBeforeMeta.innerHTML = `
+        <strong>Hazard:</strong> ${escapeHtml(report.defect_type || 'Road Damage')}<br>
+        <strong>Location:</strong> ${escapeHtml(report.address_text || `${Number(report.latitude).toFixed(4)}°, ${Number(report.longitude).toFixed(4)}°`)}<br>
+        <strong>Reported:</strong> ${new Date(report.created_at).toLocaleString()}
+      `;
+    }
+    if (verifyAfterImg) verifyAfterImg.src = '';
+    if (verifyAfterMeta) verifyAfterMeta.textContent = 'Loading evidence photos...';
+    if (verifyAfterThumbs) verifyAfterThumbs.innerHTML = '';
+    if (finalVerifyNoteInput) finalVerifyNoteInput.value = '';
+
+    if (finalVerifyModal) finalVerifyModal.classList.add('open');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/evidence`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+      if (!res.ok) throw new Error('Failed to fetch evidence');
+      const data = await res.json();
+      const photos = data.evidence_photos || [];
+      const afterPhotos = photos.filter(p => (p.kind || '').toUpperCase() === 'AFTER');
+
+      if (afterPhotos.length === 0) {
+        if (verifyAfterMeta) verifyAfterMeta.textContent = 'No AFTER photos found on this report.';
+        return;
+      }
+
+      const first = afterPhotos[0];
+      const firstUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${first.id}/file`;
+      if (verifyAfterImg) verifyAfterImg.src = firstUrl;
+      if (verifyAfterMeta) {
+        verifyAfterMeta.innerHTML = `
+          <strong>Uploaded:</strong> ${new Date(first.uploaded_at).toLocaleString()}<br>
+          <strong>Crew Note:</strong> ${escapeHtml(first.note || 'None logged')}
+        `;
+      }
+
+      if (verifyAfterThumbs && afterPhotos.length > 1) {
+        verifyAfterThumbs.innerHTML = afterPhotos.map((p, idx) => {
+          const thumbUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${p.id}/file`;
+          return `
+            <img src="${escapeHtml(thumbUrl)}" class="evidence-gallery-thumb ${idx === 0 ? 'selected' : ''}"
+                 onclick="CivicSightDashboard.selectVerifyThumb('${escapeHtml(thumbUrl)}', '${escapeHtml(p.note || '')}', '${p.uploaded_at}', this)">
+          `;
+        }).join('');
+      }
+    } catch (err) {
+      console.error('Error fetching final verify evidence:', err);
+      if (verifyAfterMeta) verifyAfterMeta.textContent = 'Unable to load evidence images.';
+    }
+  }
+
+  function selectVerifyThumb(url, note, uploadedAt, thumbEl) {
+    if (verifyAfterImg) verifyAfterImg.src = url;
+    if (verifyAfterMeta) {
+      verifyAfterMeta.innerHTML = `
+        <strong>Uploaded:</strong> ${new Date(uploadedAt).toLocaleString()}<br>
+        <strong>Crew Note:</strong> ${escapeHtml(note || 'None logged')}
+      `;
+    }
+    document.querySelectorAll('#verifyAfterThumbs .evidence-gallery-thumb').forEach(t => t.classList.remove('selected'));
+    if (thumbEl) thumbEl.classList.add('selected');
+  }
+
+  function closeFinalVerifyModal() {
+    if (finalVerifyModal) finalVerifyModal.classList.remove('open');
+  }
+
+  closeFinalVerifyModalBtn?.addEventListener('click', closeFinalVerifyModal);
+  cancelFinalVerifyBtn?.addEventListener('click', closeFinalVerifyModal);
+  finalVerifyModal?.addEventListener('click', (e) => {
+    if (e.target === finalVerifyModal) closeFinalVerifyModal();
+  });
+
+  modalFinalVerifyBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) openFinalVerifyModal(currentlyInspectedReportId);
+  });
+
+  approveAndCloseBtn?.addEventListener('click', async () => {
+    const reportId = currentlyInspectedReportId;
+    if (!reportId) return;
+    const note = finalVerifyNoteInput ? finalVerifyNoteInput.value.trim() : '';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/final-verify`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ decision: 'APPROVED', note: note || null })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || 'Final verification approval failed', 'error');
+        return;
+      }
+
+      closeFinalVerifyModal();
+      if (inspectionModal?.classList.contains('open')) closeInspectionModal();
+      await fetchReports();
+      await loadStaffUsers();
+      showToast(`Work order #${reportId} approved and officially closed!`, 'success');
+    } catch (err) {
+      console.error('Error approving repair:', err);
+      showToast('Network error during final verification approval.', 'error');
+    }
+  });
+
+  sendBackReworkBtn?.addEventListener('click', async () => {
+    const reportId = currentlyInspectedReportId;
+    if (!reportId) return;
+    const note = finalVerifyNoteInput ? finalVerifyNoteInput.value.trim() : '';
+
+    if (!note) {
+      showToast('A specific reason is mandatory when sending a repair back for rework.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/final-verify`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ decision: 'SENT_BACK', note: note })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || 'Sending back failed', 'error');
+        return;
+      }
+
+      closeFinalVerifyModal();
+      if (inspectionModal?.classList.contains('open')) closeInspectionModal();
+      await fetchReports();
+      await loadStaffUsers();
+      showToast(`Work order #${reportId} sent back to maintenance staff for rework.`, 'info');
+    } catch (err) {
+      console.error('Error requesting rework:', err);
+      showToast('Network error during rework request.', 'error');
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Week 9: Pending Final Verification Quick Filter
+  // --------------------------------------------------------------------------
+  pendingFinalVerificationBtn?.addEventListener('click', () => {
+    if (statusFilter) {
+      if (statusFilter.value === 'repair_evidence_submitted') {
+        statusFilter.value = '';
+        pendingFinalVerificationBtn.classList.remove('btn-toggle-active');
+      } else {
+        statusFilter.value = 'repair_evidence_submitted';
+        pendingFinalVerificationBtn.classList.add('btn-toggle-active');
+      }
+      fetchReports();
+    }
+  });
+
   // Global methods for table row actions & modal callbacks
   window.CivicSightDashboard = {
     openInspection: openInspectionModal,
     verifyReport: verifyReport,
     openAssignModal: openAssignModal,
+    openReassignModal: openReassignModal,
+    openUnassignModal: openUnassignModal,
+    openFinalVerifyModal: openFinalVerifyModal,
+    selectVerifyThumb: selectVerifyThumb,
     transitionStatus: transitionStatus,
     promptConfirmDuplicate: promptConfirmDuplicate,
     dismissRelation: dismissRelation,
@@ -1553,4 +1969,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize
   initDashboardMap();
   fetchReports();
+  loadStaffUsers();
 });
