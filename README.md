@@ -868,6 +868,157 @@ python scripts/manual_verification_week8.py
 3. **Computer Vision Noise & Confidence Distortion**:  
    Extreme weather conditions, lighting glares, or low camera angles can yield false positives or lower confidence. The engine explicitly mitigates this through a configurable minimum confidence threshold (`0.25`), fallback to citizen report volume, and human officer override capabilities.
 
+---
+
+## 🛠️ Week 9: Complete Lifecycle, Crew Dispatch & Repair Verification
+
+Week 9 closes the end-to-end municipal loop: a verified road hazard gets assigned to field maintenance crew, repaired, evidenced with photographic proof, reviewed side-by-side, verified by municipal officers, and closed.
+
+### 1. Canonical Status Lifecycle & Transition Diagram
+
+The system enforces a single canonical source of truth for all status transitions defined in `backend/app/core/state_machine.py`:
+
+```
+ [ SUBMITTED ] ──► [ PENDING_VERIFICATION ]
+                            │
+       ┌────────────────────┼────────────────────┐
+       ▼                    ▼                    ▼
+  [ REJECTED ]        [ DUPLICATE ]        [ VERIFIED ] ◄──────────────┐
+  (Terminal)          (Terminal)                 │                     │ (Unassign)
+                                                 ▼                     │
+                                           [ ASSIGNED ] ───────────────┘
+                                                 │
+                                                 ▼
+                                          [ UNDER_REPAIR ] ◄──────────┐
+                                                 │                    │ (SENT_BACK rework)
+                                                 ▼                    │
+                                    [ REPAIR_EVIDENCE_SUBMITTED ] ────┘
+                                                 │
+                                                 ▼ (APPROVED)
+                                             [ CLOSED ]
+                                             (Terminal)
+```
+
+### 2. Role-Based Access Control (RBAC) Transition Matrix
+
+| Transition | Allowed Roles | Enforced Preconditions / Requirements |
+|:---|:---|:---|
+| `SUBMITTED -> PENDING_VERIFICATION` | System / Auto | Automatic upon successful report creation and ML processing. |
+| `PENDING_VERIFICATION -> VERIFIED` | Municipal Officer, Admin | Officer inspects and validates report legitimacy. |
+| `PENDING_VERIFICATION -> REJECTED` | Municipal Officer, Admin | Mandatory non-empty rejection reason required. |
+| `PENDING_VERIFICATION -> DUPLICATE` | Municipal Officer, Admin | Mandatory reference to primary original report ID (`duplicate_of_id`). |
+| `VERIFIED -> ASSIGNED` | Municipal Officer, Admin | Assignee must be an active user with the `Maintenance Staff` role. Sets `is_active=1` in `assignments`. |
+| `ASSIGNED -> ASSIGNED` (Reassign) | Municipal Officer, Admin | Closes previous assignment (`unassigned_at=now`), opens new active assignment. Mandatory reason required. |
+| `ASSIGNED -> VERIFIED` (Unassign) | Municipal Officer, Admin | Closes active assignment (`unassigned_at=now`), clears `current_assignee_id`. Mandatory reason required. |
+| `ASSIGNED -> UNDER_REPAIR` | Assigned Maintenance Staff, Admin | Crew arrives on site and starts physical repair. Records `repair_started_at`. |
+| `UNDER_REPAIR -> REPAIR_EVIDENCE_SUBMITTED` | Assigned Maintenance Staff, Admin | Crew uploads >= 1 valid AFTER repair photo and submits. Records `repair_submitted_at`. |
+| `REPAIR_EVIDENCE_SUBMITTED -> CLOSED` | Municipal Officer, Admin | Officer inspects before/after photos and approves (`APPROVED`). Sets `closed_at` and `final_verified_by`. |
+| `REPAIR_EVIDENCE_SUBMITTED -> UNDER_REPAIR` | Municipal Officer, Admin | Officer requests rework (`SENT_BACK`). Mandatory rework instruction note required. |
+| `CLOSED/REJECTED/DUPLICATE -> PENDING_VERIFICATION` | Admin Only | Reopens terminal ticket for reinvestigation. Mandatory audit reason required. |
+
+*Citizens cannot perform any state transitions. Maintenance staff cannot verify, reject, close, or touch reports assigned to someone else.*
+
+---
+
+### 3. Database Schema Extensions
+
+1. **`assignments` Table:**
+   - `id`: Primary key
+   - `report_id`: Foreign key referencing `reports.id`
+   - `assigned_to`: Foreign key referencing `users.id` (Maintenance Staff)
+   - `assigned_by`: Foreign key referencing `users.id` (Municipal Officer)
+   - `assigned_at`: Timestamp of dispatch
+   - `unassigned_at`: Nullable timestamp when reassigned or unassigned
+   - `is_active`: Boolean flag; enforced by partial unique index `uq_assignments_active_report` on `(report_id) WHERE is_active = 1`
+   - `note`: Dispatch instructions
+2. **`repair_evidence` Table:**
+   - `id`: Primary key
+   - `report_id`: Foreign key referencing `reports.id`
+   - `uploaded_by`: Foreign key referencing `users.id` (Staff)
+   - `kind`: `AFTER` or `PROGRESS` (original citizen photo is referenced as `BEFORE`)
+   - `file_path`: Storage path relative to uploads directory (`/uploads/evidence/...`)
+   - `original_filename`: Sanitized original filename
+   - `mime_type`: Detected MIME type (`image/jpeg`, `image/png`, `image/webp`)
+   - `size_bytes`: Byte length (max 15MB)
+   - `checksum`: SHA-256 content hash
+   - `note`: Optional technician progress note
+   - `uploaded_at`: Upload timestamp
+3. **`final_verifications` Table:**
+   - `id`: Primary key
+   - `report_id`: Foreign key referencing `reports.id`
+   - `officer_id`: Foreign key referencing `users.id` (Officer)
+   - `decision`: `APPROVED` or `SENT_BACK`
+   - `note`: Inspection sign-off comment or mandatory rework instruction
+   - `created_at`: Inspection timestamp
+
+---
+
+### 4. API Endpoints Reference
+
+#### Crew Assignment & Workload:
+- `POST /api/v1/reports/{id}/assign`: Assign verified report to maintenance staff.
+  ```json
+  { "staff_id": 37, "note": "Priority road patch required" }
+  ```
+- `POST /api/v1/reports/{id}/reassign`: Reassign active work order to new staff.
+  ```json
+  { "new_staff_id": 38, "reason": "Staff 1 diverted to emergency waterline" }
+  ```
+- `POST /api/v1/reports/{id}/unassign`: Unassign active work order back to verified queue.
+  ```json
+  { "reason": "Inclement weather postponing pavement repairs" }
+  ```
+- `GET /api/v1/staff`: Officer inspection of maintenance staff and real-time open workload count.
+- `GET /api/v1/staff/me/assignments?view=active|completed`: Staff's assigned work orders.
+
+#### Repair Progression & Evidence:
+- `POST /api/v1/reports/{id}/repair/start`: Crew starts repair (`ASSIGNED -> UNDER_REPAIR`).
+- `POST /api/v1/reports/{id}/repair/evidence`: Multipart upload for repair photos (`file`, `kind=AFTER|PROGRESS`, `note`).
+- `POST /api/v1/reports/{id}/repair/submit`: Submit repair for municipal inspection (`UNDER_REPAIR -> REPAIR_EVIDENCE_SUBMITTED`).
+  ```json
+  { "note": "Hot-mix asphalt patch rolled and sealed flush with roadway" }
+  ```
+- `GET /api/v1/reports/{id}/evidence`: Returns linked before photo (citizen original) and uploaded after photos.
+- `GET /api/v1/reports/{id}/evidence/{evidence_id}/file`: Anti-IDOR protected photo file download.
+
+#### Municipal Final Verification:
+- `POST /api/v1/reports/{id}/final-verify`: Officer sign-off.
+  ```json
+  { "decision": "APPROVED", "note": "Verified restored to municipal grade" }
+  ```
+  Or send back for rework:
+  ```json
+  { "decision": "SENT_BACK", "note": "Compaction uneven along curb line; re-compact" }
+  ```
+- `POST /api/v1/reports/{id}/reopen`: Admin reopening of terminal report.
+  ```json
+  { "reason": "Pothole reopened after major rainstorm" }
+  ```
+
+---
+
+### 5. Evidence Storage & Validation Security
+
+- **Storage Location:** `backend/uploads/evidence/` with randomized UUID filenames to prevent path traversal and file collisions.
+- **Magic-Byte Inspection:** File headers are validated using Pillow (`PIL.Image.verify()`) to guarantee authentic JPEG, PNG, or WebP bytes (rejecting executables, HTML, or scripts disguised with image extensions).
+- **Size Limits:** Enforced 15MB limit per evidence photo.
+- **Gallery Cap:** Maximum 10 evidence photos per report to prevent disk exhaustion.
+- **Anti-IDOR Protection:** `GET /reports/{id}/evidence/{evidence_id}/file` enforces that only the report creator (Citizen), assigned maintenance staff, municipal officers, and admins can download evidence photos. Unrelated citizens and staff receive `403 Forbidden`.
+- **Atomic File Rollback:** If a database transaction fails during evidence creation, any newly saved file on disk is immediately unlinked.
+
+---
+
+### 6. Test Suite Commands
+
+```bash
+# Run Week 9 Dedicated Lifecycle & Repair Test Suite (8 tests)
+pytest backend/test_week9_lifecycle.py -v
+
+# Run Full 50-Test Suite Across All Weeks (100% pass)
+pytest backend/ -v
+```
+
+
 
 
 

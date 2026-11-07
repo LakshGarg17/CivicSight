@@ -45,6 +45,18 @@ yarn-error.log*
 runs/
 wandb/
 .pytest_cache/
+Dataset/
+.venv-gpu/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads
+uploads/
+backend/uploads/reports/*
+!backend/uploads/reports/.gitkeep
 
 # OS / IDE
 .DS_Store
