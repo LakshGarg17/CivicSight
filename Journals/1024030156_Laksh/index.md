@@ -11,3 +11,6 @@ Name: Laksh Garg
 - [Week 6 — Report Verification and Lifecycle Interface](./week-6.md)
 - [Week 7 — FastAPI and YOLO Integration](./week-7.md)
 - [Week 8 — Priority Calculation and Duplicate Detection](./week-8.md)
+- [Week 9 — Final Model Evaluation and Workflow Testing](./week-9.md)
+
+

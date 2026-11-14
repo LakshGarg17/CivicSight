@@ -11,5 +11,6 @@ Name: Devansh Thapar
 - [Week 6 — Initial Model Finalization and Report Workflow](./week-6.md)
 - [Week 7 — YOLO Model Integration and Inference](./week-7.md)
 - [Week 8 — Priority Display and Related Reports](./week-8.md)
+- [Week 9 — Maintenance Interface and Repair Tracking](./week-9.md)
 
 
