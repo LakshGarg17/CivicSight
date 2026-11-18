@@ -1,6 +1,6 @@
 import logging
 from typing import Generator
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from app.core.config import settings
 
@@ -11,9 +11,17 @@ db_uri = settings.sync_database_uri
 if db_uri.startswith("sqlite"):
     engine = create_engine(
         db_uri,
-        connect_args={"check_same_thread": False},
+        connect_args={"check_same_thread": False, "timeout": 15},
         pool_pre_ping=True,
     )
+
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON;")
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        cursor.execute("PRAGMA busy_timeout=5000;")
+        cursor.close()
 else:
     engine = create_engine(
         db_uri,

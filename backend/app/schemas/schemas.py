@@ -1,4 +1,4 @@
-﻿"""CivicSight Pydantic Schemas (Week 3)
+"""CivicSight Pydantic Schemas (Week 3)
 
 Request and response validation models for Authentication, User, and Report CRUD operations.
 """
@@ -6,6 +6,7 @@ Request and response validation models for Authentication, User, and Report CRUD
 from datetime import datetime
 from typing import Optional, List, Union, Any
 import json
+import math
 import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from app.models.models import ReportStatus, UserRole, EvidenceKind, VerificationDecision
@@ -68,6 +69,7 @@ class UserUpdate(BaseModel):
     email: Optional[str] = Field(None, max_length=255)
     phone: Optional[str] = Field(None, max_length=30)
     role: Optional[UserRole] = None
+    is_active: Optional[bool] = None
 
 
 class UserResponse(BaseModel):
@@ -116,7 +118,7 @@ class TokenPayload(BaseModel):
 # ============================================================================
 
 class ReportBase(BaseModel):
-    description: Optional[str] = Field(None, description="Detailed problem description")
+    description: Optional[str] = Field(None, max_length=2000, description="Detailed problem description")
     latitude: Optional[float] = Field(None, ge=-90.0, le=90.0, description="GPS Latitude coordinate")
     longitude: Optional[float] = Field(None, ge=-180.0, le=180.0, description="GPS Longitude coordinate")
     address_text: Optional[str] = Field(None, max_length=255, description="Human-readable address or landmark")
@@ -125,6 +127,13 @@ class ReportBase(BaseModel):
     priority: Optional[str] = Field("MEDIUM", description="Assigned priority: HIGH, MEDIUM, LOW")
     ml_detections: Optional[Union[dict, list, str]] = Field(None, description="Attached ML defect detection data")
 
+    @field_validator("latitude", "longitude")
+    @classmethod
+    def validate_finite_coord(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and (math.isnan(v) or math.isinf(v)):
+            raise ValueError("Coordinate must be a finite numeric value")
+        return v
+
 
 class ReportCreate(ReportBase):
     reporter_id: Optional[int] = Field(None, description="Optional foreign key to User")
@@ -132,16 +141,23 @@ class ReportCreate(ReportBase):
 
 
 class ReportUpdate(BaseModel):
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=2000)
     latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
     longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
-    address_text: Optional[str] = None
-    image_url: Optional[str] = None
+    address_text: Optional[str] = Field(None, max_length=255)
+    image_url: Optional[str] = Field(None, max_length=500)
     status: Optional[ReportStatus] = None
-    damage_type: Optional[str] = None
+    damage_type: Optional[str] = Field(None, max_length=50)
     severity_score: Optional[float] = None
     priority: Optional[str] = None
     ml_detections: Optional[Union[dict, list, str]] = None
+
+    @field_validator("latitude", "longitude")
+    @classmethod
+    def validate_finite_coord(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and (math.isnan(v) or math.isinf(v)):
+            raise ValueError("Coordinate must be a finite numeric value")
+        return v
 
 
 class ReportStatusUpdate(BaseModel):

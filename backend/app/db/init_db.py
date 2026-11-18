@@ -12,15 +12,16 @@ import app.models.models  # Ensure all model entities are registered with Base
 logger = logging.getLogger(__name__)
 
 
-def init_db() -> None:
+def init_db(target_engine=None, seed_users: bool = True) -> None:
     """Creates database tables defined across all registered SQLAlchemy models."""
+    active_engine = target_engine or engine
     try:
         logger.info("Initializing CivicSight database tables...")
-        Base.metadata.create_all(bind=engine)
+        Base.metadata.create_all(bind=active_engine)
 
         # Check and migrate columns for Week 3 schema additions
-        with engine.connect() as conn:
-            inspector = inspect(engine)
+        with active_engine.connect() as conn:
+            inspector = inspect(active_engine)
             if "users" in inspector.get_table_names():
                 existing_cols = [c["name"] for c in inspector.get_columns("users")]
 
@@ -40,7 +41,7 @@ def init_db() -> None:
 
                 if "is_active" not in existing_cols:
                     logger.info("Adding 'is_active' column to users table...")
-                    conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1 NOT NULL;"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE NOT NULL;"))
                     conn.commit()
 
                 if "hashed_password" not in existing_cols:
@@ -150,7 +151,7 @@ def init_db() -> None:
 
                 if "is_priority_overridden" not in existing_report_cols:
                     logger.info("Adding 'is_priority_overridden' column to reports table...")
-                    conn.execute(text("ALTER TABLE reports ADD COLUMN is_priority_overridden BOOLEAN DEFAULT 0;"))
+                    conn.execute(text("ALTER TABLE reports ADD COLUMN is_priority_overridden BOOLEAN DEFAULT FALSE;"))
                     conn.commit()
 
                 if "priority_override_reason" not in existing_report_cols:
@@ -214,11 +215,14 @@ def init_db() -> None:
                     conn.execute(text("ALTER TABLE priority_history ADD COLUMN reasons TEXT;"))
                     conn.commit()
 
-            # Ensure Week 8 & 9 Indexes exist
+            # Ensure Week 8, 9 & 10 Indexes exist
             try:
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_latitude ON reports (latitude);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_longitude ON reports (longitude);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_lat_lng ON reports (latitude, longitude);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_priority ON reports (priority);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_status_priority ON reports (status, priority);"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reports_created_at ON reports (created_at);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_report_relations_review_status ON report_relations (review_status);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_assignments_report_id ON assignments (report_id);"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_assignments_assigned_to ON assignments (assigned_to);"))
@@ -237,50 +241,62 @@ def init_db() -> None:
             except Exception as idx_err:
                 logger.debug(f"Index creation note: {idx_err}")
 
-        # Ensure upload directories exist
+        # Ensure upload directories exist under backend/uploads
         import os
-        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         os.makedirs(os.path.join(backend_dir, "uploads", "evidence"), exist_ok=True)
         os.makedirs(os.path.join(backend_dir, "uploads", "reports"), exist_ok=True)
 
         # Seed standard prototype and test users
-        from app.db.database import SessionLocal
-        from app.models.models import User, UserRole
-        from app.core.security import get_password_hash
+        if seed_users:
+            from sqlalchemy.orm import sessionmaker
+            from app.models.models import User, UserRole
+            from app.core.security import get_password_hash
 
-        db = SessionLocal()
-        try:
-            demo_users = [
-                ("officer@civicsight.gov", "Sarah Chen", UserRole.MUNICIPAL_OFFICER, "Password123!"),
-                ("officer1@civicsight.gov", "Officer Sarah", UserRole.MUNICIPAL_OFFICER, "Password123!"),
-                ("officer_test_w5@example.com", "Officer Dave", UserRole.MUNICIPAL_OFFICER, "testpassword123"),
-                ("staff1@civicsight.gov", "Alex Rivera", UserRole.MAINTENANCE_STAFF, "Password123!"),
-                ("staff2@civicsight.gov", "Marcus Vance", UserRole.MAINTENANCE_STAFF, "Password123!") ,
-                ("citizen@civicsight.org", "Jane Citizen", UserRole.CITIZEN, "Password123!"),
-                ("citizen1@civicsight.org", "Citizen One", UserRole.CITIZEN, "Password123!"),
-                ("citizen2@civicsight.org", "Citizen Two", UserRole.CITIZEN, "Password123!"),
-                ("citizen_test_w5@example.com", "Citizen Jane", UserRole.CITIZEN, "testpassword123"),
-                ("admin@civicsight.gov", "Admin Director", UserRole.ADMIN, "Password123!"),
-                ("admin1@civicsight.gov", "Admin Director", UserRole.ADMIN, "Password123!"),
-            ]
-            for email, name, role, pwd in demo_users:
-                u = db.query(User).filter(User.email == email).first()
-                if not u:
-                    new_user = User(
-                        email=email,
-                        name=name,
-                        role=role,
-                        hashed_password=get_password_hash(pwd),
-                    )
-                    db.add(new_user)
-            db.commit()
-        finally:
-            db.close()
+            SessionMaker = sessionmaker(autocommit=False, autoflush=False, bind=active_engine)
+            db = SessionMaker()
+            try:
+                demo_users = [
+                    ("officer@civicsight.gov", "Sarah Chen", UserRole.MUNICIPAL_OFFICER, "Password123!"),
+                    ("officer1@civicsight.gov", "Officer Sarah", UserRole.MUNICIPAL_OFFICER, "Password123!"),
+                    ("officer2@civicsight.gov", "Officer Marcus", UserRole.MUNICIPAL_OFFICER, "Password123!"),
+                    ("officer_test_w5@example.com", "Officer Dave", UserRole.MUNICIPAL_OFFICER, "testpassword123"),
+                    ("staff1@civicsight.gov", "Alex Rivera", UserRole.MAINTENANCE_STAFF, "Password123!"),
+                    ("staff2@civicsight.gov", "Marcus Vance", UserRole.MAINTENANCE_STAFF, "Password123!"),
+                    ("citizen@civicsight.org", "Jane Citizen", UserRole.CITIZEN, "Password123!"),
+                    ("citizen1@civicsight.org", "Citizen One", UserRole.CITIZEN, "Password123!"),
+                    ("citizen2@civicsight.org", "Citizen Two", UserRole.CITIZEN, "Password123!"),
+                    ("citizen_test_w5@example.com", "Citizen Jane", UserRole.CITIZEN, "testpassword123"),
+                    ("admin@civicsight.gov", "Admin Director", UserRole.ADMIN, "Password123!"),
+                    ("admin1@civicsight.gov", "Admin Director", UserRole.ADMIN, "Password123!"),
+                ]
+                for email, name, role, pwd in demo_users:
+                    u = db.query(User).filter(User.email == email).first()
+                    if not u:
+                        new_user = User(
+                            email=email,
+                            name=name,
+                            role=role,
+                            hashed_password=get_password_hash(pwd),
+                        )
+                        db.add(new_user)
+                db.commit()
+            finally:
+                db.close()
 
         logger.info("Database tables verified/created successfully.")
     except Exception as e:
         logger.error(f"Failed to initialize database tables: {e}")
         raise
+
+
+def rollback_week10_indexes(target_engine=None) -> None:
+    """Reversible rollback for Week 10 additive composite indexes."""
+    active_engine = target_engine or engine
+    with active_engine.connect() as conn:
+        for idx_name in ("ix_reports_lat_lng", "ix_reports_status_priority", "ix_reports_created_at"):
+            conn.execute(text(f"DROP INDEX IF EXISTS {idx_name};"))
+        conn.commit()
 
 
 if __name__ == "__main__":

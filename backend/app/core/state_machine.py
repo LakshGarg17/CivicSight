@@ -101,7 +101,6 @@ LEGAL_TRANSITIONS: Dict[ReportStatus, Set[ReportStatus]] = {
     },
     ReportStatus.UNDER_REPAIR: {
         ReportStatus.REPAIR_EVIDENCE_SUBMITTED,
-        ReportStatus.CLOSED,  # Officer / Admin direct closure or emergency resolution
     },
     ReportStatus.REPAIR_EVIDENCE_SUBMITTED: {
         ReportStatus.CLOSED,        # Officer approved
@@ -128,7 +127,6 @@ ROLE_TRANSITIONS: Dict[str, Set[tuple[ReportStatus, ReportStatus]]] = {
         (ReportStatus.ASSIGNED, ReportStatus.VERIFIED),  # Unassign
         (ReportStatus.ASSIGNED, ReportStatus.UNDER_REPAIR),
         (ReportStatus.UNDER_REPAIR, ReportStatus.REPAIR_EVIDENCE_SUBMITTED),
-        (ReportStatus.UNDER_REPAIR, ReportStatus.CLOSED),
         (ReportStatus.REPAIR_EVIDENCE_SUBMITTED, ReportStatus.CLOSED),  # Approve
         (ReportStatus.REPAIR_EVIDENCE_SUBMITTED, ReportStatus.UNDER_REPAIR),  # Send back
     },
@@ -144,7 +142,6 @@ ROLE_TRANSITIONS: Dict[str, Set[tuple[ReportStatus, ReportStatus]]] = {
         (ReportStatus.ASSIGNED, ReportStatus.VERIFIED),
         (ReportStatus.ASSIGNED, ReportStatus.UNDER_REPAIR),
         (ReportStatus.UNDER_REPAIR, ReportStatus.REPAIR_EVIDENCE_SUBMITTED),
-        (ReportStatus.UNDER_REPAIR, ReportStatus.CLOSED),
         (ReportStatus.REPAIR_EVIDENCE_SUBMITTED, ReportStatus.CLOSED),
         (ReportStatus.REPAIR_EVIDENCE_SUBMITTED, ReportStatus.UNDER_REPAIR),
         # Admin reopen permissions

@@ -1,9 +1,15 @@
-﻿import hashlib
+import hashlib
+import io
 import json
+import logging
+import math
 import os
 import uuid
 from datetime import datetime
 from typing import List, Optional, Union
+from PIL import Image
+
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy import or_, case
@@ -24,7 +30,7 @@ from app.models.models import (
     VerificationDecision,
 )
 from app.core.config import settings
-from app.core.dependencies import require_roles, get_current_user
+from app.core.dependencies import require_roles, get_current_user, get_optional_current_user
 from app.core.state_machine import (
     validate_transition as sm_validate_transition,
     ReportStatus as SMReportStatus,
@@ -82,6 +88,7 @@ os.makedirs(EVIDENCE_DIR, exist_ok=True)
 
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".jfif"}
 MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB
+MAX_DESCRIPTION_LENGTH = 2000
 
 
 def detect_image_mime_and_ext(contents: bytes) -> tuple[Optional[str], Optional[str]]:
@@ -93,6 +100,43 @@ def detect_image_mime_and_ext(contents: bytes) -> tuple[Optional[str], Optional[
     elif contents.startswith(b"RIFF") and len(contents) >= 12 and contents[8:12] == b"WEBP":
         return "image/webp", ".webp"
     return None, None
+
+
+def validate_image_bytes(contents: bytes, error_status: int = status.HTTP_422_UNPROCESSABLE_ENTITY) -> tuple[str, str]:
+    """Validates uploaded image by size, magic bytes, and actual PIL decode integrity.
+
+    Rejects empty files, oversized files, fake extensions (e.g. .txt renamed to .jpg),
+    unsupported formats (GIF/BMP/TIFF/PDF), and corrupted/truncated image streams.
+    """
+    if not contents or len(contents) == 0:
+        raise HTTPException(
+            status_code=error_status,
+            detail="Uploaded image file is empty.",
+        )
+    if len(contents) > MAX_IMAGE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=error_status,
+            detail=f"Image file exceeds maximum allowable size of {MAX_IMAGE_SIZE_BYTES // (1024 * 1024)}MB.",
+        )
+    mime_type, ext = detect_image_mime_and_ext(contents)
+    if not mime_type or not ext:
+        raise HTTPException(
+            status_code=error_status,
+            detail="Invalid image file format. Only valid JPEG, PNG, and WebP images are permitted.",
+        )
+    try:
+        with Image.open(io.BytesIO(contents)) as img:
+            img.verify()
+        with Image.open(io.BytesIO(contents)) as img:
+            img.load()
+            if img.size[0] <= 0 or img.size[1] <= 0:
+                raise ValueError("Image has zero dimensions")
+    except Exception:
+        raise HTTPException(
+            status_code=error_status,
+            detail="Uploaded image file is corrupted or cannot be decoded.",
+        )
+    return mime_type, ext
 
 
 # ============================================================================
@@ -286,14 +330,15 @@ def populate_report_relations(report: Report, db: Session, is_privileged: bool =
 
 @router.post(
     "/detect",
-    summary="Run pre-submission road damage detection on an uploaded photo",
+    summary="Run pre-submission road damage detection on an uploaded photo (Authenticated)",
 )
 async def detect_damage_on_image(
     request: Request,
+    current_user: User = Depends(get_current_user),
 ):
     """Executes real-time YOLO damage detection on an uploaded image before report creation.
     
-    Accepts multipart/form-data with 'image' or 'file'.
+    Accepts multipart/form-data with 'image' or 'file'. Validates content via magic bytes & PIL.
     Returns detected bounding boxes, class names (D00, D10, D20, D40), confidence, and priority.
     """
     form = await request.form()
@@ -304,26 +349,20 @@ async def detect_damage_on_image(
             detail="Image file is required for defect detection.",
         )
 
-    ext = os.path.splitext(image_file.filename.lower())[1]
-    if ext not in ALLOWED_IMAGE_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid image format '{ext}'. Allowed formats: JPG, JPEG, PNG, WEBP.",
-        )
+    contents = await image_file.read()
+    validate_image_bytes(contents, error_status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
     try:
-        contents = await image_file.read()
-        if not contents or len(contents) == 0:
-            raise ValueError("Empty image file provided.")
-
-        import cv2
+        from PIL import ImageOps
         import numpy as np
         from ml.src.inference import detect_road_damage
 
-        nparr = np.frombuffer(contents, np.uint8)
-        img_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img_bgr is None:
-            raise ValueError("Could not decode image file bytes.")
+        with Image.open(io.BytesIO(contents)) as pil_img:
+            pil_img = ImageOps.exif_transpose(pil_img).convert("RGB")
+            img_rgb = np.array(pil_img)
+
+        import cv2
+        img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
 
         conf_raw = form.get("confidence_threshold")
         try:
@@ -335,10 +374,13 @@ async def detect_damage_on_image(
         result = detect_road_damage(img_bgr, confidence_threshold=conf_thresh, iou_threshold=0.45)
         return result
 
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Detection endpoint failed: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to process image with detection model: {str(e)}",
+            detail="Failed to process image with detection model.",
         )
 
 
@@ -351,36 +393,34 @@ async def detect_damage_on_image(
 async def create_report(
     request: Request,
     background_tasks: BackgroundTasks,
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """Creates a new road damage report.
     
     Accepts both multipart/form-data (with file upload) and application/json.
-    Enforces strict server-side validation for description, image, and geographic coordinates.
-    Stores the uploaded photo on disk and saves only the path reference in PostgreSQL.
-    Records the initial status in report_status_history.
+    Enforces strict server-side validation for description, image content (magic bytes + PIL),
+    and geographic coordinates. Stores uploaded photos with safe UUID filenames on disk and cleans
+    up orphan files on DB failure. Prevents reporter_id spoofing and never leaks other users' data.
     """
     content_type = request.headers.get("content-type", "")
+    caller_role = (
+        current_user.role.value if (current_user and hasattr(current_user.role, "value")) else (str(current_user.role) if current_user else None)
+    )
+    is_privileged = caller_role in (UserRole.MUNICIPAL_OFFICER.value, UserRole.ADMIN.value)
 
     if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
         form = await request.form()
         
-        # 1. Server-side validation: Image file
+        # 1. Server-side validation: Image file presence
         image_file = form.get("image")
         if not image_file or not hasattr(image_file, "filename") or not image_file.filename:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Image file is required for citizen road damage reporting.",
             )
-        
-        ext = os.path.splitext(image_file.filename.lower())[1]
-        if ext not in ALLOWED_IMAGE_EXTENSIONS:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Invalid image format '{ext}'. Allowed formats: JPG, JPEG, PNG, WEBP.",
-            )
 
-        # 2. Server-side validation: Description
+        # 2. Server-side validation: Description (required, non-whitespace, bounded length)
         description = form.get("description")
         if description is None or not str(description).strip():
             raise HTTPException(
@@ -388,6 +428,11 @@ async def create_report(
                 detail="Description is required and cannot be empty.",
             )
         description_clean = str(description).strip()
+        if len(description_clean) > MAX_DESCRIPTION_LENGTH:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Description exceeds maximum length of {MAX_DESCRIPTION_LENGTH} characters.",
+            )
 
         # 3. Server-side validation: Latitude
         lat_raw = form.get("latitude")
@@ -403,10 +448,10 @@ async def create_report(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Latitude must be a valid numeric coordinate.",
             )
-        if not (-90.0 <= lat_val <= 90.0):
+        if math.isnan(lat_val) or math.isinf(lat_val) or not (-90.0 <= lat_val <= 90.0):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Latitude {lat_val} is out of range. Must be between -90.0 and 90.0.",
+                detail=f"Latitude {lat_val} is out of range. Must be a finite value between -90.0 and 90.0.",
             )
 
         # 4. Server-side validation: Longitude
@@ -423,74 +468,62 @@ async def create_report(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Longitude must be a valid numeric coordinate.",
             )
-        if not (-180.0 <= lon_val <= 180.0):
+        if math.isnan(lon_val) or math.isinf(lon_val) or not (-180.0 <= lon_val <= 180.0):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Longitude {lon_val} is out of range. Must be between -180.0 and 180.0.",
+                detail=f"Longitude {lon_val} is out of range. Must be a finite value between -180.0 and 180.0.",
             )
 
-        # 5. Optional Reporter validation
+        # 5. Reporter identity binding (prevents reporter_id spoofing)
         reporter_id_raw = form.get("reporter_id")
         reporter_id: Optional[int] = None
         reporter_user: Optional[User] = None
-        if reporter_id_raw and str(reporter_id_raw).strip():
-            try:
-                reporter_id = int(reporter_id_raw)
-            except (ValueError, TypeError):
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Reporter ID must be a valid integer.",
-                )
-            reporter_user = db.query(User).filter(User.id == reporter_id).first()
-            if not reporter_user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Reporter user with ID {reporter_id} does not exist.",
-                )
-        else:
-            auth_header = request.headers.get("Authorization")
-            if auth_header and auth_header.startswith("Bearer "):
+        if current_user is not None:
+            if is_privileged and reporter_id_raw and str(reporter_id_raw).strip():
                 try:
-                    token = auth_header.split(" ")[1]
-                    from app.core.security import decode_access_token
-                    payload = decode_access_token(token)
-                    if payload and "sub" in payload:
-                        reporter_id = int(payload["sub"])
-                        reporter_user = db.query(User).filter(User.id == reporter_id).first()
-                except Exception:
-                    pass
+                    reporter_id = int(reporter_id_raw)
+                except (ValueError, TypeError):
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Reporter ID must be a valid integer.",
+                    )
+                reporter_user = db.query(User).filter(User.id == reporter_id).first()
+                if not reporter_user:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Reporter user with ID {reporter_id} does not exist.",
+                    )
+            else:
+                reporter_id = current_user.id
+                reporter_user = current_user
+        else:
+            # Anonymous submission cannot bind to another user's reporter_id
+            reporter_id = None
+            reporter_user = None
 
-        # 6. Validate image content and size before saving
+        # 6. Validate image CONTENT (magic bytes + PIL decode) and size before saving
         try:
             contents = await image_file.read()
-        except Exception as e:
+        except Exception:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Failed to read uploaded image: {str(e)}",
+                detail="Failed to read uploaded image.",
             )
 
-        if not contents or len(contents) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Uploaded image file is empty.",
-            )
+        _, detected_ext = validate_image_bytes(contents, error_status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-        if len(contents) > MAX_IMAGE_SIZE_BYTES:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Image file exceeds maximum allowable size of {MAX_IMAGE_SIZE_BYTES // (1024 * 1024)}MB.",
-            )
-
-        safe_filename = f"{uuid.uuid4().hex}{ext}"
+        # Randomized safe filename derived strictly from validated content extension (immune to path traversal)
+        safe_filename = f"{uuid.uuid4().hex}{detected_ext}"
         saved_file_path = os.path.join(UPLOAD_DIR, safe_filename)
         
         try:
             with open(saved_file_path, "wb") as f:
                 f.write(contents)
         except Exception as e:
+            logger.error("Failed to store report image: %s", e, exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to save image file on server: {str(e)}",
+                detail="Failed to save image file on server.",
             )
 
         image_url = f"/uploads/reports/{safe_filename}"
@@ -507,37 +540,49 @@ async def create_report(
         raw_detections = form.get("ml_detections")
         ml_detections_str = str(raw_detections).strip() if raw_detections else None
 
-        # 7. Commit Report record to database
-        now = datetime.utcnow()
-        report = Report(
-            reporter_id=reporter_id,
-            description=description_clean,
-            latitude=lat_val,
-            longitude=lon_val,
-            address_text=str(address_text).strip() if address_text else None,
-            image_url=image_url,
-            damage_type=str(damage_type).strip() if damage_type else None,
-            priority=priority_val,
-            ml_detections=ml_detections_str,
-            ml_status="ML_PENDING",
-            status=ReportStatus.SUBMITTED,
-            created_at=now,
-            updated_at=now,
-        )
-        db.add(report)
-        db.flush()
+        # 7. Commit Report record and initial history atomically; clean up disk file on DB failure
+        try:
+            now = datetime.utcnow()
+            report = Report(
+                reporter_id=reporter_id,
+                description=description_clean,
+                latitude=lat_val,
+                longitude=lon_val,
+                address_text=str(address_text).strip()[:255] if address_text else None,
+                image_url=image_url,
+                damage_type=str(damage_type).strip()[:50] if damage_type else None,
+                priority=priority_val,
+                ml_detections=ml_detections_str,
+                ml_status="ML_PENDING",
+                status=ReportStatus.SUBMITTED,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(report)
+            db.flush()
 
-        # 8. Record initial status in history
-        record_status_history(
-            db=db,
-            report_id=report.id,
-            from_status=None,
-            to_status=ReportStatus.SUBMITTED.value,
-            user=reporter_user,
-            note="Initial citizen report submitted",
-        )
-        db.commit()
-        db.refresh(report)
+            record_status_history(
+                db=db,
+                report_id=report.id,
+                from_status=None,
+                to_status=ReportStatus.SUBMITTED.value,
+                user=reporter_user,
+                note="Initial citizen report submitted",
+            )
+            db.commit()
+            db.refresh(report)
+        except Exception as db_err:
+            db.rollback()
+            if os.path.exists(saved_file_path):
+                try:
+                    os.remove(saved_file_path)
+                except Exception:
+                    pass
+            logger.error("Failed to persist report in DB (cleaned up uploaded file): %s", db_err, exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to save report in database.",
+            )
 
         # Initial proximity analysis and priority scoring (guarded so failure never blocks creation)
         try:
@@ -549,7 +594,8 @@ async def create_report(
         # 9. Asynchronously process image with YOLO defect detection
         background_tasks.add_task(process_report_image_ml, report.id)
 
-        populate_report_relations(report, db, is_privileged=True)
+        populate_report_lifecycle_details(report, db)
+        populate_report_relations(report, db, is_privileged=is_privileged)
         return report
 
     else:
@@ -564,26 +610,22 @@ async def create_report(
             )
 
         reporter_user = None
-        effective_reporter_id = report_in.reporter_id
-        if effective_reporter_id:
-            reporter_user = db.query(User).filter(User.id == effective_reporter_id).first()
-            if not reporter_user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Reporter user with ID {effective_reporter_id} does not exist.",
-                )
+        effective_reporter_id = None
+        if current_user is not None:
+            if is_privileged and report_in.reporter_id:
+                effective_reporter_id = report_in.reporter_id
+                reporter_user = db.query(User).filter(User.id == effective_reporter_id).first()
+                if not reporter_user:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Reporter user with ID {effective_reporter_id} does not exist.",
+                    )
+            else:
+                effective_reporter_id = current_user.id
+                reporter_user = current_user
         else:
-            auth_header = request.headers.get("Authorization")
-            if auth_header and auth_header.startswith("Bearer "):
-                try:
-                    token = auth_header.split(" ")[1]
-                    from app.core.security import decode_access_token
-                    payload = decode_access_token(token)
-                    if payload and "sub" in payload:
-                        effective_reporter_id = int(payload["sub"])
-                        reporter_user = db.query(User).filter(User.id == effective_reporter_id).first()
-                except Exception:
-                    pass
+            effective_reporter_id = None
+            reporter_user = None
 
         priority_val = report_in.priority
         if not priority_val or not str(priority_val).strip():
@@ -599,7 +641,7 @@ async def create_report(
                 ml_detections_str = json.dumps(report_in.ml_detections)
 
         now = datetime.utcnow()
-        initial_status = report_in.status or ReportStatus.SUBMITTED
+        initial_status = report_in.status if (is_privileged and report_in.status) else ReportStatus.SUBMITTED
         ml_status_init = "ML_PENDING" if report_in.image_url else None
         report = Report(
             reporter_id=effective_reporter_id,
@@ -639,7 +681,8 @@ async def create_report(
         if report_in.image_url:
             background_tasks.add_task(process_report_image_ml, report.id)
 
-        populate_report_relations(report, db, is_privileged=True)
+        populate_report_lifecycle_details(report, db)
+        populate_report_relations(report, db, is_privileged=is_privileged)
         return report
 
 
@@ -673,9 +716,31 @@ def list_reports(
     if status_filter:
         query = query.filter(Report.status == status_filter)
     if priority_filter:
-        query = query.filter(Report.priority == priority_filter.strip().upper())
+        p_norm = priority_filter.strip().upper()
+        if p_norm not in ("HIGH", "MEDIUM", "LOW"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid priority filter '{priority_filter}'. Allowed values: HIGH, MEDIUM, LOW.",
+            )
+        query = query.filter(Report.priority == p_norm)
     if severity_filter:
-        query = query.filter(Report.severity == severity_filter.strip().upper())
+        s_norm = severity_filter.strip().upper()
+        if s_norm not in ("HIGH", "MEDIUM", "LOW", "UNKNOWN"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid severity filter '{severity_filter}'. Allowed values: HIGH, MEDIUM, LOW, UNKNOWN.",
+            )
+        query = query.filter(Report.severity == s_norm)
+    if sort_by is not None and sort_by.strip() not in ("", "priority", "score", "priority_score", "created_at"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid sort_by value '{sort_by}'. Allowed values: priority, score, priority_score, created_at.",
+        )
+    if sort_order is not None and sort_order.strip().lower() not in ("asc", "desc"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid sort_order value '{sort_order}'. Allowed values: asc, desc.",
+        )
     if reporter_id:
         query = query.filter(Report.reporter_id == reporter_id)
 
@@ -757,27 +822,49 @@ def get_report(
         )
 
     populate_report_lifecycle_details(report, db)
-    populate_report_relations(report, db, is_privileged=(is_privileged or is_assigned))
-    return report
+    populate_report_relations(report, db, is_privileged=is_privileged)
+    response_obj = ReportResponse.model_validate(report)
+    # Never leak other users' emails to non-privileged callers (Citizens / Maintenance Staff)
+    if not is_privileged:
+        for asgn in response_obj.assignments:
+            asgn.assigned_to_email = None
+        if response_obj.reporter and (not is_owner):
+            response_obj.reporter.email = None
+            response_obj.reporter.phone = None
+    return response_obj
 
 
 @router.get(
     "/{report_id}/ml-status",
     response_model=ReportMLStatusResponse,
-    summary="Get ML assessment status and detections for a report (Public/Citizen polling)",
+    summary="Get ML assessment status and detections for a report (Owner/Assigned/Officer/Admin)",
 )
 def get_report_ml_status(
     report_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Returns the ML inference status (ML_PENDING, ML_COMPLETE, ML_NO_DETECTIONS, ML_FAILED)
-    and associated bounding box detections for public and citizen status tracking.
+    and associated bounding box detections with anti-IDOR ownership checks.
     """
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Report with ID {report_id} not found.",
+        )
+
+    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    is_privileged = user_role in [UserRole.MUNICIPAL_OFFICER.value, UserRole.ADMIN.value]
+    is_owner = report.reporter_id is not None and report.reporter_id == current_user.id
+    is_assigned = (
+        user_role == UserRole.MAINTENANCE_STAFF.value
+        and ((report.current_assignee_id == current_user.id) or (report.assigned_to_id == current_user.id))
+    )
+    if not (is_privileged or is_owner or is_assigned):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not authorized to view ML status for this report.",
         )
 
     return ReportMLStatusResponse(
@@ -798,12 +885,13 @@ def get_report_ml_status(
 @router.post(
     "/{report_id}/process-ml",
     response_model=ReportResponse,
-    summary="Trigger ML damage detection inference on a report",
+    summary="Trigger ML damage detection inference on a report (Officer/Admin or Owner)",
 )
 def trigger_report_ml_inference(
     report_id: int,
     sync: bool = Query(True, description="Whether to execute synchronously before returning"),
     background_tasks: BackgroundTasks = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Executes or enqueues YOLOv8 damage detection for a specific report."""
@@ -814,15 +902,28 @@ def trigger_report_ml_inference(
             detail=f"Report with ID {report_id} not found.",
         )
 
+    user_role = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+    is_privileged = user_role in [UserRole.MUNICIPAL_OFFICER.value, UserRole.ADMIN.value]
+    is_owner = report.reporter_id is not None and report.reporter_id == current_user.id
+    if not (is_privileged or is_owner):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not authorized to trigger ML inference on this report.",
+        )
+
     if sync:
         process_report_image_ml(report_id=report.id, db=db)
         db.refresh(report)
+        populate_report_lifecycle_details(report, db)
+        populate_report_relations(report, db, is_privileged=is_privileged)
         return report
     else:
         report.ml_status = "ML_PENDING"
         db.commit()
         if background_tasks:
             background_tasks.add_task(process_report_image_ml, report.id)
+        populate_report_lifecycle_details(report, db)
+        populate_report_relations(report, db, is_privileged=is_privileged)
         return report
 
 
@@ -1024,9 +1125,32 @@ def verify_report(
     validate_transition(report.status, ReportStatus.VERIFIED, user_role=current_user.role.value)
 
     prev_status = report.status.value
-    report.status = ReportStatus.VERIFIED
-    report.version = (report.version or 1) + 1
-    report.updated_at = datetime.utcnow()
+    expected_status = report.status
+    expected_version = report.version or 1
+    now = datetime.utcnow()
+
+    updated = (
+        db.query(Report)
+        .filter(
+            Report.id == report.id,
+            Report.status == expected_status,
+            Report.version == expected_version,
+        )
+        .update(
+            {
+                Report.status: ReportStatus.VERIFIED,
+                Report.version: expected_version + 1,
+                Report.updated_at: now,
+            },
+            synchronize_session=False,
+        )
+    )
+    if updated != 1:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Concurrent update detected: report status changed before verification could complete.",
+        )
 
     note_text = body.note if (body and body.note and body.note.strip()) else "Report verified by municipal officer"
     record_status_history(
@@ -1038,7 +1162,8 @@ def verify_report(
         note=note_text,
     )
     db.commit()
-    db.refresh(report)
+    db.expire_all()
+    report = db.query(Report).filter(Report.id == report_id).first()
     populate_report_lifecycle_details(report, db)
     populate_report_relations(report, db, is_privileged=True)
     return report
@@ -1277,32 +1402,59 @@ def assign_report(
         )
 
     prev_status = report.status.value
+    expected_status = report.status
+    expected_version = report.version or 1
+    now = datetime.utcnow()
+    assigned_label = (
+        str(body.assigned_to).strip()
+        if (body.assigned_to and not str(body.assigned_to).strip().isdigit())
+        else staff_user.name
+    )
+
+    updated = (
+        db.query(Report)
+        .filter(
+            Report.id == report.id,
+            Report.status == expected_status,
+            Report.version == expected_version,
+        )
+        .update(
+            {
+                Report.status: ReportStatus.ASSIGNED,
+                Report.current_assignee_id: staff_user.id,
+                Report.assigned_to_id: staff_user.id,
+                Report.assigned_to: assigned_label,
+                Report.version: expected_version + 1,
+                Report.updated_at: now,
+            },
+            synchronize_session=False,
+        )
+    )
+    if updated != 1:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Concurrent update detected: report was already assigned or modified.",
+        )
 
     # Close any existing active assignments
     db.query(Assignment).filter(
         Assignment.report_id == report.id,
         Assignment.is_active == True,
-    ).update({"is_active": False, "unassigned_at": datetime.utcnow()})
+    ).update({"is_active": False, "unassigned_at": now})
 
     # Create new active assignment
     assignment = Assignment(
         report_id=report.id,
         assigned_to=staff_user.id,
         assigned_by=current_user.id,
-        assigned_at=datetime.utcnow(),
+        assigned_at=now,
         is_active=True,
         note=body.note,
     )
     db.add(assignment)
 
-    report.status = ReportStatus.ASSIGNED
-    report.current_assignee_id = staff_user.id
-    report.assigned_to_id = staff_user.id
-    report.assigned_to = str(body.assigned_to).strip() if (body.assigned_to and not str(body.assigned_to).strip().isdigit()) else staff_user.name
-    report.version = (report.version or 1) + 1
-    report.updated_at = datetime.utcnow()
-
-    target_label = report.assigned_to or staff_user.name
+    target_label = assigned_label or staff_user.name
     note_text = f"Assigned to: {target_label}"
     if body.note and body.note.strip():
         note_text += f" | {body.note.strip()}"
@@ -1317,7 +1469,8 @@ def assign_report(
     )
 
     db.commit()
-    db.refresh(report)
+    db.expire_all()
+    report = db.query(Report).filter(Report.id == report_id).first()
     populate_report_lifecycle_details(report, db)
     populate_report_relations(report, db, is_privileged=True)
     return report
@@ -1643,24 +1796,7 @@ async def upload_repair_evidence(
         )
 
     contents = await upload_file.read()
-    if not contents or len(contents) == 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded file is empty.",
-        )
-
-    if len(contents) > MAX_IMAGE_SIZE_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded file exceeds maximum permitted size of 15MB.",
-        )
-
-    mime_type, ext = detect_image_mime_and_ext(contents)
-    if not mime_type or not ext:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid image file format. Only JPEG, PNG, and WebP images are permitted.",
-        )
+    mime_type, ext = validate_image_bytes(contents, error_status=status.HTTP_400_BAD_REQUEST)
 
     checksum = hashlib.sha256(contents).hexdigest()
     unique_filename = f"{uuid.uuid4().hex}{ext}"
@@ -1725,13 +1861,21 @@ async def upload_repair_evidence(
     response_model=ReportResponse,
     summary="Submit repair work with evidence for final municipal verification (Assigned Staff only)",
 )
-def submit_repair_evidence(
+async def submit_repair_evidence(
     report_id: int,
+    request: Request,
     note: Optional[str] = Query(None, description="Optional submission note"),
     current_user: User = Depends(require_roles(UserRole.MAINTENANCE_STAFF, UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
     """Transitions report to 'repair_evidence_submitted' after validating at least one AFTER photo."""
+    if not note:
+        try:
+            body_data = await request.json()
+            if isinstance(body_data, dict) and body_data.get("note"):
+                note = str(body_data["note"])
+        except Exception:
+            pass
     try:
         report = db.query(Report).filter(Report.id == report_id).with_for_update().first()
     except Exception:
@@ -1822,26 +1966,47 @@ def final_verify_report(
         )
 
     prev_status = report.status.value
+    expected_version = report.version or 1
+    now = datetime.utcnow()
 
     if body.decision == VerificationDecision.APPROVED:
-        report.status = ReportStatus.CLOSED
-        report.final_verified_at = datetime.utcnow()
-        report.final_verified_by = current_user.id
-        report.closed_at = datetime.utcnow()
-        report.version = (report.version or 1) + 1
-        report.updated_at = datetime.utcnow()
+        updated = (
+            db.query(Report)
+            .filter(
+                Report.id == report.id,
+                Report.status == ReportStatus.REPAIR_EVIDENCE_SUBMITTED,
+                Report.version == expected_version,
+            )
+            .update(
+                {
+                    Report.status: ReportStatus.CLOSED,
+                    Report.final_verified_at: now,
+                    Report.final_verified_by: current_user.id,
+                    Report.closed_at: now,
+                    Report.version: expected_version + 1,
+                    Report.updated_at: now,
+                },
+                synchronize_session=False,
+            )
+        )
+        if updated != 1:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Concurrent update detected: report was already final-verified.",
+            )
 
         db.query(Assignment).filter(
             Assignment.report_id == report.id,
             Assignment.is_active == True,
-        ).update({"is_active": False, "unassigned_at": datetime.utcnow()})
+        ).update({"is_active": False, "unassigned_at": now})
 
         verif = FinalVerification(
             report_id=report.id,
             officer_id=current_user.id,
             decision=VerificationDecision.APPROVED,
             note=body.note,
-            created_at=datetime.utcnow(),
+            created_at=now,
         )
         db.add(verif)
 
@@ -1865,16 +2030,35 @@ def final_verify_report(
                 detail="A detailed reason note is required when sending a report back for rework.",
             )
 
-        report.status = ReportStatus.UNDER_REPAIR
-        report.version = (report.version or 1) + 1
-        report.updated_at = datetime.utcnow()
+        updated = (
+            db.query(Report)
+            .filter(
+                Report.id == report.id,
+                Report.status == ReportStatus.REPAIR_EVIDENCE_SUBMITTED,
+                Report.version == expected_version,
+            )
+            .update(
+                {
+                    Report.status: ReportStatus.UNDER_REPAIR,
+                    Report.version: expected_version + 1,
+                    Report.updated_at: now,
+                },
+                synchronize_session=False,
+            )
+        )
+        if updated != 1:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Concurrent update detected: report was already final-verified.",
+            )
 
         verif = FinalVerification(
             report_id=report.id,
             officer_id=current_user.id,
             decision=VerificationDecision.SENT_BACK,
             note=body.note.strip(),
-            created_at=datetime.utcnow(),
+            created_at=now,
         )
         db.add(verif)
 
@@ -1889,7 +2073,8 @@ def final_verify_report(
         )
 
     db.commit()
-    db.refresh(report)
+    db.expire_all()
+    report = db.query(Report).filter(Report.id == report_id).first()
     populate_report_lifecycle_details(report, db)
     populate_report_relations(report, db, is_privileged=True)
     return report
@@ -1978,8 +2163,14 @@ def get_evidence_file(
             detail="Access forbidden: You do not have permission to view this evidence photo.",
         )
 
-    clean_path = evidence.file_path.replace("/uploads/evidence/", "").replace("\\uploads\\evidence\\", "")
-    full_path = os.path.join(EVIDENCE_DIR, clean_path)
+    clean_path = os.path.basename(evidence.file_path.replace("\\", "/"))
+    full_path = os.path.realpath(os.path.join(EVIDENCE_DIR, clean_path))
+    evidence_root = os.path.realpath(EVIDENCE_DIR)
+    if not full_path.startswith(evidence_root + os.sep):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid evidence file path.",
+        )
 
     if not os.path.isfile(full_path):
         raise HTTPException(
@@ -2078,10 +2269,15 @@ def get_report_history(
 @router.put(
     "/{report_id}",
     response_model=ReportResponse,
-    summary="Update report details",
+    summary="Update report details (Officer/Admin only)",
 )
-def update_report(report_id: int, report_in: ReportUpdate, db: Session = Depends(get_db)):
-    """Updates fields (description, location, status, severity, etc.) on an existing report."""
+def update_report(
+    report_id: int,
+    report_in: ReportUpdate,
+    current_user: User = Depends(require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Updates fields (description, location, severity, etc.) on an existing report (Officer/Admin only)."""
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(
@@ -2091,13 +2287,19 @@ def update_report(report_id: int, report_in: ReportUpdate, db: Session = Depends
 
     update_data = report_in.model_dump(exclude_unset=True)
     if "status" in update_data and update_data["status"] is not None:
-        validate_transition(report.status, update_data["status"])
+        target_st = normalize_status(update_data["status"].value if hasattr(update_data["status"], "value") else str(update_data["status"]))
+        if target_st in (ReportStatus.CLOSED, ReportStatus.REJECTED, ReportStatus.DUPLICATE, ReportStatus.ASSIGNED):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Transition to '{target_st.value}' must use its dedicated workflow endpoint.",
+            )
+        validate_transition(report.status, update_data["status"], user_role=current_user.role.value)
         record_status_history(
             db=db,
             report_id=report.id,
             from_status=report.status.value,
             to_status=update_data["status"].value,
-            user=None,
+            user=current_user,
             note="Status updated via PUT update",
         )
 
@@ -2123,7 +2325,11 @@ def update_report_status(
     current_user: User = Depends(require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
-    """Transitions a report to a new stage in the workflow lifecycle with state validation."""
+    """Transitions a report to a new stage in the workflow lifecycle with state validation.
+    
+    Enforces that workflow-gated states (CLOSED, REJECTED, DUPLICATE, ASSIGNED) cannot bypass
+    their mandatory endpoints (e.g., closure is permitted ONLY via POST /final-verify APPROVED).
+    """
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(
@@ -2131,10 +2337,32 @@ def update_report_status(
             detail=f"Report with ID {report_id} not found.",
         )
 
+    target_norm = normalize_status(status_in.status.value if hasattr(status_in.status, "value") else str(status_in.status))
+    if target_norm == ReportStatus.CLOSED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reports can only be closed through POST /reports/{id}/final-verify with decision='APPROVED'.",
+        )
+    if target_norm == ReportStatus.REJECTED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reports must be rejected via POST /reports/{id}/reject with a mandatory reason.",
+        )
+    if target_norm == ReportStatus.DUPLICATE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reports must be marked duplicate via POST /reports/{id}/duplicate with an original report ID.",
+        )
+    if target_norm == ReportStatus.ASSIGNED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reports must be assigned via POST /reports/{id}/assign with a valid Maintenance Staff member.",
+        )
+
     validate_transition(report.status, status_in.status, user_role=current_user.role.value)
 
     prev_status = report.status.value
-    report.status = status_in.status
+    report.status = target_norm
     report.version = (report.version or 1) + 1
     report.updated_at = datetime.utcnow()
 
@@ -2142,9 +2370,9 @@ def update_report_status(
         db=db,
         report_id=report.id,
         from_status=prev_status,
-        to_status=status_in.status.value,
+        to_status=target_norm.value,
         user=current_user,
-        note=f"Status transitioned to {status_in.status.value}",
+        note=f"Status transitioned to {target_norm.value}",
     )
     db.commit()
     db.refresh(report)
@@ -2156,10 +2384,14 @@ def update_report_status(
 @router.delete(
     "/{report_id}",
     status_code=status.HTTP_200_OK,
-    summary="Delete a report",
+    summary="Delete a report (Admin only)",
 )
-def delete_report(report_id: int, db: Session = Depends(get_db)):
-    """Deletes a road damage report record from the database."""
+def delete_report(
+    report_id: int,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Deletes a road damage report record from the database (Admin only)."""
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
         raise HTTPException(

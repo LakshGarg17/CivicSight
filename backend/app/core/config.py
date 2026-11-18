@@ -20,22 +20,39 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
 
     # Authentication & JWT Configuration
-    SECRET_KEY: str = "civicsight-super-secret-jwt-key-for-development-2026-week3"
+    SECRET_KEY: str = "dev-only-change-in-env-civicsight-secret"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
+    # CORS Allowed Origins (comma-separated; never wildcard '*' when allow_credentials=True)
+    CORS_ORIGINS: str = (
+        "http://127.0.0.1:8000,http://localhost:8000,"
+        "http://127.0.0.1:3000,http://localhost:3000,"
+        "http://127.0.0.1:5500,http://localhost:5500"
+    )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip() and o.strip() != "*"]
 
     # Week 8: Priority Engine & Proximity Settings
     NEARBY_DISTANCE_METERS: float = 50.0
     DUPLICATE_DISTANCE_METERS: float = 15.0
     DUPLICATE_TIME_WINDOW_DAYS: Optional[float] = None
     IMAGE_SIMILARITY_ENABLED: bool = False
-    PRIORITY_MIN_CONFIDENCE: float = 0.35
+    PRIORITY_MIN_CONFIDENCE: float = 0.25
     PRIORITY_HIGH_SEVERITY_THRESHOLD: float = 0.55
     PRIORITY_MEDIUM_SEVERITY_THRESHOLD: float = 0.28
     PRIORITY_HIGH_SCORE_THRESHOLD: float = 60.0
     PRIORITY_MEDIUM_SCORE_THRESHOLD: float = 30.0
     PRIORITY_HIGH_NEARBY_COUNT: int = 4
     PRIORITY_MEDIUM_NEARBY_COUNT: int = 2
+
+    # ML Inference & YOLO Model Configuration
+    MODEL_PATH: str = "ml/runs/detect/clean_rdd2022_yolov8s/weights/best.pt"
+    DETECTION_CONFIDENCE_THRESHOLD: float = 0.25
+    DETECTION_IOU_THRESHOLD: float = 0.45
+    DETECTION_IMGSZ: int = 640
 
     @computed_field
     @property

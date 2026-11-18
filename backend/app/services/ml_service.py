@@ -32,7 +32,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # Canonical model identifiers
-DEFAULT_MODEL_VERSION = "YOLOv8n-CivicSight-4Class"
+DEFAULT_MODEL_VERSION = "YOLOv8s-clean_rdd2022_yolov8s"
 INFERENCE_TIMEOUT_SECONDS = 30.0
 
 
@@ -80,7 +80,10 @@ def run_ml_inference_guarded(
 ) -> Dict[str, Any]:
     """Executes preprocessing and YOLO inference inside a guarded thread with strict timeout."""
     from ml.src.preprocess import preprocess_report_image
-    from ml.src.inference import detect_road_damage
+    try:
+        from ml.inference_adapter import detect_road_damage
+    except ImportError:
+        from ml.src.inference import detect_road_damage
 
     def _execute() -> Dict[str, Any]:
         # Step 1: Preprocess using module

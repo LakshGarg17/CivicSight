@@ -73,11 +73,10 @@ class User(Base):
         nullable=False,
     )
 
-    # Relationships
+    # Relationships (preserve reports if user is deleted via ON DELETE SET NULL)
     reports = relationship(
         "Report",
         back_populates="reporter",
-        cascade="all, delete-orphan",
         passive_deletes=True,
         foreign_keys="Report.reporter_id",
     )
