@@ -83,7 +83,8 @@ def create_test_report(status_val=ReportStatus.SUBMITTED, priority_val="HIGH", d
         "status": status_val.value if isinstance(status_val, ReportStatus) else status_val,
         "image_url": "/uploads/reports/test_pothole.jpg",
     }
-    res = client.post("/api/v1/reports", json=payload)
+    admin_u = get_or_create_user(UserRole.ADMIN, "admin_w6@example.com", "Admin Jordan")
+    res = client.post("/api/v1/reports", json=payload, headers=auth_headers(get_token_for_user(admin_u)))
     assert res.status_code == 201, f"Failed to create test report: {res.text}"
     return res.json()["id"]
 
@@ -164,31 +165,31 @@ def test_week6_lifecycle():
     assert ur_res.json()["status"] == "under_repair"
     print(f"  [PASS] Step 3: Assigned -> Under Repair (200 OK)")
 
-    # Step 1.5: Under Repair -> Repaired
+    # Step 1.5: Under Repair -> Repair Evidence Submitted (normalized from legacy 'repaired')
     rep_res = client.patch(
         f"/api/v1/reports/{report_id}/status",
         json={"status": "repaired"},
         headers=auth_headers(off_token),
     )
     assert rep_res.status_code == 200
-    assert rep_res.json()["status"] == "repaired"
-    print(f"  [PASS] Step 4: Under Repair -> Repaired (200 OK)")
+    assert rep_res.json()["status"] == "repair_evidence_submitted"
+    print(f"  [PASS] Step 4: Under Repair -> Repair Evidence Submitted (200 OK)")
 
-    # Step 1.6: Repaired -> Closed
-    cls_res = client.patch(
-        f"/api/v1/reports/{report_id}/status",
-        json={"status": "closed"},
+    # Step 1.6: Repair Evidence Submitted -> Closed (strictly via final-verify APPROVED)
+    cls_res = client.post(
+        f"/api/v1/reports/{report_id}/final-verify",
+        json={"decision": "APPROVED", "note": "Verified restored pavement"},
         headers=auth_headers(off_token),
     )
     assert cls_res.status_code == 200
     assert cls_res.json()["status"] == "closed"
-    print(f"  [PASS] Step 5: Repaired -> Closed (200 OK)")
+    print(f"  [PASS] Step 5: Repair Evidence Submitted -> Closed via final-verify APPROVED (200 OK)")
 
     # Final History Audit
     h_final = client.get(f"/api/v1/reports/{report_id}/history", headers=auth_headers(off_token)).json()
     assert len(h_final) == 6
     history_statuses = [h["to_status"] for h in h_final]
-    assert history_statuses == ["submitted", "verified", "assigned", "under_repair", "repaired", "closed"]
+    assert history_statuses == ["submitted", "verified", "assigned", "under_repair", "repair_evidence_submitted", "closed"]
     print(f"  [PASS] Complete chronological history chain verified: {history_statuses}")
 
     # -------------------------------------------------------------------------
@@ -245,12 +246,7 @@ def test_week6_lifecycle():
     print("  [PASS] Blocked rejecting an assigned report (Assigned -> Rejected) -> 400 Bad Request")
 
     # 2.5 Cannot re-verify a closed report
-    closed_report_id = create_test_report(ReportStatus.SUBMITTED)
-    # verify -> assign -> repair -> close
-    client.patch(f"/api/v1/reports/{closed_report_id}/verify", headers=auth_headers(off_token))
-    client.patch(f"/api/v1/reports/{closed_report_id}/assign", json={"assigned_to": "Crew"}, headers=auth_headers(off_token))
-    client.patch(f"/api/v1/reports/{closed_report_id}/status", json={"status": "under_repair"}, headers=auth_headers(off_token))
-    client.patch(f"/api/v1/reports/{closed_report_id}/status", json={"status": "closed"}, headers=auth_headers(off_token))
+    closed_report_id = create_test_report(ReportStatus.CLOSED)
 
     reverify_closed = client.patch(f"/api/v1/reports/{closed_report_id}/verify", headers=auth_headers(off_token))
     assert reverify_closed.status_code == 400

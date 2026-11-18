@@ -76,7 +76,8 @@ def create_test_report(status_val=ReportStatus.SUBMITTED, priority_val="HIGH", d
             {"type": damage_type, "confidence": 0.94, "bbox": [0.3, 0.2, 0.7, 0.8]}
         ],
     }
-    res = client.post("/api/v1/reports", json=payload)
+    admin_user = get_or_create_user(UserRole.ADMIN, "admin_test_w5@example.com", "Admin Eve")
+    res = client.post("/api/v1/reports", json=payload, headers=auth_headers(get_token_for_user(admin_user)))
     assert res.status_code == 201, f"Failed to create test report: {res.text}"
     return res.json()["id"]
 

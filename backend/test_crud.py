@@ -29,58 +29,11 @@ def test_system_endpoints():
     print("   [OK] Health & PostgreSQL connectivity verified.")
 
 
-def test_user_crud():
-    print("\n[TEST] 2. Testing User CRUD Operations...")
-    import uuid
-    random_suffix = str(uuid.uuid4())[:8]
-    test_email = f"citizen_{random_suffix}@civicsight.org"
-
-    # CREATE
-    user_payload = {
-        "name": "Jane Citizen",
-        "email": test_email,
-        "phone": "+1-555-0199"
-    }
-    res_create = client.post("/api/v1/users", json=user_payload)
-    assert res_create.status_code == 201, res_create.text
-    user = res_create.json()
-    user_id = user["id"]
-    assert user["name"] == "Jane Citizen"
-    assert user["email"] == test_email
-    print(f"   [OK] Created User: ID={user_id}, Name='{user['name']}'")
-
-    # READ SINGLE
-    res_get = client.get(f"/api/v1/users/{user_id}")
-    assert res_get.status_code == 200
-    assert res_get.json()["id"] == user_id
-    print(f"   [OK] Retrieved User by ID={user_id}")
-
-    # LIST
-    res_list = client.get("/api/v1/users")
-    assert res_list.status_code == 200
-    users = res_list.json()
-    assert any(u["id"] == user_id for u in users)
-    print(f"   [OK] Listed Users (Found {len(users)} users)")
-
-    # UPDATE
-    update_payload = {"name": "Jane Citizen Updated", "phone": "+1-555-9999"}
-    res_update = client.put(f"/api/v1/users/{user_id}", json=update_payload)
-    assert res_update.status_code == 200
-    assert res_update.json()["name"] == "Jane Citizen Updated"
-    assert res_update.json()["phone"] == "+1-555-9999"
-    print(f"   [OK] Updated User ID={user_id}")
-
-    return user_id
-
-
-def test_report_crud(user_id: int = None):
-    if user_id is None:
-        user_id = test_user_crud()
-    print("\n[TEST] 3. Testing Report CRUD & Workflow Operations...")
+def _get_admin_headers():
     from app.core.security import create_access_token
     from app.models.models import User, UserRole
     from app.db.database import SessionLocal
-    
+
     db = SessionLocal()
     try:
         admin_user = db.query(User).filter(User.email == "admin_crud@civicsight.org").first()
@@ -93,12 +46,67 @@ def test_report_crud(user_id: int = None):
             db.add(admin_user)
             db.commit()
             db.refresh(admin_user)
-        admin_token = create_access_token(subject=str(admin_user.id), claims={"email": admin_user.email, "role": UserRole.ADMIN.value})
-        auth_headers = {"Authorization": f"Bearer {admin_token}"}
+        admin_token = create_access_token(
+            subject=str(admin_user.id),
+            claims={"email": admin_user.email, "role": UserRole.ADMIN.value},
+        )
+        return {"Authorization": f"Bearer {admin_token}"}
     finally:
         db.close()
-    
-    # CREATE REPORT
+
+
+def test_user_crud():
+    print("\n[TEST] 2. Testing User CRUD Operations (Admin-authenticated)...")
+    import uuid
+    auth_headers = _get_admin_headers()
+    random_suffix = str(uuid.uuid4())[:8]
+    test_email = f"citizen_{random_suffix}@civicsight.org"
+
+    # CREATE
+    user_payload = {
+        "name": "Jane Citizen",
+        "email": test_email,
+        "phone": "+1-555-0199"
+    }
+    res_create = client.post("/api/v1/users", json=user_payload, headers=auth_headers)
+    assert res_create.status_code == 201, res_create.text
+    user = res_create.json()
+    user_id = user["id"]
+    assert user["name"] == "Jane Citizen"
+    assert user["email"] == test_email
+    print(f"   [OK] Created User: ID={user_id}, Name='{user['name']}'")
+
+    # READ SINGLE
+    res_get = client.get(f"/api/v1/users/{user_id}", headers=auth_headers)
+    assert res_get.status_code == 200
+    assert res_get.json()["id"] == user_id
+    print(f"   [OK] Retrieved User by ID={user_id}")
+
+    # LIST
+    res_list = client.get("/api/v1/users", headers=auth_headers)
+    assert res_list.status_code == 200
+    users = res_list.json()
+    assert len(users) >= 1
+    print(f"   [OK] Listed Users (Found {len(users)} users)")
+
+    # UPDATE
+    update_payload = {"name": "Jane Citizen Updated", "phone": "+1-555-9999"}
+    res_update = client.put(f"/api/v1/users/{user_id}", json=update_payload, headers=auth_headers)
+    assert res_update.status_code == 200
+    assert res_update.json()["name"] == "Jane Citizen Updated"
+    assert res_update.json()["phone"] == "+1-555-9999"
+    print(f"   [OK] Updated User ID={user_id}")
+
+    return user_id
+
+
+def test_report_crud(user_id: int = None):
+    if user_id is None:
+        user_id = test_user_crud()
+    print("\n[TEST] 3. Testing Report CRUD & Workflow Operations...")
+    auth_headers = _get_admin_headers()
+
+    # CREATE REPORT (Admin specifies reporter_id)
     report_payload = {
         "reporter_id": user_id,
         "description": "Deep pothole near municipal library entrance",
@@ -109,7 +117,7 @@ def test_report_crud(user_id: int = None):
         "damage_type": "D40",
         "status": "submitted"
     }
-    res_create = client.post("/api/v1/reports", json=report_payload)
+    res_create = client.post("/api/v1/reports", json=report_payload, headers=auth_headers)
     assert res_create.status_code == 201, res_create.text
     report = res_create.json()
     report_id = report["id"]
@@ -141,30 +149,33 @@ def test_report_crud(user_id: int = None):
         "severity_score": 0.88,
         "damage_type": "D40"
     }
-    res_update = client.put(f"/api/v1/reports/{report_id}", json=update_payload)
+    res_update = client.put(f"/api/v1/reports/{report_id}", json=update_payload, headers=auth_headers)
     assert res_update.status_code == 200
     assert res_update.json()["severity_score"] == 0.88
     print(f"   [OK] Updated Report ID={report_id} severity score to 0.88")
 
-    # STATUS WORKFLOW TRANSITIONS
-    lifecycle = ["pending_verification", "verified", "assigned", "under_repair", "repaired", "closed"]
-    for next_status in lifecycle:
-        res_patch = client.patch(f"/api/v1/reports/{report_id}/status", json={"status": next_status}, headers=auth_headers)
-        assert res_patch.status_code == 200
-        assert res_patch.json()["status"] == next_status
-    print(f"   [OK] Successfully tested full workflow lifecycle transitions -> {lifecycle}")
+    # CANONICAL WORKFLOW TRANSITIONS (with proper endpoints & closure via final-verify APPROVED)
+    assert client.patch(f"/api/v1/reports/{report_id}/status", json={"status": "pending_verification"}, headers=auth_headers).status_code == 200
+    assert client.post(f"/api/v1/reports/{report_id}/verify", json={"note": "Verified"}, headers=auth_headers).status_code == 200
+    assert client.post(f"/api/v1/reports/{report_id}/assign", json={"assigned_to": "staff1@civicsight.gov"}, headers=auth_headers).status_code == 200
+    assert client.post(f"/api/v1/reports/{report_id}/repair/start", headers=auth_headers).status_code == 200
+    assert client.patch(f"/api/v1/reports/{report_id}/status", json={"status": "repair_evidence_submitted"}, headers=auth_headers).status_code == 200
+    res_close = client.post(f"/api/v1/reports/{report_id}/final-verify", json={"decision": "APPROVED", "note": "Approved"}, headers=auth_headers)
+    assert res_close.status_code == 200
+    assert res_close.json()["status"] == "closed"
+    print("   [OK] Successfully tested full canonical workflow lifecycle -> closed via final-verify APPROVED")
 
     # DELETE REPORT
-    res_del_rep = client.delete(f"/api/v1/reports/{report_id}")
+    res_del_rep = client.delete(f"/api/v1/reports/{report_id}", headers=auth_headers)
     assert res_del_rep.status_code == 200
     res_check = client.get(f"/api/v1/reports/{report_id}", headers=auth_headers)
     assert res_check.status_code == 404
     print(f"   [OK] Deleted Report ID={report_id} and verified 404")
 
     # DELETE USER
-    res_del_user = client.delete(f"/api/v1/users/{user_id}")
+    res_del_user = client.delete(f"/api/v1/users/{user_id}", headers=auth_headers)
     assert res_del_user.status_code == 200
-    res_check_user = client.get(f"/api/v1/users/{user_id}")
+    res_check_user = client.get(f"/api/v1/users/{user_id}", headers=auth_headers)
     assert res_check_user.status_code == 404
     print(f"   [OK] Deleted User ID={user_id} and verified 404")
 

@@ -91,51 +91,81 @@ def test_authentication_and_roles_workflow():
     print("  [PASS] Duplicate email rejected independently by backend -> 400 Bad Request")
 
     # -------------------------------------------------------------------------
-    # 2. Register Additional Roles (Officer, Staff, Admin)
+    # 2. Verify Public Role Escalation Blocked & Provision Privileged Accounts via Admin
     # -------------------------------------------------------------------------
-    print("\n[2/7] Registering Multi-Role User Accounts...")
+    print("\n[2/7] Testing Public Role Escalation Defense & Admin User Provisioning...")
+
+    # Public registration MUST block privilege escalation (Week 10 Security Fix BUG-001)
+    esc_admin = client.post(
+        "/api/v1/auth/register",
+        json={
+            "name": "Escalation Attacker",
+            "email": f"attacker_{unique_suffix}@example.com",
+            "password": password_valid,
+            "role": "Admin",
+        },
+    )
+    assert esc_admin.status_code == 403, f"Expected 403 for public Admin registration, got {esc_admin.status_code}"
+
+    # Provision Officer, Staff, Admin through Admin-authenticated /api/v1/users
+    from app.db.database import SessionLocal
+    from app.models.models import User
+    from app.core.security import create_access_token
+
+    db = SessionLocal()
+    try:
+        seed_admin = db.query(User).filter(User.email == "admin1@civicsight.gov").first()
+        assert seed_admin is not None, "Seeded admin1 account missing"
+        seed_admin_headers = {
+            "Authorization": f"Bearer {create_access_token(subject=seed_admin.id, claims={'role': 'Admin'})}"
+        }
+    finally:
+        db.close()
 
     # Officer
     reg_officer = client.post(
-        "/api/v1/auth/register",
+        "/api/v1/users",
         json={
             "name": f"Officer Dave {unique_suffix}",
             "email": officer_email,
             "password": password_valid,
             "role": "Municipal Officer",
         },
+        headers=seed_admin_headers,
     )
     assert reg_officer.status_code == 201
     assert reg_officer.json()["role"] == "Municipal Officer"
-    print(f"  [PASS] Registered Municipal Officer '{officer_email}' -> 201 Created")
+    print(f"  [PASS] Provisioned Municipal Officer '{officer_email}' via Admin -> 201 Created")
 
     # Staff
     reg_staff = client.post(
-        "/api/v1/auth/register",
+        "/api/v1/users",
         json={
             "name": f"Tech Alex {unique_suffix}",
             "email": staff_email,
             "password": password_valid,
             "role": "Maintenance Staff",
         },
+        headers=seed_admin_headers,
     )
     assert reg_staff.status_code == 201
     assert reg_staff.json()["role"] == "Maintenance Staff"
-    print(f"  [PASS] Registered Maintenance Staff '{staff_email}' -> 201 Created")
+    print(f"  [PASS] Provisioned Maintenance Staff '{staff_email}' via Admin -> 201 Created")
 
     # Admin
     reg_admin = client.post(
-        "/api/v1/auth/register",
+        "/api/v1/users",
         json={
             "name": f"Admin Sarah {unique_suffix}",
             "email": admin_email,
             "password": password_valid,
             "role": "Admin",
         },
+        headers=seed_admin_headers,
     )
     assert reg_admin.status_code == 201
     assert reg_admin.json()["role"] == "Admin"
-    print(f"  [PASS] Registered Admin '{admin_email}' -> 201 Created")
+    print(f"  [PASS] Provisioned Admin '{admin_email}' via Admin -> 201 Created")
 
     # -------------------------------------------------------------------------
     # 3. Login Endpoint & Credential Verification
@@ -274,11 +304,10 @@ def test_authentication_and_roles_workflow():
     # -------------------------------------------------------------------------
     print("\n[6/7] Verifying Existing User & Report CRUD Compatibility...")
 
-    # Create report associated with newly registered citizen
+    # Create report associated with newly registered citizen (authenticated as citizen)
     new_report = client.post(
         "/api/v1/reports",
         json={
-            "reporter_id": citizen_id,
             "description": "Week 3 verified pothole submission with authenticated citizen link",
             "latitude": 37.7749,
             "longitude": -122.4194,
@@ -286,6 +315,7 @@ def test_authentication_and_roles_workflow():
             "damage_type": "D40",
             "status": "submitted",
         },
+        headers={"Authorization": f"Bearer {token_citizen}"},
     )
     assert new_report.status_code == 201
     report_id = new_report.json()["id"]
