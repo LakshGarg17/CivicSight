@@ -1,0 +1,19 @@
+# CivicSight — RDD2022 Full Dataset Configuration (Week 8+ Full Training)
+# Pointing to the actual downloaded dataset location
+
+# Dataset Root & Partitions
+path: C:/Users/thapa/Downloads/archive (1)/datasets_clean
+
+train: train/images   # 37,230 images
+val:   valid/images   # 3,286 images
+test:  test/images    # 3,285 images
+
+# 4 Damage Classes (RDD2022 Standard)
+nc: 4
+
+# Class ID → Damage Category Mapping
+names:
+  0: D00   # Longitudinal Crack   — Parallel to road direction  (Medium severity)
+  1: D10   # Transverse Crack     — Perpendicular to road dir   (Medium severity)
+  2: D20   # Alligator Crack      — Fatigue mesh / base failure (High severity)
+  3: D40   # Pothole              — Critical cavity hazard      (Critical severity)
