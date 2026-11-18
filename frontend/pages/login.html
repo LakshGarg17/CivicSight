@@ -237,10 +237,17 @@
           successBanner.style.display = 'flex';
           CivicSightAuth.showToast(`Logged in as ${userName} (${userRole})`, 'success');
 
-          // Redirect to appropriate page
+          // Redirect to role-appropriate portal
           setTimeout(() => {
-            window.location.href = 'report.html';
-          }, 1000);
+            const redirectParam = urlParams.get('redirect');
+            if (userRole === 'Municipal Officer' || userRole === 'Admin') {
+              window.location.href = (redirectParam && !redirectParam.includes('://')) ? redirectParam : 'dashboard.html';
+            } else if (userRole === 'Maintenance Staff') {
+              window.location.href = 'maintenance.html';
+            } else {
+              window.location.href = 'report.html';
+            }
+          }, 500);
 
         } catch (err) {
           showError(err.message || 'Invalid email or password.');

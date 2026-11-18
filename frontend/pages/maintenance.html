@@ -9,14 +9,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Leaflet Map CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <link rel="stylesheet" href="../css/style.css">
   <link rel="icon" type="image/png" href="../assets/favicon.png">
   
   <script src="../js/theme.js"></script>
-  <!-- Leaflet Map JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Google Maps CivicSight Map Abstraction -->
+  <script src="../js/config.local.js" onerror="this.remove()"></script>
+  <script src="../js/maps.js"></script>
 </head>
 <body>
 
@@ -241,6 +240,15 @@
           <!-- Multiple after thumbnails if available -->
           <div class="evidence-gallery-thumbs" id="comparisonThumbs"></div>
         </div>
+      </div>
+
+      <!-- Incident Location Context (Read-Only Map) -->
+      <div class="maintenance-map-section" style="margin-top: 1rem;">
+        <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.35rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          Damage Incident Location
+        </div>
+        <div id="maintenanceComparisonMap" class="readonly-map-canvas" style="height: 180px; width: 100%; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-color);" role="region" aria-label="Incident location map"></div>
       </div>
 
       <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">

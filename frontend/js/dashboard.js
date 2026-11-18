@@ -1,11 +1,11 @@
-﻿/**
+/**
  * CivicSight — Municipal Operations Dashboard & Interactive Map
  *
  * Week 6 Enhanced Implementation:
  * - Strict Route Guard: Citizens receive Access Denied screen & redirection; Unauthenticated redirected to login.
  * - Live Backend API Integration: Fetches from GET /api/v1/reports with JWT Bearer auth.
  * - Live Query Filtering: Dynamic filtering via ?status=... and ?priority=...
- * - Interactive Leaflet Map: Geospatial pins color-coded by priority (Red=HIGH, Amber=MEDIUM, Green=LOW).
+ * - Interactive Google Maps: Geospatial pins color-coded by priority (Red=HIGH, Amber=MEDIUM, Green=LOW).
  * - Deep Inspection Modal: Reuses CivicSightMLViewer for bounding box and defect triage.
  * - Real Lifecycle Status Transitions:
  *     * PATCH /reports/{id}/verify (moves to verified)
@@ -29,10 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Citizen role restriction: block access
-  if (currentUser.role === 'Citizen') {
+  // Role restriction: strictly allow Municipal Officer and Admin only
+  if (currentUser.role !== 'Municipal Officer' && currentUser.role !== 'Admin') {
     const mainEl = document.querySelector('.dashboard-main');
     if (mainEl) {
+      const homeLink = currentUser.role === 'Maintenance Staff'
+        ? '<a href="maintenance.html" class="btn btn-primary" style="min-width: 180px;">Maintenance Staff Portal</a>'
+        : '<a href="report.html" class="btn btn-primary" style="min-width: 180px;">Citizen Road Reporting</a>';
       mainEl.innerHTML = `
         <div class="container" style="padding: 5rem 1rem; text-align: center; max-width: 620px; margin: 0 auto;">
           <div style="width: 80px; height: 80px; margin: 0 auto 1.75rem; border-radius: 50%; background: var(--accent-subtle); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); box-shadow: var(--shadow-md);">
@@ -47,9 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Your account is currently registered with the role <strong style="color: var(--accent-color);">${currentUser.role}</strong>.
           </p>
           <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-            <a href="report.html" class="btn btn-primary" style="min-width: 180px;">
-              Citizen Road Reporting
-            </a>
+            ${homeLink}
             <button type="button" class="btn btn-secondary" id="switchAccountBtn" style="min-width: 160px;">
               Switch Account
             </button>
@@ -189,9 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const API_BASE = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.API_BASE : 'http://127.0.0.1:8000';
 
-  let map = null;
-  let markersLayer = null;
-  let tileLayer = null;
+  let hazardMap = null;
   let activeReports = [];
   let currentlyInspectedReportId = null;
   let activeReviewRelationId = null;
@@ -233,173 +232,44 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // Tile Provider & Handling
+  // Google Maps Geospatial Hazard Center Integration
   // --------------------------------------------------------------------------
-  function cartoTileUrl() {
-    const mode = (document.documentElement.getAttribute('data-theme') === 'dark') ? 'dark_all' : 'light_all';
-    return `https://{s}.basemaps.cartocdn.com/${mode}/{z}/{x}/{y}{r}.png`;
-  }
-  const CARTO_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
+  let activeMapMode = 'standard'; // 'standard' | 'cluster' | 'heat'
 
-  function attachTileErrorHandling(mapElement) {
-    if (!tileLayer || !mapElement) return;
-    let tileErrorCount = 0;
-    tileLayer.on('tileload', () => { tileErrorCount = 0; hideMapError(mapElement); });
-    tileLayer.on('tileerror', () => {
-      tileErrorCount += 1;
-      if (tileErrorCount >= 3) showMapError(mapElement);
-    });
-  }
+  async function initDashboardMap() {
+    if (!dashboardMapEl || typeof CivicSightMap === 'undefined') return;
 
-  function showMapError(mapElement) {
-    if (mapElement.querySelector('.map-error-overlay')) return;
-    const overlay = document.createElement('div');
-    overlay.className = 'map-error-overlay';
-    overlay.innerHTML = `
-      <div class="map-error-card">
-        <strong>Map tiles could not be loaded</strong>
-        <p>Check your internet connection, then retry. Report data remains available in the table below.</p>
-        <button type="button" class="btn btn-secondary btn-sm" data-map-retry>Retry</button>
-      </div>`;
-    overlay.querySelector('[data-map-retry]').addEventListener('click', () => {
-      overlay.remove();
-      if (map) map.invalidateSize();
-    });
-    mapElement.appendChild(overlay);
-  }
-
-  function hideMapError(mapElement) {
-    const overlay = mapElement.querySelector('.map-error-overlay');
-    if (overlay) overlay.remove();
-  }
-
-  // --------------------------------------------------------------------------
-  // Severity Pin Generator
-  // --------------------------------------------------------------------------
-  function createSeverityIcon(priority) {
-    let pinColor = 'var(--color-warning)'; // Medium
-    const norm = (priority || '').toUpperCase();
-    if (norm === 'HIGH') pinColor = 'var(--color-danger)'; // High
-    else if (norm === 'LOW') pinColor = 'var(--color-success)'; // Low
-
-    const svgHtml = `
-      <svg class="severity-pin-svg" width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17 41C17 41 31 25.5 31 16C31 7.71573 24.732 1 17 1C9.26801 1 3 7.71573 3 16C3 25.5 17 41 17 41Z" fill="${pinColor}" stroke="var(--bg-primary)" stroke-width="2.2" stroke-linejoin="round"/>
-        <circle cx="17" cy="15" r="5.5" fill="var(--bg-primary)"/>
-      </svg>
-    `;
-
-    return L.divIcon({
-      className: 'severity-pin-icon',
-      html: svgHtml,
-      iconSize: [34, 42],
-      iconAnchor: [17, 41],
-      popupAnchor: [0, -38],
-    });
-  }
-
-  // --------------------------------------------------------------------------
-  // Map Initialization
-  // --------------------------------------------------------------------------
-  function initDashboardMap() {
-    if (!dashboardMapEl || typeof L === 'undefined') return;
-
-    map = L.map('dashboardMap', {
-      zoomControl: true,
-      attributionControl: true,
-    }).setView([37.7760, -122.4180], 13);
-
-    tileLayer = L.tileLayer(cartoTileUrl(), {
-      maxZoom: 20,
-      attribution: CARTO_ATTRIBUTION,
-    }).addTo(map);
-
-    attachTileErrorHandling(dashboardMapEl);
-
-    const themeObserver = new MutationObserver(() => {
-      if (tileLayer) map.removeLayer(tileLayer);
-      tileLayer = L.tileLayer(cartoTileUrl(), { maxZoom: 20, attribution: CARTO_ATTRIBUTION }).addTo(map);
-      attachTileErrorHandling(dashboardMapEl);
-    });
-    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-
-    markersLayer = L.layerGroup().addTo(map);
-  }
-
-  // --------------------------------------------------------------------------
-  // Render Map Markers
-  // --------------------------------------------------------------------------
-  function renderMarkers() {
-    if (!markersLayer || !map) return;
-    markersLayer.clearLayers();
-
-    const validCoordinates = [];
-
-    activeReports.forEach((report) => {
-      if (typeof report.latitude !== 'number' || typeof report.longitude !== 'number') return;
-
-      const priority = report.priority || 'MEDIUM';
-      const marker = L.marker([report.latitude, report.longitude], {
-        icon: createSeverityIcon(priority),
-        title: `Report #${report.id} - ${priority} Priority`,
+    // Attach map view mode toggle listener
+    const modeToggles = document.getElementById('mapViewToggles');
+    if (modeToggles && !modeToggles._listenerAttached) {
+      modeToggles._listenerAttached = true;
+      modeToggles.addEventListener('click', (e) => {
+        const btn = e.target.closest('.map-toggle-btn');
+        if (!btn) return;
+        const newMode = btn.getAttribute('data-map-mode');
+        if (newMode && newMode !== activeMapMode) {
+          activeMapMode = newMode;
+          modeToggles.querySelectorAll('.map-toggle-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          if (hazardMap && typeof hazardMap.setMode === 'function') {
+            hazardMap.setMode(newMode);
+          }
+        }
       });
-
-      validCoordinates.push([report.latitude, report.longitude]);
-
-      const damageCode = report.damage_type || 'D40';
-
-      const popupContent = `
-        <div class="dashboard-popup">
-          <div class="popup-header">
-            <span class="popup-report-id">Report #${report.id}</span>
-            <span class="ml-severity-badge severity-${priority.toLowerCase()}">
-              <span class="severity-bullet"></span>
-              ${priority}
-            </span>
-          </div>
-
-          <div class="popup-meta-row">
-            <span class="popup-meta-label">Defect Type:</span>
-            <span class="popup-meta-val">${damageCode} Pothole/Crack</span>
-          </div>
-          <div class="popup-meta-row">
-            <span class="popup-meta-label">Address / Spot:</span>
-            <span class="popup-meta-val">${escapeHtml(report.address_text) || 'Pinned Location'}</span>
-          </div>
-          <div class="popup-meta-row">
-            <span class="popup-meta-label">Status:</span>
-            <span class="popup-meta-val">${renderStatusBadge(report.status)}</span>
-          </div>
-
-          <div class="popup-actions" style="margin-top: 0.75rem;">
-            <button type="button" class="btn btn-secondary btn-sm inspect-btn" data-report-id="${report.id}" style="width: 100%;">
-              Open Deep Inspection
-            </button>
-          </div>
-        </div>
-      `;
-
-      marker.bindPopup(popupContent, { maxWidth: 290 });
-      markersLayer.addLayer(marker);
-    });
-
-    if (validCoordinates.length > 0 && map) {
-      try {
-        const bounds = L.latLngBounds(validCoordinates);
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-      } catch (e) {
-        // Fallback
-      }
     }
 
-    map.off('popupopen');
-    map.on('popupopen', () => {
-      document.querySelectorAll('.inspect-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          const reportId = parseInt(e.currentTarget.getAttribute('data-report-id'));
-          openInspectionModal(reportId);
-        });
-      });
+    hazardMap = await CivicSightMap.createHazardMap('dashboardMap', {
+      center: { lat: 37.7760, lng: -122.4180 },
+      zoom: 13,
+    });
+
+    renderMarkers();
+  }
+
+  function renderMarkers() {
+    if (!hazardMap || !hazardMap.isAvailable) return;
+    hazardMap.updateReports(activeReports, (reportId) => {
+      openInspectionModal(reportId);
     });
   }
 
@@ -677,6 +547,15 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadReportHistory(reportId);
 
     if (inspectionModal) inspectionModal.classList.add('open');
+
+    // Render read-only mini map of the report location
+    if (typeof CivicSightMap !== 'undefined') {
+      CivicSightMap.createReadOnlyMap('modalInspectionMap', {
+        lat: report.latitude,
+        lng: report.longitude,
+        priority: report.priority,
+      });
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -1102,7 +981,9 @@ document.addEventListener('DOMContentLoaded', () => {
       attempts++;
       if (currentlyInspectedReportId !== reportId || attempts > maxAttempts) return;
       try {
-        const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/ml-status`);
+        const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/ml-status`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (res.ok) {
           const statusData = await res.json();
           if (statusData.ml_status !== 'ML_PENDING') {
@@ -1780,12 +1661,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const report = activeReports.find(r => r.id === reportId);
     if (!report) return;
 
+    const beforeUrl = report.image_url
+      ? (report.image_url.startsWith('http') ? report.image_url : `${API_BASE}${report.image_url}`)
+      : '../assets/logo-icon.png';
+
     if (verifyBeforeImg) {
-      verifyBeforeImg.src = report.image_path ? `${API_BASE}/${report.image_path}` : '../assets/logo-icon.png';
+      verifyBeforeImg.src = beforeUrl;
     }
     if (verifyBeforeMeta) {
       verifyBeforeMeta.innerHTML = `
-        <strong>Hazard:</strong> ${escapeHtml(report.defect_type || 'Road Damage')}<br>
+        <strong>Hazard:</strong> ${escapeHtml(report.damage_type || 'Road Damage')}<br>
         <strong>Location:</strong> ${escapeHtml(report.address_text || `${Number(report.latitude).toFixed(4)}°, ${Number(report.longitude).toFixed(4)}°`)}<br>
         <strong>Reported:</strong> ${new Date(report.created_at).toLocaleString()}
       `;
@@ -1806,7 +1691,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (!res.ok) throw new Error('Failed to fetch evidence');
       const data = await res.json();
-      const photos = data.evidence_photos || [];
+      const photos = data.evidence || data.evidence_photos || [];
       const afterPhotos = photos.filter(p => (p.kind || '').toUpperCase() === 'AFTER');
 
       if (afterPhotos.length === 0) {
@@ -1814,9 +1699,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      const blobUrls = await Promise.all(
+        afterPhotos.map(async (p) => {
+          const fileUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${p.id}/file`;
+          return (typeof CivicSightAuth !== 'undefined' && CivicSightAuth.fetchAuthenticatedImageUrl)
+            ? await CivicSightAuth.fetchAuthenticatedImageUrl(fileUrl)
+            : fileUrl;
+        })
+      );
+
       const first = afterPhotos[0];
-      const firstUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${first.id}/file`;
-      if (verifyAfterImg) verifyAfterImg.src = firstUrl;
+      if (verifyAfterImg && blobUrls[0]) verifyAfterImg.src = blobUrls[0];
       if (verifyAfterMeta) {
         verifyAfterMeta.innerHTML = `
           <strong>Uploaded:</strong> ${new Date(first.uploaded_at).toLocaleString()}<br>
@@ -1826,9 +1719,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (verifyAfterThumbs && afterPhotos.length > 1) {
         verifyAfterThumbs.innerHTML = afterPhotos.map((p, idx) => {
-          const thumbUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${p.id}/file`;
+          const thumbUrl = blobUrls[idx] || '';
           return `
-            <img src="${escapeHtml(thumbUrl)}" class="evidence-gallery-thumb ${idx === 0 ? 'selected' : ''}"
+            <img src="${escapeHtml(thumbUrl)}" alt="After repair photo ${idx + 1}" class="evidence-gallery-thumb ${idx === 0 ? 'selected' : ''}"
                  onclick="CivicSightDashboard.selectVerifyThumb('${escapeHtml(thumbUrl)}', '${escapeHtml(p.note || '')}', '${p.uploaded_at}', this)">
           `;
         }).join('');
@@ -1965,6 +1858,20 @@ document.addEventListener('DOMContentLoaded', () => {
     promptConfirmDuplicate: promptConfirmDuplicate,
     dismissRelation: dismissRelation,
   };
+
+  // Keyboard Escape support for all dashboard dialogs
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (relationConfirmModal?.classList.contains('open')) closeRelationConfirmModal();
+    else if (finalVerifyModal?.classList.contains('open')) closeFinalVerifyModal();
+    else if (rejectModal?.classList.contains('open')) closeRejectModal();
+    else if (duplicateModal?.classList.contains('open')) closeDuplicateModal();
+    else if (assignModal?.classList.contains('open')) closeAssignModal();
+    else if (repairModal?.classList.contains('open')) closeRepairModal();
+    else if (reassignModal?.classList.contains('open')) closeReassignModal();
+    else if (unassignModal?.classList.contains('open')) closeUnassignModal();
+    else if (inspectionModal?.classList.contains('open')) closeInspectionModal();
+  });
 
   // Initialize
   initDashboardMap();

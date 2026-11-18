@@ -192,6 +192,13 @@
     }
   }
 
+  function resolveReportImageUrl(report) {
+    const raw = report.image_url || report.image_path;
+    if (!raw) return '../assets/logo-icon.png';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    return `${API_BASE}${raw.startsWith('/') ? raw : '/' + raw}`;
+  }
+
   function renderCard(report) {
     const status = (report.status || '').toLowerCase();
     const isSentBack = report.final_verifications && report.final_verifications.some(v => v.decision === 'SENT_BACK');
@@ -199,7 +206,7 @@
       ? [...report.final_verifications].filter(v => v.decision === 'SENT_BACK').pop() 
       : null;
 
-    const imgUrl = report.image_path ? `${API_BASE}/${report.image_path}` : '../assets/logo-icon.png';
+    const imgUrl = resolveReportImageUrl(report);
     const locText = (report.latitude && report.longitude)
       ? `${Number(report.latitude).toFixed(4)}°, ${Number(report.longitude).toFixed(4)}°`
       : 'Coordinates unlisted';
@@ -240,7 +247,7 @@
             <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">
               Work Order #${report.id}
             </span>
-            <h3 class="assignment-defect-title">${escapeHtml(report.defect_type || 'Road Damage')}</h3>
+            <h3 class="assignment-defect-title">${escapeHtml(report.damage_type || report.defect_type || 'Road Damage')}</h3>
           </div>
           <div style="display: flex; gap: 0.4rem; align-items: center;">
             ${renderPriorityBadge(report.priority)}
@@ -288,8 +295,6 @@
   // Repair Progression Actions
   // --------------------------------------------------------------------------
   async function startRepair(reportId) {
-    if (!confirm(`Confirm starting field repair for Work Order #${reportId}?`)) return;
-
     try {
       const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/repair/start`, {
         method: 'POST',
@@ -321,9 +326,9 @@
 
     if (evidenceModalReportBadge) evidenceModalReportBadge.textContent = `Work Order #${report.id}`;
     if (evidenceModalBeforeThumb) {
-      evidenceModalBeforeThumb.src = report.image_path ? `${API_BASE}/${report.image_path}` : '../assets/logo-icon.png';
+      evidenceModalBeforeThumb.src = resolveReportImageUrl(report);
     }
-    if (evidenceModalDefectTitle) evidenceModalDefectTitle.textContent = report.defect_type || 'Road Damage';
+    if (evidenceModalDefectTitle) evidenceModalDefectTitle.textContent = report.damage_type || report.defect_type || 'Road Damage';
     if (evidenceModalLocation) {
       evidenceModalLocation.textContent = (report.latitude && report.longitude)
         ? `${Number(report.latitude).toFixed(4)}°, ${Number(report.longitude).toFixed(4)}°`
@@ -360,7 +365,7 @@
 
       if (!res.ok) throw new Error('Evidence fetch failed');
       const data = await res.json();
-      const photos = data.evidence_photos || [];
+      const photos = data.evidence || data.evidence_photos || [];
       const afterPhotos = photos.filter(p => (p.kind || '').toUpperCase() === 'AFTER');
 
       if (evidenceCountBadge) evidenceCountBadge.textContent = photos.length;
@@ -373,12 +378,21 @@
         return;
       }
 
-      evidenceGalleryList.innerHTML = photos.map(p => {
-        const fileUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${p.id}/file`;
+      const resolvedUrls = await Promise.all(
+        photos.map(async (p) => {
+          const fileUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${p.id}/file`;
+          return (typeof CivicSightAuth !== 'undefined' && CivicSightAuth.fetchAuthenticatedImageUrl)
+            ? await CivicSightAuth.fetchAuthenticatedImageUrl(fileUrl)
+            : fileUrl;
+        })
+      );
+
+      evidenceGalleryList.innerHTML = photos.map((p, idx) => {
+        const blobUrl = resolvedUrls[idx] || '';
         return `
           <div class="evidence-preview-item" title="${escapeHtml(p.note || p.kind)}">
-            <img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(p.kind)} Photo" onerror="this.src='${API_BASE}/${p.file_path}'">
-            <span style="position: absolute; bottom: 2px; left: 2px; background: rgba(0,0,0,0.65); color: #fff; font-size: 9px; padding: 1px 4px; border-radius: 2px;">
+            <img src="${escapeHtml(blobUrl)}" alt="${escapeHtml(p.kind)} Photo">
+            <span style="position: absolute; bottom: 2px; left: 2px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 9px; padding: 1px 4px; border-radius: 2px;">
               ${escapeHtml(p.kind)}
             </span>
           </div>
@@ -434,8 +448,6 @@
     if (!currentModalReportId) return;
     const note = evidenceUploadNote ? evidenceUploadNote.value.trim() : '';
 
-    if (!confirm('Submit this completed repair for final municipal officer inspection?')) return;
-
     try {
       const res = await fetch(`${API_BASE}/api/v1/reports/${currentModalReportId}/repair/submit`, {
         method: 'POST',
@@ -469,11 +481,11 @@
     if (!report) return;
 
     if (comparisonBeforeImg) {
-      comparisonBeforeImg.src = report.image_path ? `${API_BASE}/${report.image_path}` : '../assets/logo-icon.png';
+      comparisonBeforeImg.src = resolveReportImageUrl(report);
     }
     if (comparisonBeforeMeta) {
       comparisonBeforeMeta.innerHTML = `
-        <strong>Hazard:</strong> ${escapeHtml(report.defect_type || 'Road Damage')}<br>
+        <strong>Hazard:</strong> ${escapeHtml(report.damage_type || report.defect_type || 'Road Damage')}<br>
         <strong>Reported:</strong> ${new Date(report.created_at).toLocaleString()}<br>
         <strong>Status:</strong> ${formatStatusLabel(report.status)}
       `;
@@ -487,6 +499,15 @@
 
     if (comparisonModal) comparisonModal.classList.add('open');
 
+    // Render read-only map of the work order location
+    if (typeof CivicSightMap !== 'undefined') {
+      CivicSightMap.createReadOnlyMap('maintenanceComparisonMap', {
+        lat: report.latitude,
+        lng: report.longitude,
+        priority: report.priority,
+      });
+    }
+
     try {
       const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/evidence`, {
         headers: getAuthHeaders()
@@ -494,7 +515,7 @@
 
       if (!res.ok) throw new Error('Evidence fetch failed');
       const data = await res.json();
-      const photos = data.evidence_photos || [];
+      const photos = data.evidence || data.evidence_photos || [];
       const afterPhotos = photos.filter(p => (p.kind || '').toUpperCase() === 'AFTER');
 
       if (afterPhotos.length === 0) {
@@ -502,9 +523,17 @@
         return;
       }
 
+      const blobUrls = await Promise.all(
+        afterPhotos.map(async (p) => {
+          const fileUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${p.id}/file`;
+          return (typeof CivicSightAuth !== 'undefined' && CivicSightAuth.fetchAuthenticatedImageUrl)
+            ? await CivicSightAuth.fetchAuthenticatedImageUrl(fileUrl)
+            : fileUrl;
+        })
+      );
+
       const primary = afterPhotos[0];
-      const primaryUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${primary.id}/file`;
-      if (comparisonAfterImg) comparisonAfterImg.src = primaryUrl;
+      if (comparisonAfterImg && blobUrls[0]) comparisonAfterImg.src = blobUrls[0];
       if (comparisonAfterMeta) {
         comparisonAfterMeta.innerHTML = `
           <strong>Uploaded:</strong> ${new Date(primary.uploaded_at).toLocaleString()}<br>
@@ -514,9 +543,9 @@
 
       if (comparisonThumbs && afterPhotos.length > 1) {
         comparisonThumbs.innerHTML = afterPhotos.map((p, idx) => {
-          const thumbUrl = `${API_BASE}/api/v1/reports/${reportId}/evidence/${p.id}/file`;
+          const thumbUrl = blobUrls[idx] || '';
           return `
-            <img src="${escapeHtml(thumbUrl)}" class="evidence-gallery-thumb ${idx === 0 ? 'selected' : ''}" 
+            <img src="${escapeHtml(thumbUrl)}" alt="After repair photo ${idx + 1}" class="evidence-gallery-thumb ${idx === 0 ? 'selected' : ''}" 
                  onclick="CivicSightMaintenance.selectComparisonThumb('${escapeHtml(thumbUrl)}', '${escapeHtml(p.note || '')}', '${p.uploaded_at}', this)">
           `;
         }).join('');
@@ -609,16 +638,29 @@
     comparisonModal?.addEventListener('click', (e) => {
       if (e.target === comparisonModal) closeComparisonModal();
     });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (evidenceModal?.classList.contains('open')) closeEvidenceModal();
+      else if (comparisonModal?.classList.contains('open')) closeComparisonModal();
+    });
   }
 
   function handleFileSelect(file) {
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowed.includes(file.type.toLowerCase())) {
+    if (!allowed.includes((file.type || '').toLowerCase())) {
+      if (evidenceFileInput) evidenceFileInput.value = '';
       CivicSightAuth.showToast('Invalid format. Please select JPEG, PNG, or WebP.', 'error');
       return;
     }
+    if (file.size === 0) {
+      if (evidenceFileInput) evidenceFileInput.value = '';
+      CivicSightAuth.showToast('Selected file is empty (0 bytes).', 'error');
+      return;
+    }
     if (file.size > 15 * 1024 * 1024) {
+      if (evidenceFileInput) evidenceFileInput.value = '';
       CivicSightAuth.showToast('File exceeds 15MB limit.', 'error');
       return;
     }

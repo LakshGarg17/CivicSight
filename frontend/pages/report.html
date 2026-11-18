@@ -4,17 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Report Road Damage — CivicSight</title>
-  <meta name="description" content="Submit road hazard reports with photo upload, Leaflet interactive map location pinpointing, and direct municipal routing.">
+  <meta name="description" content="Submit road hazard reports with photo upload, interactive map location pinpointing, and direct municipal routing.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <!-- Leaflet Map CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <link rel="stylesheet" href="../css/style.css">
   <link rel="icon" type="image/png" href="../assets/favicon.png">
   <script src="../js/theme.js"></script>
-  <!-- Leaflet Map JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
 
@@ -74,7 +70,7 @@
       <div id="submissionStatus" class="submission-status-banner" style="display: none;" role="alert" aria-live="polite"></div>
 
       <!-- Report Form Container -->
-      <form id="roadDamageForm" class="report-form-card" onsubmit="return false;">
+      <form id="roadDamageForm" class="report-form-card" novalidate onsubmit="return false;">
         
         <!-- Step 1: Image Upload Section -->
         <section class="form-section">
@@ -194,7 +190,7 @@
           <div id="mlDetectionResultsSlot"></div>
         </section>
 
-        <!-- Step 3: Interactive Location Section (Leaflet Map & Geolocation) -->
+        <!-- Step 3: Interactive Location Section (Google Maps & Geolocation) -->
         <section class="form-section">
           <div class="section-title-wrap">
             <span class="section-step-badge">3</span>
@@ -211,16 +207,16 @@
               <span class="status-indicator-dot" id="locationStatusDot"></span>
               <span id="locationStatusText">Detecting location...</span>
             </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="recenterGpsBtn" title="Request GPS location from browser">
+            <button type="button" class="btn btn-secondary btn-sm" id="recenterGpsBtn" title="Detect current location via browser GPS">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
-              Locate Me (GPS)
+              <span>Use my current location</span>
             </button>
           </div>
 
-          <!-- Leaflet Interactive Map Container -->
+          <!-- Interactive Map Container -->
           <div id="reportMap" class="report-map" role="region" aria-label="Interactive map for selecting road hazard location"></div>
           <p class="map-helper-hint">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -240,7 +236,7 @@
                 id="addressText" 
                 name="address_text" 
                 class="form-input" 
-                placeholder="E.g., 452 Elm Street, near Metro Station Gate 2"
+                placeholder="E.g., 452 Elm Street (auto-detected via Google Maps or enter manually)"
               >
             </div>
 
@@ -317,6 +313,9 @@
   <!-- GSAP Interactions -->
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="../js/animations.js"></script>
+  <!-- Google Maps Config & Unified Abstraction -->
+  <script src="../js/config.local.js" onerror="this.remove()"></script>
+  <script src="../js/maps.js"></script>
   <!-- Report Logic -->
   <script src="../js/report.js"></script>
 </body>

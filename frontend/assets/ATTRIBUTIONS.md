@@ -10,4 +10,7 @@ The following minimal animations are sourced from the LottieFiles free community
 
 ## 2. Hero Illustration
 - `hero-civic-scene.svg`: Custom SVG isometric road scene (pothole detection, location pin, municipal repair vehicle) designed with pure SVG and CivicSight design tokens.
-- Map tiles: [CARTO basemaps](https://carto.com/attributions) with data from [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
+## 3. Mapping & Geospatial Services
+- Interactive map engine: [Google Maps JavaScript API](https://developers.google.com/maps/documentation/javascript) (Google Maps Platform).
+- Advanced Marker Clustering: [@googlemaps/markerclusterer](https://github.com/googlemaps/js-markerclusterer) (Apache 2.0 License).
+- Reverse Geocoding: [Google Maps Geocoding API](https://developers.google.com/maps/documentation/geocoding) client-side Geocoder service.

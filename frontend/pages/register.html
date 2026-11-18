@@ -128,16 +128,13 @@
             >
           </div>
 
-          <!-- System Role Selection -->
+          <!-- System Role (Public registration creates Citizen accounts only) -->
           <div class="form-group">
             <label for="regRole" class="form-label">Account Role <span class="label-required">*</span></label>
             <select id="regRole" name="role" class="form-select" required>
               <option value="Citizen" selected>Citizen (Public Reporter)</option>
-              <option value="Municipal Officer">Municipal Officer (Verification & Triage)</option>
-              <option value="Maintenance Staff">Maintenance Staff (Field Work Orders)</option>
-              <option value="Admin">System Administrator (Full Oversight)</option>
             </select>
-            <p class="field-hint">Select the role matching your municipal or civic function.</p>
+            <p class="field-hint">Public registration creates Citizen accounts. Municipal Officer, Maintenance Staff, and Admin accounts are provisioned by an Administrator.</p>
           </div>
 
           <!-- Password & Confirm Password Row -->

@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    CivicSight â Design System & Stylesheet
    Pure Flat Two-Theme Architecture: Plain White & Plain Black
    ========================================================================== */
@@ -33,6 +33,7 @@
 
   /* Accent Color (Consistent Mid-Tone Royal Blue on White) */
   --accent-color: #2563eb;
+  --text-on-accent: #ffffff;
   --accent-hover: #1d4ed8;
   --accent-active: #1e40af;
   --accent-subtle: #eff6ff;
@@ -97,6 +98,7 @@
 
   /* Accent Color (Same Blue Family, Lightened for Clean Contrast on Black) */
   --accent-color: #3b82f6;
+  --text-on-accent: #ffffff;
   --accent-hover: #2563eb;
   --accent-active: #1d4ed8;
   --accent-subtle: #172554;
@@ -942,7 +944,7 @@ body {
 .chip-option input:checked + .chip-label {
   background-color: var(--accent-color);
   border-color: var(--accent-color);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-weight: 600;
 }
 
@@ -1049,7 +1051,7 @@ body {
   background-color: var(--color-success);
 }
 
-/* Leaflet Map Interactive Canvas */
+/* Interactive Map Canvas */
 .report-map {
   width: 100%;
   height: 360px;
@@ -1069,62 +1071,31 @@ body {
   margin-top: 0.5rem;
 }
 
-/* Leaflet UI Overrides (Strictly using CSS variables) */
-.leaflet-bar {
-  border: 1px solid var(--border-color) !important;
-  box-shadow: var(--shadow-sm) !important;
-  border-radius: var(--radius-sm) !important;
-  overflow: hidden;
-}
-
-.leaflet-bar a {
-  background-color: var(--bg-card) !important;
-  color: var(--text-primary) !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  transition: background-color var(--transition-fast);
-}
-
-.leaflet-bar a:hover {
-  background-color: var(--bg-secondary) !important;
-  color: var(--accent-color) !important;
-}
-
-.leaflet-container .leaflet-control-attribution {
-  background-color: var(--bg-card) !important;
-  color: var(--text-muted) !important;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
-  font-size: 0.7rem;
-  padding: 0.2rem 0.5rem;
-}
-
-.leaflet-container .leaflet-control-attribution a {
-  color: var(--accent-color) !important;
-  text-decoration: none;
-}
-
-/* Clean Dark Mode for Leaflet Map Tiles â No Neons, Inverted Greyscale */
-[data-theme="dark"] .leaflet-tile-pane {
-  filter: brightness(0.65) invert(1) contrast(1.6) hue-rotate(180deg) saturate(0.2);
-}
-
-[data-theme="dark"] .leaflet-marker-pane,
-[data-theme="dark"] .leaflet-shadow-pane {
-  filter: none;
-}
-
-/* Leaflet Popups */
-.leaflet-popup-content-wrapper {
+/* Google Maps InfoWindow & UI Overrides (Strictly using CSS variables) */
+.gm-style-iw.gm-style-iw-c {
   background-color: var(--bg-card) !important;
   color: var(--text-primary) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: var(--radius-md) !important;
   box-shadow: var(--shadow-md) !important;
+  padding: 12px 14px !important;
 }
 
-.leaflet-popup-tip {
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
+.gm-style-iw-d {
+  overflow: auto !important;
+  color: var(--text-primary) !important;
+}
+
+.gm-style-iw-tc::after {
+  background: var(--bg-card) !important;
+}
+
+.gm-ui-hover-effect {
+  filter: invert(0.5);
+}
+
+[data-theme="dark"] .gm-ui-hover-effect {
+  filter: invert(0.9);
 }
 
 .coord-inputs-row {
@@ -1341,7 +1312,7 @@ body {
   height: 28px;
   border-radius: 50%;
   background-color: var(--accent-color);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-weight: 700;
   font-size: 0.85rem;
   display: flex;
@@ -1434,15 +1405,34 @@ body {
    9. Responsive Design
    -------------------------------------------------------------------------- */
 
-@media (max-width: 768px) {
-  .hero-title {
-    font-size: 2.25rem;
-  }
-  
-  .portals-grid {
-    grid-template-columns: 1fr;
+@media (max-width: 1120px) {
+  .navbar-inner {
+    gap: 0.75rem;
   }
 
+  .nav-links {
+    gap: 0.9rem;
+  }
+
+  .nav-link {
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .nav-actions {
+    gap: 0.5rem;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .dashboard-filter-bar,
+  .dashboard-map-header {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 1060px) {
   .nav-links {
     display: none;
     position: absolute;
@@ -1467,6 +1457,16 @@ body {
 
   .nav-actions {
     display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2.25rem;
+  }
+  
+  .portals-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1815,7 +1815,7 @@ lottie-player {
 }
 
 .bbox-tag-text {
-  fill: #ffffff;
+  fill: var(--text-on-accent);
   font-family: var(--font-primary);
   font-size: 2.8px;
   font-weight: 700;
@@ -2097,6 +2097,47 @@ lottie-player {
   margin-bottom: 1rem;
 }
 
+.map-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.map-view-toggles {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.map-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.785rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-xs, 4px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.map-toggle-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+.map-toggle-btn.active {
+  background-color: var(--accent-color);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
 .map-legend {
   display: flex;
   align-items: center;
@@ -2130,10 +2171,19 @@ lottie-player {
   z-index: 10;
 }
 
-/* Custom Severity Marker Styles for Leaflet (Red, Amber, Green) */
-.severity-pin-icon {
+/* Google Maps Pin & AdvancedMarker Styling */
+.gm-severity-pin {
   background: transparent;
   border: none;
+  cursor: pointer;
+  display: inline-block;
+  line-height: 0;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gm-severity-pin:hover {
+  transform: scale(1.18);
+  z-index: 9999;
 }
 
 .severity-pin-svg {
@@ -2141,11 +2191,11 @@ lottie-player {
   transition: transform 0.15s ease;
 }
 
-.severity-pin-icon:hover .severity-pin-svg {
-  transform: scale(1.18);
+.gm-severity-pin:hover .severity-pin-svg {
+  transform: scale(1.05);
 }
 
-/* Custom Leaflet Marker Popup */
+/* Google Maps Marker Popup */
 .dashboard-popup {
   padding: 0.25rem;
   min-width: 240px;
@@ -2414,10 +2464,7 @@ spline-viewer,
 
 /* Hero background: soft gradient + subtle grid */
 .hero-section {
-  background:
-    radial-gradient(1200px 480px at 80% -10%, var(--accent-subtle) 0%, transparent 60%),
-    radial-gradient(900px 420px at 5% 110%, var(--accent-subtle) 0%, transparent 55%),
-    var(--bg-primary);
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -2433,7 +2480,8 @@ spline-viewer,
   border-radius: 18px;
   border: 1px solid var(--border-color);
   box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.18), 0 6px 14px -8px rgba(0,0,0,0.1);
-  height: 460px;`r`n  transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+  height: 460px;
+  transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
 }
 .hero-3d-wrapper:hover {
   transform: translateY(-4px);
@@ -2543,34 +2591,73 @@ spline-viewer,
   .hero-3d-wrapper:hover, .workflow-card:hover, .portal-card:hover, .btn:hover { transform: none; }
 }
 
-/* Map tile error overlay */
+/* Google Maps Graceful Fallback & Error Overlays */
 .report-map,
-.dashboard-map-canvas {
+.dashboard-map-canvas,
+.readonly-map-canvas {
   position: relative;
 }
-.map-error-overlay {
+
+.map-fallback-overlay {
   position: absolute;
   inset: 0;
-  z-index: 500;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
-  backdrop-filter: blur(3px);
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: inherit;
 }
-.map-error-card {
-  max-width: 320px;
+
+.map-fallback-card {
+  max-width: 380px;
+  width: 100%;
   text-align: center;
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem;
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--bg-card);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
 }
-.map-error-card p {
+
+.map-fallback-icon {
+  color: var(--accent-color);
+  margin-bottom: 0.25rem;
+}
+
+.map-fallback-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.map-fallback-desc {
+  font-size: 0.825rem;
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  margin: 0.5rem 0 1rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.map-fallback-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.4rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--accent-color);
+  margin-top: 0.25rem;
+}
+
+.readonly-map-canvas {
+  width: 100%;
+  background: var(--bg-secondary);
 }
 
 /* ==========================================================================
@@ -2817,13 +2904,13 @@ spline-viewer,
 
 .btn-danger {
   background-color: var(--color-danger);
-  color: #ffffff;
+  color: var(--text-on-accent);
   border: 1px solid var(--color-danger);
 }
 .btn-danger:hover {
   background-color: var(--color-danger);
   border-color: var(--color-danger);
-  color: #ffffff;
+  color: var(--text-on-accent);
 }
 
 .modal-actions-bar {
@@ -2840,7 +2927,7 @@ spline-viewer,
 
 ::selection {
   background: var(--accent-color);
-  color: #ffffff;
+  color: var(--text-on-accent);
 }
 
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
@@ -2880,27 +2967,24 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 /* ---------- Buttons: subtle gradient + active press ---------- */
 .btn-primary {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-color) 92%, #ffffff) 0%, var(--accent-color) 100%);
+  background: var(--accent-color);
 }
 .btn-primary:hover {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-hover) 92%, #ffffff) 0%, var(--accent-hover) 100%);
+  background: var(--accent-hover);
 }
 .btn:active { transform: translateY(0) scale(.98); }
 
 /* ---------- Hero: dot-grid backdrop + ambient halo ---------- */
 .hero-section {
-  background:
-    radial-gradient(1000px 420px at 82% -10%, color-mix(in srgb, var(--accent-color) 10%, transparent) 0%, transparent 60%),
-    radial-gradient(800px 380px at 4% 108%, color-mix(in srgb, var(--accent-color) 8%, transparent) 0%, transparent 55%),
-    var(--bg-primary);
+  background: var(--bg-primary);
 }
 .hero-section::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(color-mix(in srgb, var(--text-primary) 9%, transparent) 1px, transparent 1px);
+  background-image: none;
   background-size: 22px 22px;
-  mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 72%, transparent 100%);
+  mask-image: none;
   pointer-events: none;
 }
 .hero-content, .hero-visual { position: relative; z-index: 1; }
@@ -2911,7 +2995,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   position: absolute;
   width: 78%; height: 78%;
   border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent-color) 16%, transparent) 0%, transparent 65%);
+  background: transparent;
   filter: blur(10px);
   z-index: 0;
 }
@@ -2971,7 +3055,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   position: absolute;
   top: 0; left: 0; right: 100%;
   height: 3px;
-  background: linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 30%, transparent));
+  background: var(--accent-color);
   transition: right .35s ease;
 }
 .workflow-card:hover::before { right: 0; }
@@ -2980,7 +3064,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 .workflow-card:hover .step-num {
   background: var(--accent-color);
-  color: #ffffff;
+  color: var(--text-on-accent);
   transform: scale(1.06);
 }
 
@@ -2991,7 +3075,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 20%, transparent));
+  background: var(--accent-color);
   opacity: .9;
 }
 .portal-tag { border-radius: 9999px; font-size: 0.7rem; letter-spacing: .06em; text-transform: uppercase; }

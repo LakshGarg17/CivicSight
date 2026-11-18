@@ -1,22 +1,22 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Municipal Operations Center — CivicSight</title>
-  <meta name="description" content="Municipal geospatial road hazard operations center with interactive Leaflet severity map, status triage, and in-place verification.">
+  <meta name="description" content="Municipal geospatial road hazard operations center with interactive Google Maps severity visualization, status triage, and in-place verification.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Leaflet Map CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <link rel="stylesheet" href="../css/style.css">
   <link rel="icon" type="image/png" href="../assets/favicon.png">
   
   <script src="../js/theme.js"></script>
-  <!-- Leaflet Map JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Google Maps MarkerClusterer & CivicSight Map Abstraction -->
+  <script src="../js/markerclusterer.min.js"></script>
+  <script src="../js/config.local.js" onerror="this.remove()"></script>
+  <script src="../js/maps.js"></script>
   <!-- Lottie Web Player -->
   <script src="https://unpkg.com/@lottiefiles/lottie-player@2.0.8/dist/lottie-player.js"></script>
 </head>
@@ -119,22 +119,29 @@
         </div>
       </div>
 
-      <!-- Interactive Leaflet Map with Severity Color Markers -->
+      <!-- Interactive Google Maps Geospatial Hazard Map -->
       <section class="dashboard-map-card">
         <div class="dashboard-map-header">
           <div>
             <h2 class="form-section-title" style="margin: 0;">Geospatial Hazard Map</h2>
             <p class="form-section-desc" style="margin-top: 0.2rem;">Click any pin marker to inspect details, update status, or review AI bounding boxes.</p>
           </div>
-          <div class="map-legend">
-            <span class="legend-item"><span class="legend-dot red"></span> High Priority</span>
-            <span class="legend-item"><span class="legend-dot amber"></span> Medium</span>
-            <span class="legend-item"><span class="legend-dot green"></span> Low / Repaired</span>
+          <div class="map-controls-group">
+            <div class="map-view-toggles" id="mapViewToggles" role="group" aria-label="Map Display Mode">
+              <button type="button" class="map-toggle-btn active" data-map-mode="standard">All Pins</button>
+              <button type="button" class="map-toggle-btn" data-map-mode="cluster">Clustered</button>
+              <button type="button" class="map-toggle-btn" data-map-mode="heat">Density</button>
+            </div>
+            <div class="map-legend">
+              <span class="legend-item"><span class="legend-dot red"></span> High Priority</span>
+              <span class="legend-item"><span class="legend-dot amber"></span> Medium</span>
+              <span class="legend-item"><span class="legend-dot green"></span> Low / Repaired</span>
+            </div>
           </div>
         </div>
 
         <!-- Map Canvas -->
-        <div id="dashboardMap" class="dashboard-map-canvas" role="region" aria-label="Municipal hazard geospatial Leaflet map"></div>
+        <div id="dashboardMap" class="dashboard-map-canvas" role="region" aria-label="Municipal hazard geospatial map"></div>
       </section>
 
       <!-- Active Triage Queue Table -->
@@ -157,7 +164,8 @@
               <option value="pending_verification">Pending Verification</option>
               <option value="verified">Verified</option>
               <option value="assigned">Assigned</option>
-              <option value="under_repair">Under Repair</option>`r`n              <option value="repair_evidence_submitted">Repair Evidence Submitted</option>
+              <option value="under_repair">Under Repair</option>
+              <option value="repair_evidence_submitted">Repair Evidence Submitted</option>
               <option value="repaired">Repaired</option>
               <option value="closed">Closed</option>
               <option value="rejected">Rejected</option>
@@ -234,6 +242,15 @@
       <!-- 1. ML Detection Viewer Slot (AI Assessment) -->
       <div id="modalMLViewerSlot">
         <!-- Injected via CivicSightMLViewer.render() -->
+      </div>
+
+      <!-- Incident Geospatial Location (Read-Only Context) -->
+      <div id="modalInspectionMapSection" style="margin-top: 1rem;">
+        <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.35rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          Incident Location
+        </div>
+        <div id="modalInspectionMap" class="readonly-map-canvas" style="height: 180px; width: 100%; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-color);" role="region" aria-label="Incident location map"></div>
       </div>
 
       <!-- 2. Priority Engine Assessment Panel (Rule-Based Scoring & Reasons) -->

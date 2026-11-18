@@ -14,8 +14,8 @@ const CivicSightAuth = (() => {
     if (window.location.protocol === 'file:') {
       return 'http://127.0.0.1:8000';
     }
-    // If backend is running on port 8000
-    if (window.location.port !== '8000') {
+    // Only redirect to :8000 when served from standalone static dev servers
+    if (['3000', '5173', '5500', '8080'].includes(window.location.port)) {
       return `${window.location.protocol}//${window.location.hostname}:8000`;
     }
     return '';
@@ -250,6 +250,33 @@ const CivicSightAuth = (() => {
     }
   }
 
+  async function fetchAuthenticatedImageUrl(url) {
+    if (!url) return '';
+    const token = getToken();
+    if (!token) return url;
+    try {
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) return '';
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    } catch (_) {
+      return '';
+    }
+  }
+
+  // Prevent browser back-button from revealing cached protected pages after logout
+  window.addEventListener('pageshow', (event) => {
+    const path = window.location.pathname || '';
+    const isProtected = path.endsWith('/dashboard.html') || path.endsWith('/maintenance.html');
+    if (isProtected && !isAuthenticated()) {
+      window.location.replace('login.html');
+    } else if (event.persisted) {
+      updateNavigation();
+    }
+  });
+
   // Auto-run when DOM is ready
   document.addEventListener('DOMContentLoaded', () => {
     updateNavigation();
@@ -259,6 +286,8 @@ const CivicSightAuth = (() => {
     API_BASE,
     getToken,
     getUser,
+    setSession,
+    clearSession,
     isAuthenticated,
     hasRole,
     register,
@@ -266,5 +295,6 @@ const CivicSightAuth = (() => {
     logout,
     showToast,
     updateNavigation,
+    fetchAuthenticatedImageUrl,
   };
 })();

@@ -3,7 +3,7 @@
  *
  * Implements full end-to-end citizen reporting workflow:
  * - Photo drag-and-drop file upload with live preview
- * - Interactive Leaflet map with draggable pinpoint marker
+ * - Interactive Google Maps with draggable pinpoint marker
  * - Browser Geolocation with robust manual click-to-pin fallback
  * - Real-time form coordinate synchronization
  * - Multipart/form-data API submission to backend with visual states (submitting, success, error)
@@ -41,46 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const submissionStatus = document.getElementById('submissionStatus');
   const toastContainer = document.getElementById('toastContainer');
 
-  // Map & Marker State
-  let map = null;
-  let marker = null;
-  let tileLayer = null;
   const DEFAULT_COORDS = [37.7749, -122.4194]; // Default San Francisco Civic Center coordinates
   const DEFAULT_ZOOM = 13;
+  const GPS_ZOOM = 17;
 
-  // --- Graceful tile failure handling ---
-  function attachTileErrorHandling(mapElement) {
-    if (!tileLayer || !mapElement) return;
-    let tileErrorCount = 0;
-    tileLayer.on('tileload', () => { tileErrorCount = 0; hideMapError(mapElement); });
-    tileLayer.on('tileerror', () => {
-      tileErrorCount += 1;
-      if (tileErrorCount >= 3) showMapError(mapElement);
-    });
-  }
-
-  function showMapError(mapElement) {
-    let overlay = mapElement.querySelector('.map-error-overlay');
-    if (overlay) return;
-    overlay = document.createElement('div');
-    overlay.className = 'map-error-overlay';
-    overlay.innerHTML = `
-      <div class="map-error-card">
-        <strong>Map tiles could not be loaded</strong>
-        <p>Check your internet connection, then retry. You can still type coordinates or pick a location once the map recovers.</p>
-        <button type="button" class="btn btn-secondary btn-sm" data-map-retry>Retry</button>
-      </div>`;
-    overlay.querySelector('[data-map-retry]').addEventListener('click', () => {
-      overlay.remove();
-      if (map) map.invalidateSize();
-    });
-    mapElement.appendChild(overlay);
-  }
-
-  function hideMapError(mapElement) {
-    const overlay = mapElement.querySelector('.map-error-overlay');
-    if (overlay) overlay.remove();
-  }
+  // Unified Google Map State
+  let mapInstance = null;
+  let userEditedAddressManually = false;
+  let reverseGeocodeTimer = null;
 
   // --- 1. Toast Notification System ---
   function showToast(message, type = 'info') {
@@ -109,80 +77,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 4000);
   }
 
-  // --- 2. Interactive Leaflet Map Initialization ---
-  function initMap() {
+  // --- 2. Interactive Google Maps Initialization ---
+  async function initMap() {
     const mapElement = document.getElementById('reportMap');
-    if (!mapElement || typeof L === 'undefined') return;
+    if (!mapElement) return;
 
-    // Create map instance
-    map = L.map('reportMap', {
-      zoomControl: true,
-      attributionControl: true,
-    }).setView(DEFAULT_COORDS, DEFAULT_ZOOM);
+    if (typeof CivicSightMap !== 'undefined') {
+      mapInstance = await CivicSightMap.createReportingMap('reportMap', {
+        initialLat: DEFAULT_COORDS[0],
+        initialLng: DEFAULT_COORDS[1],
+        onLocationChange: (lat, lng, source) => {
+          syncCoordinates(lat, lng, source === 'map_click' ? 'Map Location Selected' : 'Manual Pin Adjusted');
+          scheduleReverseGeocode(lat, lng);
+        }
+      });
+    }
 
-    // Legitimate tile provider: CARTO basemaps (OSM data, no API key required,
-    // free for production use with attribution). Theme-aware light/dark.
-    const mode = (document.documentElement.getAttribute('data-theme') === 'dark') ? 'dark_all' : 'light_all';
-    const tileUrl = `https://{s}.basemaps.cartocdn.com/${mode}/{z}/{x}/{y}{r}.png`;
-    tileLayer = L.tileLayer(tileUrl, {
-      maxZoom: 20,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
-    }).addTo(map);
-
-    attachTileErrorHandling(mapElement);
-
-    // Swap tile style when the user toggles the theme
-    const themeObserver = new MutationObserver(() => {
-      const nextMode = (document.documentElement.getAttribute('data-theme') === 'dark') ? 'dark_all' : 'light_all';
-      if (tileLayer) map.removeLayer(tileLayer);
-      tileLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${nextMode}/{z}/{x}/{y}{r}.png`, {
-        maxZoom: 20,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
-      }).addTo(map);
-      attachTileErrorHandling(mapElement);
-    });
-    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-
-    // Initialize draggable marker
-    marker = L.marker(DEFAULT_COORDS, {
-      draggable: true,
-      autoPan: true,
-      title: "Drag to adjust hazard location",
-    }).addTo(map);
-
-    // Marker drag events
-    marker.on('dragend', () => {
-      const pos = marker.getLatLng();
-      syncCoordinates(pos.lat, pos.lng, 'Manual Pin Adjusted');
-    });
-
-    // Map click events (drop pin at click location)
-    map.on('click', (e) => {
-      const { lat, lng } = e.latlng;
-      marker.setLatLng([lat, lng]);
-      syncCoordinates(lat, lng, 'Map Location Selected');
-    });
-
-    // Request browser geolocation
-    requestBrowserGeolocation();
+    // Automatically detect location from browser on page load
+    requestBrowserGeolocation(false);
   }
 
   // --- 3. Browser Geolocation Handler ---
   const locationLottieSlot = document.getElementById('locationLottieSlot');
 
-  function requestBrowserGeolocation() {
-    updateLocationStatus('Requesting browser GPS...', false, true);
-
-    if (!navigator.geolocation) {
-      updateLocationStatus('Geolocation not supported (Click map to pin)', false, false);
+  function requestBrowserGeolocation(isExplicitRetry = false) {
+    if (window.isSecureContext === false) {
+      updateLocationStatus('Insecure context (Click map to pin)', false, false);
+      showToast('Automatic geolocation requires a secure context (HTTPS or localhost). Please click the map or enter coordinates manually.', 'warning');
       syncCoordinates(DEFAULT_COORDS[0], DEFAULT_COORDS[1], 'Default Coordinate');
       return;
     }
 
+    if (!navigator.geolocation) {
+      updateLocationStatus('Geolocation not supported (Click map to pin)', false, false);
+      showToast('Geolocation is not supported by your browser. Please click the map or enter coordinates manually.', 'info');
+      syncCoordinates(DEFAULT_COORDS[0], DEFAULT_COORDS[1], 'Default Coordinate');
+      return;
+    }
+
+    updateLocationStatus('Finding location...', false, true);
+
     const geoOptions = {
       enableHighAccuracy: true,
-      timeout: 9000,
-      maximumAge: 60000,
+      timeout: 10000,
+      maximumAge: 0,
     };
 
     navigator.geolocation.getCurrentPosition(
@@ -191,27 +129,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const userLng = position.coords.longitude;
         const accuracy = Math.round(position.coords.accuracy || 0);
 
-        if (map && marker) {
-          map.setView([userLat, userLng], 16);
-          marker.setLatLng([userLat, userLng]);
+        if (mapInstance && mapInstance.isAvailable) {
+          mapInstance.setPosition(userLat, userLng, GPS_ZOOM);
+          mapInstance.setAccuracy(userLat, userLng, accuracy);
         }
 
-        updateLocationStatus(`GPS Active (±${accuracy}m accuracy)`, true, false);
+        if (accuracy > 100) {
+          updateLocationStatus(`Location accuracy is low (±${accuracy}m). Drag the pin to the exact spot.`, true, false);
+          showToast(`Location accuracy is low (±${accuracy}m). Drag the pin to the exact spot.`, 'info');
+        } else {
+          updateLocationStatus(`GPS Active (±${accuracy}m accuracy)`, true, false);
+          showToast('Browser location detected automatically.', 'success');
+        }
+
         syncCoordinates(userLat, userLng, 'GPS Location');
-        showToast('Browser GPS location detected.', 'success');
+        scheduleReverseGeocode(userLat, userLng);
       },
       (error) => {
-        let reason = 'Unavailable';
-        if (error.code === 1) reason = 'Permission Denied';
-        else if (error.code === 2) reason = 'Position Unavailable';
-        else if (error.code === 3) reason = 'Timeout';
+        let reason = 'Position Unavailable';
+        let toastMsg = 'Location unavailable. You can click anywhere on the map or type coordinates.';
+        
+        if (error.code === 1) {
+          reason = 'Permission Denied';
+          toastMsg = 'Location permission denied. Click anywhere on the map or type coordinates.';
+        } else if (error.code === 2) {
+          reason = 'Position Unavailable';
+          toastMsg = 'Location position unavailable. Click anywhere on the map or type coordinates.';
+        } else if (error.code === 3) {
+          reason = 'Timeout';
+          toastMsg = 'Location request timed out. Please click on the map or retry.';
+        }
 
-        console.warn(`Geolocation fallback triggered: ${reason} (${error.message})`);
+        console.warn(`Geolocation fallback triggered: ${reason} (code ${error.code}: ${error.message})`);
         updateLocationStatus(`GPS ${reason} (Click or drag pin on map)`, false, false);
         
         // Ensure default coordinates populate so form remains fully usable
         syncCoordinates(DEFAULT_COORDS[0], DEFAULT_COORDS[1], 'Default Location');
-        showToast('Location permission unavailable. You can click anywhere on the map to pin the hazard.', 'info');
+        if (isExplicitRetry || error.code === 1) {
+          showToast(toastMsg, 'info');
+        }
       },
       geoOptions
     );
@@ -260,10 +216,39 @@ document.addEventListener('DOMContentLoaded', () => {
     longitudeInput?.classList.remove('input-invalid');
   }
 
+  // Track if user manually edits address text
+  if (addressTextInput) {
+    addressTextInput.addEventListener('input', () => {
+      userEditedAddressManually = true;
+    });
+  }
+
+  // Reverse Geocoding with Google Geocoder (Debounced 800ms, cached, non-blocking)
+  function scheduleReverseGeocode(lat, lng) {
+    if (reverseGeocodeTimer) {
+      clearTimeout(reverseGeocodeTimer);
+      reverseGeocodeTimer = null;
+    }
+    reverseGeocodeTimer = setTimeout(async () => {
+      if (!addressTextInput || userEditedAddressManually) return;
+      if (mapInstance && mapInstance.reverseGeocode) {
+        try {
+          const address = await mapInstance.reverseGeocode(lat, lng);
+          if (address && (!userEditedAddressManually || !addressTextInput.value.trim())) {
+            addressTextInput.value = address;
+          }
+        } catch (_) {
+          // Failure never blocks reporting
+        }
+      }
+    }, 800);
+  }
+
   // Recenter GPS Button click
   if (recenterGpsBtn) {
     recenterGpsBtn.addEventListener('click', () => {
-      requestBrowserGeolocation();
+      userEditedAddressManually = false;
+      requestBrowserGeolocation(true);
     });
   }
 
@@ -272,9 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const latVal = parseFloat(latitudeInput.value);
     const lonVal = parseFloat(longitudeInput.value);
     if (!isNaN(latVal) && !isNaN(lonVal) && latVal >= -90 && latVal <= 90 && lonVal >= -180 && lonVal <= 180) {
-      if (marker && map) {
-        marker.setLatLng([latVal, lonVal]);
-        map.panTo([latVal, lonVal]);
+      if (mapInstance && mapInstance.isAvailable) {
+        mapInstance.setPosition(latVal, lonVal);
+        mapInstance.clearAccuracy();
+        scheduleReverseGeocode(latVal, lonVal);
       }
     }
   }
@@ -319,8 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const formData = new FormData();
       formData.append('image', file);
 
+      const detectHeaders = {};
+      const detectToken = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.getToken() : null;
+      if (detectToken) detectHeaders['Authorization'] = `Bearer ${detectToken}`;
+
       const res = await fetch(`${apiBase}/api/v1/reports/detect`, {
         method: 'POST',
+        headers: detectHeaders,
         body: formData,
       });
 
@@ -418,22 +409,58 @@ document.addEventListener('DOMContentLoaded', () => {
     triggerImageInference(selectedImageFile, selectedImageDataUri);
   }
 
+  const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+  const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.jfif'];
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function handleFileSelect(file) {
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      showToast('Please select a valid image file (JPEG, PNG, WEBP).', 'error');
-      if (imageInputError) imageInputError.textContent = 'Please select a valid image file.';
+    const lowerName = (file.name || '').toLowerCase();
+    const hasAllowedExt = ALLOWED_EXTENSIONS.some(ext => lowerName.endsWith(ext));
+    const hasAllowedMime = file.type && ALLOWED_MIME_TYPES.has(file.type.toLowerCase());
+
+    if (!hasAllowedMime || !hasAllowedExt) {
+      damageImageInput.value = '';
+      selectedImageFile = null;
+      selectedImageDataUri = null;
+      showToast('Unsupported file format. Please select a JPEG, PNG, or WEBP image.', 'error');
+      if (imageInputError) imageInputError.textContent = 'Unsupported file format. Only JPEG, PNG, and WEBP images are allowed.';
+      uploadDropzone?.classList.add('input-invalid');
+      return;
+    }
+
+    if (file.size === 0) {
+      damageImageInput.value = '';
+      selectedImageFile = null;
+      selectedImageDataUri = null;
+      showToast('Selected file is empty (0 bytes). Please choose a valid photo.', 'error');
+      if (imageInputError) imageInputError.textContent = 'Selected file is empty (0 bytes).';
+      uploadDropzone?.classList.add('input-invalid');
       return;
     }
 
     if (file.size > 15 * 1024 * 1024) {
+      damageImageInput.value = '';
+      selectedImageFile = null;
+      selectedImageDataUri = null;
       showToast('Image file exceeds the 15MB limit.', 'error');
       if (imageInputError) imageInputError.textContent = 'File exceeds 15MB limit.';
+      uploadDropzone?.classList.add('input-invalid');
       return;
     }
 
     if (imageInputError) imageInputError.textContent = '';
+    uploadDropzone?.classList.remove('input-invalid');
 
     const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
     previewFilename.textContent = file.name;
@@ -575,7 +602,36 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (state === 'success') {
       const createdDate = data.created_at ? new Date(data.created_at).toLocaleString() : new Date().toLocaleString();
       const apiBase = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.API_BASE : 'http://127.0.0.1:8000';
-      
+      const statusNorm = (data.status || 'submitted').toLowerCase();
+      const statusDisplay = statusNorm.replace(/_/g, ' ').toUpperCase();
+      const priorityDisplay = data.priority ? String(data.priority).toUpperCase() : 'MEDIUM';
+      const priorityReasons = Array.isArray(data.priority_reasons) ? data.priority_reasons : [];
+      const currentUser = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.getUser() : null;
+      const isOfficerOrAdmin = currentUser && (currentUser.role === 'Municipal Officer' || currentUser.role === 'Admin');
+
+      const rejectionBanner = (statusNorm === 'rejected' && data.rejection_reason)
+        ? `<div class="status-rejection-box" style="margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--color-danger-border); background: var(--color-danger-bg); color: var(--text-primary);">
+             <strong style="color: var(--color-danger);">Rejection Reason:</strong> ${escapeHtml(data.rejection_reason)}
+           </div>`
+        : '';
+
+      const afterImages = Array.isArray(data.after_images) ? data.after_images : [];
+      const beforeAfterHtml = afterImages.length > 0
+        ? `<div id="citizenBeforeAfterSection" style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-secondary);">
+             <strong style="display: block; margin-bottom: 0.5rem;">Before &amp; After Repair Verification Photos (Read-Only)</strong>
+             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+               <div>
+                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">BEFORE (Citizen Photo)</div>
+                 <img src="${escapeHtml(data.image_url ? (data.image_url.startsWith('http') ? data.image_url : apiBase + data.image_url) : '')}" alt="Before repair photo" style="width: 100%; max-height: 180px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+               </div>
+               <div>
+                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">AFTER (Repair Evidence)</div>
+                 <img id="citizenAfterEvidenceImg" src="" alt="After repair evidence photo" style="width: 100%; max-height: 180px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+               </div>
+             </div>
+           </div>`
+        : '';
+
       // Report submission success Lottie checkmark + Report ID text
       submissionStatus.innerHTML = `
         <div class="lottie-status-layout">
@@ -584,14 +640,19 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="lottie-status-content">
             <div class="status-header">
-              <span style="font-size: 1.15rem; font-weight: 700;">Report Successfully Registered</span>
+              <span style="font-size: 1.15rem; font-weight: 700;">Report #${escapeHtml(data.id)} &mdash; ${escapeHtml(statusDisplay)}</span>
             </div>
             <div>
-              <span class="status-id-badge">REPORT #${data.id}</span>
+              <span class="status-id-badge">REPORT #${escapeHtml(data.id)}</span>
             </div>
             <p class="status-body" style="margin-top: 0.5rem;">
-              Your road hazard report has been recorded in the municipal dispatch queue and classified for triage.
+              ${statusNorm === 'rejected'
+                ? 'This report was reviewed and rejected by a municipal officer.'
+                : statusNorm === 'closed'
+                ? 'Repair work has been completed, verified, and officially closed.'
+                : 'Your road hazard report has been recorded in the municipal dispatch queue and classified for triage.'}
             </p>
+            ${rejectionBanner}
           </div>
         </div>
 
@@ -599,24 +660,26 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="status-details-grid" style="margin-top: 1rem;">
           <div class="status-details-item">
             <strong>Municipal Verification Status</strong>
-            <span class="status-badge status-submitted" style="margin-top: 0.25rem;">
+            <span class="status-badge status-${escapeHtml(statusNorm)}" style="margin-top: 0.25rem;">
               <span class="status-badge-dot"></span>
-              ${data.status ? data.status.toUpperCase() : 'SUBMITTED'} &bull; Under Review
+              ${escapeHtml(statusDisplay)}
             </span>
           </div>
           <div class="status-details-item">
+            <strong>Priority</strong>
+            <span>${escapeHtml(priorityDisplay)}${priorityReasons.length ? ' &mdash; ' + escapeHtml(priorityReasons[0]) : ''}</span>
+          </div>
+          <div class="status-details-item">
             <strong>Coordinates</strong>
-            <span>${data.latitude}, ${data.longitude}</span>
+            <span>${escapeHtml(data.latitude)}, ${escapeHtml(data.longitude)}</span>
           </div>
           <div class="status-details-item">
             <strong>Submitted At</strong>
-            <span>${createdDate}</span>
-          </div>
-          <div class="status-details-item">
-            <strong>Photo Evidence</strong>
-            <span>${data.image_url ? 'Attached & Stored' : 'Attached'}</span>
+            <span>${escapeHtml(createdDate)}</span>
           </div>
         </div>
+
+        ${beforeAfterHtml}
 
         <!-- Automated AI Assessment Slot (Enrichment / Decision Support) -->
         <div id="submissionMLAssessmentSlot" style="margin-top: 1.25rem;">
@@ -625,9 +688,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="status-actions" style="margin-top: 1.25rem;">
           <button type="button" class="btn btn-secondary btn-sm" id="newReportBtn">Submit Another Report</button>
-          <a href="dashboard.html" class="btn btn-primary btn-sm">View in Municipal Dashboard &rarr;</a>
+          ${isOfficerOrAdmin ? '<a href="dashboard.html" class="btn btn-primary btn-sm">View in Municipal Dashboard &rarr;</a>' : ''}
         </div>
       `;
+
+      // Load authenticated AFTER evidence photo via Blob URL if available
+      if (afterImages.length > 0 && typeof CivicSightAuth !== 'undefined' && CivicSightAuth.fetchAuthenticatedImageUrl) {
+        const firstAfter = afterImages[0];
+        const afterUrl = `${apiBase}/api/v1/reports/${data.id}/evidence/${firstAfter.id}/file`;
+        CivicSightAuth.fetchAuthenticatedImageUrl(afterUrl).then((blobUrl) => {
+          const imgEl = document.getElementById('citizenAfterEvidenceImg');
+          if (imgEl && blobUrl) imgEl.src = blobUrl;
+        });
+      }
 
       document.getElementById('newReportBtn')?.addEventListener('click', () => {
         submissionStatus.style.display = 'none';
@@ -650,7 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="status-header">
               <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-danger);">Submission Failed</span>
             </div>
-            <p class="status-body" style="margin-top: 0.35rem;">${data.message || 'An unexpected error occurred while submitting your report.'}</p>
+            <p class="status-body" style="margin-top: 0.35rem;">${escapeHtml(data.message || 'An unexpected error occurred while submitting your report.')}</p>
             <div class="status-actions" style="margin-top: 0.75rem;">
               <button type="button" class="btn btn-secondary btn-sm" id="dismissErrorBtn">Dismiss</button>
             </div>
@@ -669,21 +742,27 @@ document.addEventListener('DOMContentLoaded', () => {
   function clearForm() {
     roadDamageForm.reset();
     clearImageSelection();
+    userEditedAddressManually = false;
+    if (mapInstance && typeof mapInstance.clearAccuracy === 'function') {
+      mapInstance.clearAccuracy();
+    }
     if (submissionStatus) submissionStatus.style.display = 'none';
     if (descriptionError) descriptionError.textContent = '';
     if (imageInputError) imageInputError.textContent = '';
     if (latitudeError) latitudeError.textContent = '';
     if (longitudeError) longitudeError.textContent = '';
     document.querySelectorAll('.input-invalid').forEach(el => el.classList.remove('input-invalid'));
-    requestBrowserGeolocation();
+    requestBrowserGeolocation(false);
   }
 
   // --- 6. Form Submission Workflow ---
+  let isSubmittingReport = false;
   if (roadDamageForm) {
     roadDamageForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (isSubmittingReport) return;
 
-      const imageFile = damageImageInput.files ? damageImageInput.files[0] : null;
+      const imageFile = selectedImageFile || (damageImageInput.files ? damageImageInput.files[0] : null);
       const desc = damageDescription.value.trim();
       const latVal = parseFloat(latitudeInput.value);
       const lonVal = parseFloat(longitudeInput.value);
@@ -703,6 +782,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!desc) {
         if (descriptionError) descriptionError.textContent = 'Description is required.';
+        damageDescription.classList.add('input-invalid');
+        hasError = true;
+      } else if (desc.length > 2000) {
+        if (descriptionError) descriptionError.textContent = 'Description cannot exceed 2000 characters.';
         damageDescription.classList.add('input-invalid');
         hasError = true;
       } else {
@@ -734,7 +817,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // 2. Set Submitting UI State
+      // 2. Set Submitting UI State (double-click protected)
+      isSubmittingReport = true;
       submitReportBtn.disabled = true;
       submitReportBtn.classList.add('btn-loading');
       submitReportBtn.innerHTML = `<span>Submitting...</span>`;
@@ -747,13 +831,11 @@ document.addEventListener('DOMContentLoaded', () => {
       formData.append('latitude', latVal.toString());
       formData.append('longitude', lonVal.toString());
       if (addressText) formData.append('address_text', addressText);
-      if (damageType && damageType !== 'OTHER') formData.append('damage_type', damageType);
 
-      // Check for logged in user
-      const currentUser = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.getUser() : null;
-      if (currentUser && currentUser.id) {
-        formData.append('reporter_id', currentUser.id.toString());
-      }
+      // Attach Bearer token for authenticated citizen binding
+      const reqHeaders = {};
+      const authToken = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.getToken() : null;
+      if (authToken) reqHeaders['Authorization'] = `Bearer ${authToken}`;
 
       // 4. Submit to Backend API
       const apiBase = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.API_BASE : 'http://127.0.0.1:8000';
@@ -765,19 +847,21 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           response = await fetch(endpoint1, {
             method: 'POST',
+            headers: reqHeaders,
             body: formData,
           });
           if (response.status === 404) {
             response = await fetch(endpoint2, {
               method: 'POST',
+              headers: reqHeaders,
               body: formData,
             });
           }
         } catch (fetchErr) {
-          throw new Error(`Cannot connect to CivicSight backend server at ${apiBase}. Ensure backend is running.`);
+          throw new Error(`Cannot connect to CivicSight backend server at ${apiBase}. Please check your network connection and retry.`);
         }
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
           const errorMsg = data.detail
@@ -797,6 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showStatus('error', { message: err.message || 'Submission error.' });
         showToast(err.message || 'Submission failed.', 'error');
       } finally {
+        isSubmittingReport = false;
         submitReportBtn.disabled = false;
         submitReportBtn.classList.remove('btn-loading');
         submitReportBtn.innerHTML = `
@@ -849,7 +934,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function checkStatus() {
       attempts++;
       try {
-        const res = await fetch(`${apiBase}/api/v1/reports/${reportId}/ml-status`);
+        const pollHeaders = {};
+        const pollToken = typeof CivicSightAuth !== 'undefined' ? CivicSightAuth.getToken() : null;
+        if (pollToken) pollHeaders['Authorization'] = `Bearer ${pollToken}`;
+        const res = await fetch(`${apiBase}/api/v1/reports/${reportId}/ml-status`, { headers: pollHeaders });
         if (res.ok) {
           const statusData = await res.json();
           if (statusData.ml_status !== 'ML_PENDING' || attempts >= maxAttempts) {
@@ -901,12 +989,14 @@ document.addEventListener('DOMContentLoaded', () => {
               longitude: reportData.longitude,
               address: reportData.address_text,
               reportId: reportData.id,
-              modelVersion: reportData.ml_model_version || 'YOLOv8n-CivicSight-4Class',
+              modelVersion: reportData.ml_model_version || 'YOLOv8s-clean_rdd2022_yolov8s',
               inferenceTimeMs: reportData.ml_inference_time_ms,
               errorMessage: reportData.ml_error_message,
             });
             return;
           }
+        } else if (res.status === 401 || res.status === 403) {
+          return;
         }
       } catch (err) {
         console.warn('Error polling ML status for report #' + reportId, err);
@@ -936,9 +1026,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res.ok) {
         const report = await res.json();
         showStatus('success', report);
+      } else if (res.status === 401) {
+        showStatus('error', { message: 'Please log in to view this report.' });
+      } else if (res.status === 403) {
+        showStatus('error', { message: 'Access denied: You are not authorized to view this report.' });
+      } else if (res.status === 404) {
+        showStatus('error', { message: `Report #${reportId} was not found.` });
       }
     } catch (e) {
-      console.warn('Could not load existing report from query param:', e);
+      showStatus('error', { message: 'Unable to load report details. Please verify your connection.' });
     }
   }
 
