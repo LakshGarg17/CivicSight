@@ -15,6 +15,8 @@ venv.bak/
 .env
 .env.local
 *.env
+frontend/js/config.local.js
+*.local.js
 
 # Distribution / packaging
 build/
@@ -43,6 +45,9 @@ yarn-error.log*
 # ML / PyTorch / YOLO artifacts
 *.pt
 runs/
+ml/runs/
+ml/baseline_subset/
+pothole_check/
 wandb/
 .pytest_cache/
 Dataset/
@@ -57,6 +62,13 @@ Dataset/
 uploads/
 backend/uploads/reports/*
 !backend/uploads/reports/.gitkeep
+backend/uploads/evidence/*
+!backend/uploads/evidence/.gitkeep
+
+# Coverage & Debug
+.coverage
+htmlcov/
+.chrome_debug/
 
 # OS / IDE
 .DS_Store
@@ -65,3 +77,5 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+Ultralytics/
+scratch/
