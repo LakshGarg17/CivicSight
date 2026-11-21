@@ -12,5 +12,5 @@ Name: Devansh Thapar
 - [Week 7 — YOLO Model Integration and Inference](./week-7.md)
 - [Week 8 — Priority Display and Related Reports](./week-8.md)
 - [Week 9 — Maintenance Interface and Repair Tracking](./week-9.md)
-
+- [Week 10 — Frontend Testing and Bug Fixes](./week-10.md)
 
