@@ -1,0 +1,7 @@
+{
+  "seeded_rows": 2000,
+  "listing_explain": "(5, 0, 60, 'SEARCH reports USING INDEX ix_reports_status_priority (status=? AND priority=?)') | (23, 0, 0, 'USE TEMP B-TREE FOR ORDER BY')",
+  "proximity_explain": "(2, 0, 146, 'SEARCH reports USING COVERING INDEX ix_reports_lat_lng (latitude>? AND latitude<?)')",
+  "listing_mean_ms": 2.58,
+  "proximity_mean_ms": 0.97
+}

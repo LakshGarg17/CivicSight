@@ -1,0 +1,1946 @@
+[
+  {
+    "from": "assigned",
+    "to": "assigned",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "assigned",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "assigned",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "assigned",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "closed",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "closed",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "closed",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "closed",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "duplicate",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "duplicate",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "duplicate",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "duplicate",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "pending_verification",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "pending_verification",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "pending_verification",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "pending_verification",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "rejected",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "rejected",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "rejected",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "rejected",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "repair_evidence_submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "repair_evidence_submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "repair_evidence_submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "repair_evidence_submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "under_repair",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "under_repair",
+    "role": "Maintenance Staff",
+    "allowed": true
+  },
+  {
+    "from": "assigned",
+    "to": "under_repair",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "assigned",
+    "to": "under_repair",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "assigned",
+    "to": "verified",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "verified",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "assigned",
+    "to": "verified",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "assigned",
+    "to": "verified",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "closed",
+    "to": "assigned",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "assigned",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "assigned",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "assigned",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "closed",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "closed",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "closed",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "closed",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "duplicate",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "duplicate",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "duplicate",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "duplicate",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "pending_verification",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "pending_verification",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "pending_verification",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "pending_verification",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "closed",
+    "to": "rejected",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "rejected",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "rejected",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "rejected",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "repair_evidence_submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "repair_evidence_submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "repair_evidence_submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "repair_evidence_submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "under_repair",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "under_repair",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "under_repair",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "under_repair",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "verified",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "verified",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "verified",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "closed",
+    "to": "verified",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "assigned",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "assigned",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "assigned",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "assigned",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "closed",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "closed",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "closed",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "closed",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "duplicate",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "duplicate",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "duplicate",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "duplicate",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "pending_verification",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "pending_verification",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "pending_verification",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "pending_verification",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "duplicate",
+    "to": "rejected",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "rejected",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "rejected",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "rejected",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "repair_evidence_submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "repair_evidence_submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "repair_evidence_submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "repair_evidence_submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "under_repair",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "under_repair",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "under_repair",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "under_repair",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "verified",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "verified",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "verified",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "duplicate",
+    "to": "verified",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "assigned",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "assigned",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "assigned",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "assigned",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "closed",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "closed",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "closed",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "closed",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "duplicate",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "duplicate",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "duplicate",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "pending_verification",
+    "to": "duplicate",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "pending_verification",
+    "to": "pending_verification",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "pending_verification",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "pending_verification",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "pending_verification",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "rejected",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "rejected",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "rejected",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "pending_verification",
+    "to": "rejected",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "pending_verification",
+    "to": "repair_evidence_submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "repair_evidence_submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "repair_evidence_submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "repair_evidence_submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "under_repair",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "under_repair",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "under_repair",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "under_repair",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "verified",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "verified",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "pending_verification",
+    "to": "verified",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "pending_verification",
+    "to": "verified",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "rejected",
+    "to": "assigned",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "assigned",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "assigned",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "assigned",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "closed",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "closed",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "closed",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "closed",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "duplicate",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "duplicate",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "duplicate",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "duplicate",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "pending_verification",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "pending_verification",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "pending_verification",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "pending_verification",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "rejected",
+    "to": "rejected",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "rejected",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "rejected",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "rejected",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "repair_evidence_submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "repair_evidence_submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "repair_evidence_submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "repair_evidence_submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "under_repair",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "under_repair",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "under_repair",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "under_repair",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "verified",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "verified",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "verified",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "rejected",
+    "to": "verified",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "assigned",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "assigned",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "assigned",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "assigned",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "closed",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "closed",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "closed",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "closed",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "duplicate",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "duplicate",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "duplicate",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "duplicate",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "pending_verification",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "pending_verification",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "pending_verification",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "pending_verification",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "rejected",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "rejected",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "rejected",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "rejected",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "repair_evidence_submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "repair_evidence_submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "repair_evidence_submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "repair_evidence_submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "under_repair",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "under_repair",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "under_repair",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "under_repair",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "verified",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "verified",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "verified",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "repair_evidence_submitted",
+    "to": "verified",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "assigned",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "assigned",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "assigned",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "assigned",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "closed",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "closed",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "closed",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "closed",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "duplicate",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "duplicate",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "duplicate",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "submitted",
+    "to": "duplicate",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "submitted",
+    "to": "pending_verification",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "pending_verification",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "pending_verification",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "submitted",
+    "to": "pending_verification",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "submitted",
+    "to": "rejected",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "rejected",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "rejected",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "submitted",
+    "to": "rejected",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "submitted",
+    "to": "repair_evidence_submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "repair_evidence_submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "repair_evidence_submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "repair_evidence_submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "under_repair",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "under_repair",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "under_repair",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "under_repair",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "verified",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "verified",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "submitted",
+    "to": "verified",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "submitted",
+    "to": "verified",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "under_repair",
+    "to": "assigned",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "assigned",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "assigned",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "assigned",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "closed",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "closed",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "closed",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "closed",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "duplicate",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "duplicate",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "duplicate",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "duplicate",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "pending_verification",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "pending_verification",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "pending_verification",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "pending_verification",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "rejected",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "rejected",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "rejected",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "rejected",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "repair_evidence_submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "repair_evidence_submitted",
+    "role": "Maintenance Staff",
+    "allowed": true
+  },
+  {
+    "from": "under_repair",
+    "to": "repair_evidence_submitted",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "under_repair",
+    "to": "repair_evidence_submitted",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "under_repair",
+    "to": "submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "under_repair",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "under_repair",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "under_repair",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "under_repair",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "verified",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "verified",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "verified",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "under_repair",
+    "to": "verified",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "assigned",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "assigned",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "assigned",
+    "role": "Municipal Officer",
+    "allowed": true
+  },
+  {
+    "from": "verified",
+    "to": "assigned",
+    "role": "Admin",
+    "allowed": true
+  },
+  {
+    "from": "verified",
+    "to": "closed",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "closed",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "closed",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "closed",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "duplicate",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "duplicate",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "duplicate",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "duplicate",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "pending_verification",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "pending_verification",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "pending_verification",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "pending_verification",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "rejected",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "rejected",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "rejected",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "rejected",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "repair_evidence_submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "repair_evidence_submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "repair_evidence_submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "repair_evidence_submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "submitted",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "submitted",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "submitted",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "submitted",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "under_repair",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "under_repair",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "under_repair",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "under_repair",
+    "role": "Admin",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "verified",
+    "role": "Citizen",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "verified",
+    "role": "Maintenance Staff",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "verified",
+    "role": "Municipal Officer",
+    "allowed": false
+  },
+  {
+    "from": "verified",
+    "to": "verified",
+    "role": "Admin",
+    "allowed": false
+  }
+]

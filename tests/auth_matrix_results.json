@@ -1,0 +1,457 @@
+[
+  {
+    "method": "GET",
+    "path": "/",
+    "results": {
+      "anonymous": 200,
+      "citizen_owner": 200,
+      "citizen_other": 200,
+      "officer": 200,
+      "staff_assigned": 200,
+      "staff_unassigned": 200,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "results": {
+      "anonymous": 200,
+      "citizen_owner": 200,
+      "citizen_other": 200,
+      "officer": 200,
+      "staff_assigned": 200,
+      "staff_unassigned": 200,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 200,
+      "citizen_other": 200,
+      "officer": 200,
+      "staff_assigned": 200,
+      "staff_unassigned": 200,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/protected-role-example",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users/8",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 200,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/users",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 403,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 201
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/users/9",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 403,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/users/999999",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 403,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 404
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/1",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 200,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 200,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/1/ml-status",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 200,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 200,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/1/related",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/1/priority-history",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/1/history",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/1/evidence",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 200,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 200,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/reports/1/evidence/1/file",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 200,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 200,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/recalculate-priority",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/override-priority",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/verify",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 400,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/reject",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 400,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/duplicate",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 400,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/assign",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 400,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/reassign",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 400,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/unassign",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 400,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/repair/start",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 403,
+      "staff_assigned": 400,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/final-verify",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 400,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/1/reopen",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 403,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/reports/1",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/reports/1/status",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 400,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/reports/999999",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 403,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 404
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/report-relations/1",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 400
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/staff",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 200,
+      "staff_assigned": 403,
+      "staff_unassigned": 403,
+      "admin": 200
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/staff/me/assignments",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 403,
+      "citizen_other": 403,
+      "officer": 403,
+      "staff_assigned": 200,
+      "staff_unassigned": 200,
+      "admin": 403
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/reports/detect",
+    "results": {
+      "anonymous": 401,
+      "citizen_owner": 422,
+      "citizen_other": 422,
+      "officer": 422,
+      "staff_assigned": 422,
+      "staff_unassigned": 422,
+      "admin": 422
+    }
+  }
+]

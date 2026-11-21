@@ -1,0 +1,111 @@
+{
+  "conditions": [
+    {
+      "condition": "D00_longitudinal",
+      "filename": "damage_d00.jpg",
+      "num_detections": 3,
+      "classes": [
+        "D00",
+        "D00",
+        "D00"
+      ],
+      "max_conf": 0.3368,
+      "inference_time_ms": 389.12
+    },
+    {
+      "condition": "D10_transverse",
+      "filename": "damage_d10.jpg",
+      "num_detections": 1,
+      "classes": [
+        "D10"
+      ],
+      "max_conf": 0.4837,
+      "inference_time_ms": 420.37
+    },
+    {
+      "condition": "D20_alligator",
+      "filename": "damage_d20.jpg",
+      "num_detections": 0,
+      "classes": [],
+      "max_conf": 0.0,
+      "inference_time_ms": 397.82
+    },
+    {
+      "condition": "D40_pothole_rdd",
+      "filename": "damage_d40.jpg",
+      "num_detections": 1,
+      "classes": [
+        "D20"
+      ],
+      "max_conf": 0.2556,
+      "inference_time_ms": 447.75
+    },
+    {
+      "condition": "D40_pothole_phone",
+      "filename": "sample_pothole_d40.jpg",
+      "num_detections": 3,
+      "classes": [
+        "D40",
+        "D00",
+        "D00"
+      ],
+      "max_conf": 0.5105,
+      "inference_time_ms": 682.78
+    },
+    {
+      "condition": "no_damage_road",
+      "filename": "no_damage_road.jpg",
+      "num_detections": 0,
+      "classes": [],
+      "max_conf": 0.0,
+      "inference_time_ms": 2509.6
+    },
+    {
+      "condition": "non_road_scene",
+      "filename": "non_road.jpg",
+      "num_detections": 0,
+      "classes": [],
+      "max_conf": 0.0,
+      "inference_time_ms": 864.26
+    },
+    {
+      "condition": "blurry_dark_night",
+      "filename": "blurry_dark.jpg",
+      "num_detections": 0,
+      "classes": [],
+      "max_conf": 0.0,
+      "inference_time_ms": 504.04
+    },
+    {
+      "condition": "exif_rotated_phone",
+      "filename": "exif_gps_rotated.jpg",
+      "num_detections": 1,
+      "classes": [
+        "D40"
+      ],
+      "max_conf": 0.3978,
+      "inference_time_ms": 1293.42
+    },
+    {
+      "condition": "very_large_4096x3072",
+      "filename": "very_large.jpg",
+      "num_detections": 0,
+      "classes": [],
+      "max_conf": 0.0,
+      "inference_time_ms": 433.56
+    },
+    {
+      "condition": "tiny_16x16",
+      "filename": "tiny.jpg",
+      "num_detections": 0,
+      "classes": [],
+      "max_conf": 0.0,
+      "inference_time_ms": 446.5
+    }
+  ],
+  "timing_samples": 16,
+  "cpu_mean_ms": 654.66,
+  "cpu_p95_ms": 1293.42,
+  "cpu_min_ms": 282.32,
+  "cpu_max_ms": 2509.6
+}

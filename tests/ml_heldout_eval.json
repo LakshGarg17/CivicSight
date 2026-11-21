@@ -1,0 +1,298 @@
+{
+  "model_path": "D:\\Projects\\CivicSight\\ml\\runs\\detect\\clean_rdd2022_yolov8s\\weights\\best.pt",
+  "model_version": "YOLOv8s-clean_rdd2022_yolov8s",
+  "model_names": {
+    "0": "D00",
+    "1": "D10",
+    "2": "D20",
+    "3": "D40"
+  },
+  "model_task": "detect",
+  "conf_threshold": 0.25,
+  "iou_threshold": 0.45,
+  "eval_iou_match": 0.5,
+  "split_verification": {
+    "dataset_root": "D:\\Projects\\CivicSight\\Dataset\\RDD_SPLIT",
+    "test_total_images": 5758,
+    "overlap_with_rdd_split_train": 0,
+    "overlap_with_rdd_split_val": 0,
+    "evaluated_stratified_sample_size": 160,
+    "note": "Dataset/RDD_SPLIT/test has 0 overlap with RDD_SPLIT/train and RDD_SPLIT/val. Official 3,285-image test metrics from external data_rdd2022_full.yaml run are also preserved in full_training_results.json."
+  },
+  "macro_precision_at_0.25": 0.7896,
+  "macro_recall_at_0.25": 0.5155,
+  "per_class": {
+    "D00": {
+      "gt_boxes": 170,
+      "tp": 87,
+      "fp": 45,
+      "fn": 83,
+      "precision_at_0.25": 0.6591,
+      "recall_at_0.25": 0.5118,
+      "f1_at_0.25": 0.5762
+    },
+    "D10": {
+      "gt_boxes": 89,
+      "tp": 45,
+      "fp": 11,
+      "fn": 44,
+      "precision_at_0.25": 0.8036,
+      "recall_at_0.25": 0.5056,
+      "f1_at_0.25": 0.6207
+    },
+    "D20": {
+      "gt_boxes": 65,
+      "tp": 39,
+      "fp": 10,
+      "fn": 26,
+      "precision_at_0.25": 0.7959,
+      "recall_at_0.25": 0.6,
+      "f1_at_0.25": 0.6842
+    },
+    "D40": {
+      "gt_boxes": 81,
+      "tp": 36,
+      "fp": 4,
+      "fn": 45,
+      "precision_at_0.25": 0.9,
+      "recall_at_0.25": 0.4444,
+      "f1_at_0.25": 0.595
+    }
+  },
+  "confusion_matrix_labels": [
+    "D00",
+    "D10",
+    "D20",
+    "D40",
+    "BG"
+  ],
+  "confusion_matrix": [
+    [
+      87,
+      0,
+      1,
+      0,
+      82
+    ],
+    [
+      1,
+      45,
+      0,
+      0,
+      43
+    ],
+    [
+      2,
+      0,
+      39,
+      0,
+      24
+    ],
+    [
+      0,
+      0,
+      1,
+      36,
+      44
+    ],
+    [
+      42,
+      11,
+      8,
+      4,
+      0
+    ]
+  ],
+  "cpu_timing": {
+    "images": 160,
+    "mean_ms": 130.13,
+    "p95_ms": 170.18,
+    "min_ms": 116.6,
+    "max_ms": 213.84
+  },
+  "false_positives_sample": [
+    {
+      "filename": "Norway_005549.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.3034,
+      "iou": 0.0
+    },
+    {
+      "filename": "Japan_001914.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.2925,
+      "iou": 0.431
+    },
+    {
+      "filename": "Japan_006695.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.4566,
+      "iou": 0.0
+    },
+    {
+      "filename": "Japan_007617.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.4739,
+      "iou": 0.344
+    },
+    {
+      "filename": "Norway_006503.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.5048,
+      "iou": 0.0
+    },
+    {
+      "filename": "Norway_006503.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.2801,
+      "iou": 0.0
+    },
+    {
+      "filename": "Japan_006334.jpg",
+      "type": "class_confusion",
+      "gt": "D20",
+      "pred": "D00",
+      "conf": 0.2535,
+      "iou": 0.836
+    },
+    {
+      "filename": "United_States_003162.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.2939,
+      "iou": 0.0
+    },
+    {
+      "filename": "United_States_003162.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.2892,
+      "iou": 0.0
+    },
+    {
+      "filename": "United_States_003162.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.2506,
+      "iou": 0.0
+    },
+    {
+      "filename": "United_States_002516.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D00",
+      "conf": 0.3161,
+      "iou": 0.0
+    },
+    {
+      "filename": "China_MotorBike_001024.jpg",
+      "type": "unmatched_box_fp",
+      "gt": "D00",
+      "pred": "D40",
+      "conf": 0.3661,
+      "iou": 0.0
+    }
+  ],
+  "missed_detections_sample": [
+    {
+      "filename": "Norway_006397.jpg",
+      "missed_class": "D00",
+      "preds_in_image": []
+    },
+    {
+      "filename": "Japan_001914.jpg",
+      "missed_class": "D00",
+      "preds_in_image": [
+        "D00"
+      ]
+    },
+    {
+      "filename": "Norway_008100.jpg",
+      "missed_class": "D00",
+      "preds_in_image": [
+        "D20"
+      ]
+    },
+    {
+      "filename": "Norway_008100.jpg",
+      "missed_class": "D10",
+      "preds_in_image": [
+        "D20"
+      ]
+    },
+    {
+      "filename": "Norway_008100.jpg",
+      "missed_class": "D00",
+      "preds_in_image": [
+        "D20"
+      ]
+    },
+    {
+      "filename": "Norway_008100.jpg",
+      "missed_class": "D00",
+      "preds_in_image": [
+        "D20"
+      ]
+    },
+    {
+      "filename": "Norway_008100.jpg",
+      "missed_class": "D00",
+      "preds_in_image": [
+        "D20"
+      ]
+    },
+    {
+      "filename": "Norway_008100.jpg",
+      "missed_class": "D20",
+      "preds_in_image": [
+        "D20"
+      ]
+    },
+    {
+      "filename": "Norway_008100.jpg",
+      "missed_class": "D00",
+      "preds_in_image": [
+        "D20"
+      ]
+    },
+    {
+      "filename": "Japan_007617.jpg",
+      "missed_class": "D00",
+      "preds_in_image": [
+        "D00",
+        "D00",
+        "D00"
+      ]
+    },
+    {
+      "filename": "Norway_006503.jpg",
+      "missed_class": "D00",
+      "preds_in_image": [
+        "D00",
+        "D00",
+        "D00",
+        "D00"
+      ]
+    },
+    {
+      "filename": "Japan_011341.jpg",
+      "missed_class": "D00",
+      "preds_in_image": []
+    }
+  ]
+}

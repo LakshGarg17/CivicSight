@@ -1,0 +1,80 @@
+{
+  "landing": {
+    "load_ms": 907.3,
+    "light_bg": "rgb(255, 255, 255)",
+    "dark_bg": "rgb(10, 10, 10)",
+    "console_errors": 0,
+    "hasRawObj": false,
+    "imgsMissingAlt": 0,
+    "unlabeledInputs": 0,
+    "hasMain": true,
+    "hasH1": true,
+    "domContentLoadedMs": 40,
+    "loadEventMs": 41
+  },
+  "login": {
+    "load_ms": 832.5,
+    "light_bg": "rgb(255, 255, 255)",
+    "dark_bg": "rgb(10, 10, 10)",
+    "console_errors": 0,
+    "hasRawObj": false,
+    "imgsMissingAlt": 0,
+    "unlabeledInputs": 0,
+    "hasMain": true,
+    "hasH1": true,
+    "domContentLoadedMs": 22,
+    "loadEventMs": 25
+  },
+  "register": {
+    "load_ms": 869.0,
+    "light_bg": "rgb(255, 255, 255)",
+    "dark_bg": "rgb(10, 10, 10)",
+    "console_errors": 0,
+    "hasRawObj": false,
+    "imgsMissingAlt": 0,
+    "unlabeledInputs": 0,
+    "hasMain": true,
+    "hasH1": true,
+    "domContentLoadedMs": 27,
+    "loadEventMs": 35
+  },
+  "report": {
+    "load_ms": 716.1,
+    "light_bg": "rgb(255, 255, 255)",
+    "dark_bg": "rgb(10, 10, 10)",
+    "console_errors": 0,
+    "hasRawObj": false,
+    "imgsMissingAlt": 0,
+    "unlabeledInputs": 0,
+    "hasMain": true,
+    "hasH1": true,
+    "domContentLoadedMs": 90,
+    "loadEventMs": 91
+  },
+  "dashboard": {
+    "load_ms": 936.7,
+    "light_bg": "rgb(255, 255, 255)",
+    "dark_bg": "rgb(10, 10, 10)",
+    "console_errors": 0,
+    "hasRawObj": false,
+    "imgsMissingAlt": 0,
+    "unlabeledInputs": 0,
+    "hasMain": true,
+    "hasH1": true,
+    "domContentLoadedMs": 96,
+    "loadEventMs": 98
+  },
+  "maintenance": {
+    "load_ms": 612.7,
+    "light_bg": "rgb(255, 255, 255)",
+    "dark_bg": "rgb(10, 10, 10)",
+    "console_errors": 0,
+    "hasRawObj": false,
+    "imgsMissingAlt": 0,
+    "unlabeledInputs": 0,
+    "hasMain": true,
+    "hasH1": true,
+    "domContentLoadedMs": 34,
+    "loadEventMs": 34
+  }
+}

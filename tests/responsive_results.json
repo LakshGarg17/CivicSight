@@ -1,0 +1,338 @@
+[
+  {
+    "page": "landing",
+    "viewport": "360x740",
+    "tag": "360_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "landing",
+    "viewport": "390x844",
+    "tag": "390_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "landing",
+    "viewport": "844x390",
+    "tag": "390_landscape",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "landing",
+    "viewport": "768x1024",
+    "tag": "768_tablet",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "landing",
+    "viewport": "1024x768",
+    "tag": "1024_laptop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "landing",
+    "viewport": "1280x800",
+    "tag": "1280_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "landing",
+    "viewport": "1440x900",
+    "tag": "1440_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "landing",
+    "viewport": "1920x1080",
+    "tag": "1920_fhd",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "login",
+    "viewport": "360x740",
+    "tag": "360_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "login",
+    "viewport": "390x844",
+    "tag": "390_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "login",
+    "viewport": "844x390",
+    "tag": "390_landscape",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "login",
+    "viewport": "768x1024",
+    "tag": "768_tablet",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "login",
+    "viewport": "1024x768",
+    "tag": "1024_laptop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "login",
+    "viewport": "1280x800",
+    "tag": "1280_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "login",
+    "viewport": "1440x900",
+    "tag": "1440_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "login",
+    "viewport": "1920x1080",
+    "tag": "1920_fhd",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "register",
+    "viewport": "360x740",
+    "tag": "360_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "register",
+    "viewport": "390x844",
+    "tag": "390_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "register",
+    "viewport": "844x390",
+    "tag": "390_landscape",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "register",
+    "viewport": "768x1024",
+    "tag": "768_tablet",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "register",
+    "viewport": "1024x768",
+    "tag": "1024_laptop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "register",
+    "viewport": "1280x800",
+    "tag": "1280_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "register",
+    "viewport": "1440x900",
+    "tag": "1440_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "register",
+    "viewport": "1920x1080",
+    "tag": "1920_fhd",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "report",
+    "viewport": "360x740",
+    "tag": "360_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "report",
+    "viewport": "390x844",
+    "tag": "390_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "report",
+    "viewport": "844x390",
+    "tag": "390_landscape",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "report",
+    "viewport": "768x1024",
+    "tag": "768_tablet",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "report",
+    "viewport": "1024x768",
+    "tag": "1024_laptop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "report",
+    "viewport": "1280x800",
+    "tag": "1280_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "report",
+    "viewport": "1440x900",
+    "tag": "1440_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "report",
+    "viewport": "1920x1080",
+    "tag": "1920_fhd",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "dashboard",
+    "viewport": "360x740",
+    "tag": "360_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "dashboard",
+    "viewport": "390x844",
+    "tag": "390_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "dashboard",
+    "viewport": "844x390",
+    "tag": "390_landscape",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "dashboard",
+    "viewport": "768x1024",
+    "tag": "768_tablet",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "dashboard",
+    "viewport": "1024x768",
+    "tag": "1024_laptop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "dashboard",
+    "viewport": "1280x800",
+    "tag": "1280_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "dashboard",
+    "viewport": "1440x900",
+    "tag": "1440_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "dashboard",
+    "viewport": "1920x1080",
+    "tag": "1920_fhd",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "maintenance",
+    "viewport": "360x740",
+    "tag": "360_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "maintenance",
+    "viewport": "390x844",
+    "tag": "390_portrait",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "maintenance",
+    "viewport": "844x390",
+    "tag": "390_landscape",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "maintenance",
+    "viewport": "768x1024",
+    "tag": "768_tablet",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "maintenance",
+    "viewport": "1024x768",
+    "tag": "1024_laptop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "maintenance",
+    "viewport": "1280x800",
+    "tag": "1280_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "maintenance",
+    "viewport": "1440x900",
+    "tag": "1440_desktop",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  },
+  {
+    "page": "maintenance",
+    "viewport": "1920x1080",
+    "tag": "1920_fhd",
+    "horizontal_overflow_px": 0,
+    "pass": true
+  }
+]
