@@ -3,7 +3,7 @@
 Roll No. 1024030156  
 Name: Laksh Garg
 
-- [W1 : Project Setup and Understanding](w1-project-setup.md)
+- [Week 1 — Project Setup and Understanding](./week-1.md)
 - [Week 2 — Database Design and Backend Foundation](./week-2.md)
 - [Week 3 — Authentication, Roles and Dataset Preparation](./week-3.md)
 - [Week 4 — Status UI, Report-Flow testing and YOLO training](./week-4.md)
