@@ -1,0 +1,262 @@
+{
+  "sample_size": 25,
+  "model_version": "YOLOv8n-experiment2_week5",
+  "weights_file": "best.pt",
+  "preprocessing_ms": {
+    "mean": 7.93,
+    "std": 4.64,
+    "min": 5.31,
+    "max": 29.98,
+    "p50": 6.88,
+    "p95": 9.88
+  },
+  "inference_ms": {
+    "mean": 40.14,
+    "std": 12.51,
+    "min": 35.99,
+    "max": 101.14,
+    "p50": 37.26,
+    "p95": 40.42
+  },
+  "total_pipeline_ms": {
+    "mean": 48.06,
+    "std": 17.04,
+    "min": 41.59,
+    "max": 131.12,
+    "p50": 44.53,
+    "p95": 47.43
+  },
+  "detection_counts_by_class": {
+    "D00": 0,
+    "D10": 1,
+    "D20": 0,
+    "D40": 0
+  },
+  "per_image_results": [
+    {
+      "filename": "China_MotorBike_000003.jpg",
+      "preprocessing_ms": 29.98,
+      "inference_ms": 101.14,
+      "total_ms": 131.12,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_MotorBike_000010.jpg",
+      "preprocessing_ms": 6.65,
+      "inference_ms": 37.88,
+      "total_ms": 44.53,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_MotorBike_000024.jpg",
+      "preprocessing_ms": 6.74,
+      "inference_ms": 36.25,
+      "total_ms": 42.99,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_MotorBike_000034.jpg",
+      "preprocessing_ms": 5.88,
+      "inference_ms": 36.97,
+      "total_ms": 42.85,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_MotorBike_000048.jpg",
+      "preprocessing_ms": 7.23,
+      "inference_ms": 38.02,
+      "total_ms": 45.25,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_MotorBike_000093.jpg",
+      "preprocessing_ms": 6.98,
+      "inference_ms": 39.43,
+      "total_ms": 46.41,
+      "num_detections": 1,
+      "primary_damage": "D10",
+      "primary_priority": "MEDIUM"
+    },
+    {
+      "filename": "China_MotorBike_000104.jpg",
+      "preprocessing_ms": 6.47,
+      "inference_ms": 37.01,
+      "total_ms": 43.48,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_MotorBike_000146.jpg",
+      "preprocessing_ms": 6.38,
+      "inference_ms": 40.44,
+      "total_ms": 46.82,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_MotorBike_000200.jpg",
+      "preprocessing_ms": 6.31,
+      "inference_ms": 36.65,
+      "total_ms": 42.96,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "Czech_000010.jpg",
+      "preprocessing_ms": 6.78,
+      "inference_ms": 37.26,
+      "total_ms": 44.04,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "Czech_000018.jpg",
+      "preprocessing_ms": 8.53,
+      "inference_ms": 38.38,
+      "total_ms": 46.91,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "Czech_000038.jpg",
+      "preprocessing_ms": 8.56,
+      "inference_ms": 37.48,
+      "total_ms": 46.04,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "Czech_000048.jpg",
+      "preprocessing_ms": 7.44,
+      "inference_ms": 35.99,
+      "total_ms": 43.44,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "Czech_000084.jpg",
+      "preprocessing_ms": 8.93,
+      "inference_ms": 37.16,
+      "total_ms": 46.09,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "Czech_000119.jpg",
+      "preprocessing_ms": 6.97,
+      "inference_ms": 36.33,
+      "total_ms": 43.29,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "Czech_000141.jpg",
+      "preprocessing_ms": 10.12,
+      "inference_ms": 37.35,
+      "total_ms": 47.47,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "Czech_000201.jpg",
+      "preprocessing_ms": 8.36,
+      "inference_ms": 38.49,
+      "total_ms": 46.85,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_Drone_000008.jpg",
+      "preprocessing_ms": 6.19,
+      "inference_ms": 38.94,
+      "total_ms": 45.13,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_Drone_000017.jpg",
+      "preprocessing_ms": 5.51,
+      "inference_ms": 36.07,
+      "total_ms": 41.59,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_Drone_000040.jpg",
+      "preprocessing_ms": 5.31,
+      "inference_ms": 36.78,
+      "total_ms": 42.09,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_Drone_000053.jpg",
+      "preprocessing_ms": 6.95,
+      "inference_ms": 37.2,
+      "total_ms": 44.15,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_Drone_000099.jpg",
+      "preprocessing_ms": 5.69,
+      "inference_ms": 36.6,
+      "total_ms": 42.3,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_Drone_000101.jpg",
+      "preprocessing_ms": 6.88,
+      "inference_ms": 40.37,
+      "total_ms": 47.24,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_Drone_000150.jpg",
+      "preprocessing_ms": 6.89,
+      "inference_ms": 38.6,
+      "total_ms": 45.49,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    },
+    {
+      "filename": "China_Drone_000216.jpg",
+      "preprocessing_ms": 6.41,
+      "inference_ms": 36.65,
+      "total_ms": 43.07,
+      "num_detections": 0,
+      "primary_damage": "NONE",
+      "primary_priority": "LOW"
+    }
+  ]
+}

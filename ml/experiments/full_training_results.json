@@ -1,0 +1,88 @@
+{
+  "experiment_name": "Full RDD2022 Training \u2014 YOLOv8s GPU",
+  "timestamp": "2026-11-06T13:54:41.086449",
+  "configuration": {
+    "model": "C:\\Users\\thapa\\Documents\\CivicSight Project\\CivicSight\\yolov8s.pt",
+    "variant": "YOLOv8s",
+    "data": "C:\\Users\\thapa\\Documents\\CivicSight Project\\CivicSight\\ml\\data_rdd2022_full.yaml",
+    "dataset": "RDD2022 clean (augmented images removed, re-split)",
+    "epochs": 50,
+    "imgsz": 640,
+    "batch": 16,
+    "device": 0,
+    "optimizer": "AdamW",
+    "lr0": 0.001,
+    "lrf": 0.01,
+    "momentum": 0.937,
+    "weight_decay": 0.0005,
+    "warmup_epochs": 3.0,
+    "cos_lr": true,
+    "mosaic": 1.0,
+    "mixup": 0.1,
+    "copy_paste": 0.1,
+    "hsv_h": 0.015,
+    "hsv_s": 0.7,
+    "hsv_v": 0.4,
+    "fliplr": 0.5,
+    "flipud": 0.0,
+    "degrees": 0.0,
+    "translate": 0.1,
+    "scale": 0.5,
+    "shear": 0.0,
+    "perspective": 0.0005,
+    "box": 7.5,
+    "cls": 0.5,
+    "dfl": 1.5,
+    "conf": 0.001,
+    "iou": 0.7,
+    "patience": 15,
+    "save_period": 10,
+    "workers": 4,
+    "amp": true,
+    "cache": false,
+    "verbose": true,
+    "project": "C:\\Users\\thapa\\Documents\\CivicSight Project\\CivicSight\\ml\\runs\\detect",
+    "name": "clean_rdd2022_yolov8s",
+    "exist_ok": false,
+    "timestamp": "2026-11-06T13:54:41.086449"
+  },
+  "hardware": {
+    "cuda": true,
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "torch": "2.14.1+cu132"
+  },
+  "metrics": {
+    "overall_mAP50": 0.5273,
+    "overall_mAP50_95": 0.2625,
+    "mean_precision": 0.596,
+    "mean_recall": 0.5015,
+    "per_class_mAP50": {
+      "D00": 0.5438,
+      "D10": 0.4977,
+      "D20": 0.6496,
+      "D40": 0.4181
+    },
+    "per_class_mAP50_95": {
+      "D00": 0.2878,
+      "D10": 0.2194,
+      "D20": 0.353,
+      "D40": 0.1901
+    }
+  },
+  "test_metrics": {
+    "mAP50": 0.5472,
+    "mAP50_95": 0.2708,
+    "mean_precision": 0.6081,
+    "mean_recall": 0.5097,
+    "per_class_mAP50": {
+      "D00": 0.5389,
+      "D10": 0.5352,
+      "D20": 0.6459,
+      "D40": 0.4688
+    }
+  },
+  "artifacts": {
+    "best_weights": "C:\\Users\\thapa\\Documents\\CivicSight Project\\CivicSight\\ml\\runs\\detect\\clean_rdd2022_yolov8s\\weights\\best.pt",
+    "run_directory": "C:\\Users\\thapa\\Documents\\CivicSight Project\\CivicSight\\ml\\runs\\detect\\clean_rdd2022_yolov8s"
+  }
+}

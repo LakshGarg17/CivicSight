@@ -1,0 +1,109 @@
+{
+  "test_images_count": 120,
+  "matched_detections": 2,
+  "false_positives_count": 0,
+  "missed_detections_count": 181,
+  "sample_false_positives": [],
+  "sample_missed_detections": [
+    {
+      "image": "China_Drone_000008.jpg",
+      "gt_class": "D10",
+      "bbox_norm": [
+        0.1094,
+        0.6855,
+        0.7012,
+        0.8809
+      ]
+    },
+    {
+      "image": "China_Drone_000017.jpg",
+      "gt_class": "D10",
+      "bbox_norm": [
+        0.0957,
+        0.6934,
+        0.3965,
+        0.7402
+      ]
+    },
+    {
+      "image": "China_Drone_000040.jpg",
+      "gt_class": "D00",
+      "bbox_norm": [
+        0.1602,
+        0.2793,
+        0.2051,
+        0.4648
+      ]
+    },
+    {
+      "image": "China_Drone_000040.jpg",
+      "gt_class": "D10",
+      "bbox_norm": [
+        0.0625,
+        0.8359,
+        0.3086,
+        0.877
+      ]
+    },
+    {
+      "image": "China_Drone_000052.jpg",
+      "gt_class": "D10",
+      "bbox_norm": [
+        0.9121,
+        0.5215,
+        1.0,
+        0.7227
+      ]
+    },
+    {
+      "image": "China_Drone_000053.jpg",
+      "gt_class": "D20",
+      "bbox_norm": [
+        0.7129,
+        0.002,
+        0.918,
+        0.25
+      ]
+    },
+    {
+      "image": "China_Drone_000075.jpg",
+      "gt_class": "D10",
+      "bbox_norm": [
+        0.2617,
+        0.4746,
+        0.375,
+        0.5195
+      ]
+    },
+    {
+      "image": "China_Drone_000085.jpg",
+      "gt_class": "D10",
+      "bbox_norm": [
+        0.002,
+        0.0586,
+        1.0,
+        0.2305
+      ]
+    },
+    {
+      "image": "China_Drone_000092.jpg",
+      "gt_class": "D00",
+      "bbox_norm": [
+        0.3633,
+        0.0898,
+        0.4629,
+        0.4688
+      ]
+    },
+    {
+      "image": "China_Drone_000092.jpg",
+      "gt_class": "D00",
+      "bbox_norm": [
+        0.4492,
+        0.4746,
+        0.5098,
+        0.7949
+      ]
+    }
+  ]
+}
