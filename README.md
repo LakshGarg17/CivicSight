@@ -266,7 +266,7 @@ Visual verification overlays will be generated in `ml/samples/verified_boxes/`.
 - [x] **Week 1**: Monorepo Scaffolding, Landing Page, FastAPI + PostgreSQL Health Check, ML Environment Verification
 - [x] **Week 2**: Citizen Reporting Interface (Photo/GPS Scaffolding), Backend Models & CRUD REST API, RDD2022 Dataset Analysis
 - [x] **Week 3**: Authentication & JWT Sessions, Multi-Role Architecture (`Citizen`, `Municipal Officer`, `Maintenance Staff`, `Admin`), Frontend Auth Pages & Role-Aware Nav, ML Dataset Preparation (`data.yaml`, Splits & Visual Auditing)
-- [x] **Week 4**: End-to-End Reporting Workflow (Leaflet Map + Geolocation + Multipart Upload), Report Creation API with Disk Storage & Server-Side Validation, ML Input Pipeline (`preprocess.py`) & Baseline YOLOv8 Experiment
+- [x] **Week 4**: End-to-End Reporting Workflow (Interactive Map + Geolocation + Multipart Upload), Report Creation API with Disk Storage & Server-Side Validation, ML Input Pipeline (`preprocess.py`) & Baseline YOLOv8 Experiment
 - [ ] **Week 5**: Maintenance Work Order Dispatch, Repair Status Tracking, & Citizen Notification Workflows
 
 ---
@@ -274,13 +274,13 @@ Visual verification overlays will be generated in `ml/samples/verified_boxes/`.
 ## 🚀 Week 4 Progress: End-to-End Reporting, Spatial Maps & ML Baseline
 
 ### 1. Citizen Reporting Page (`frontend/pages/report.html`, `frontend/js/report.js`)
-- **Interactive Leaflet Map Integration**:
-  - Embedded OpenStreetMap canvas allowing citizens to pinpoint exact hazard coordinates.
-  - Interactive, draggable marker with automatic coordinate synchronization into form inputs (`latitude`, `longitude`).
+- **Interactive Google Maps Integration**:
+  - Embedded Google Maps JavaScript API canvas allowing citizens to pinpoint exact hazard coordinates.
+  - Interactive, draggable `AdvancedMarkerElement` with automatic coordinate synchronization into form inputs (`latitude`, `longitude`).
   - Click-to-pin support anywhere on the map surface.
 - **Browser Geolocation & Resilient Fallback**:
-  - Automated GPS location query via `navigator.geolocation.getCurrentPosition()`.
-  - **Granted**: Auto-centers map (`zoom 16`) and drops pin at device coordinates with accuracy indicator.
+  - Automated high-accuracy GPS location query via `navigator.geolocation.getCurrentPosition()`.
+  - **Granted**: Auto-centers map (`zoom 17`) and drops pin at device coordinates with an accuracy radius circle (`google.maps.Circle`).
   - **Denied/Unavailable**: Gracefully falls back to default city view and informs user to manually click on the map without breaking the form.
   - "Locate Me (GPS)" button to re-trigger geolocation on demand.
 - **Photo Upload & Live Preview**:
@@ -289,7 +289,7 @@ Visual verification overlays will be generated in `ml/samples/verified_boxes/`.
   - Visually distinct feedback banners: **submitting** (spinner), **success** (green banner with Report ID, status, and coordinates), and **error** (red banner with specific server/validation message).
 - **Two-Theme Compliance**:
   - 100% styled using pure CSS variables (`--bg-primary`, `--bg-secondary`, `--text-primary`, `--accent-color`, etc.).
-  - Leaflet controls, zoom buttons, popups, and dark-mode tile inverted greyscale filter tested and validated in both Plain White and Plain Black themes.
+  - Map controls, InfoWindows, and dark mode map styling validated in both Plain White and Plain Black themes.
 
 ---
 
@@ -387,7 +387,7 @@ Week 5 transforms the municipal operations workflow into a fully functional, rol
   - Reuses the `CivicSightMLViewer` component to render defect images, interactive SVG bounding box overlays, confidence chips, and geospatial coordinates.
 - **In-Place Report Verification**:
   - Modal and triage table feature a **"Verify Report"** action calling `PATCH /api/v1/reports/{id}/verify`.
-  - State updates to `verified` immediately across table badges, modal indicators, and Leaflet map popups **without a full page reload**.
+  - State updates to `verified` immediately across table badges, modal indicators, and map popups **without a full page reload**.
 - **Design & Theme Consistency**:
   - Strict adherence to the plain white / plain black CSS variable token system (`--bg-primary`, `--bg-secondary`, `--text-primary`, `--border-color`, `--accent-color`).
   - Tested and visually verified in both Light and Dark modes.
@@ -1017,6 +1017,236 @@ pytest backend/test_week9_lifecycle.py -v
 # Run Full 50-Test Suite Across All Weeks (100% pass)
 pytest backend/ -v
 ```
+
+---
+
+## 🗺️ Google Maps Platform Setup & Geospatial Architecture
+
+CivicSight utilizes the **Google Maps JavaScript API** with modern `AdvancedMarkerElement` pins, marker clustering via `@googlemaps/markerclusterer`, dynamic density circles, client-side Geocoding API reverse geocoding, and high-accuracy browser geolocation.
+
+All map views (Citizen Report, Municipal Operations Hazard Map, Damage Inspection Modal, and Maintenance Work Orders) use a single unified abstraction (`frontend/js/maps.js` / `window.CivicSightMap`).
+
+---
+
+### 1. Google Maps Platform Setup Guide
+
+#### Step 1: Google Cloud Project & API Key
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a new Google Cloud project (e.g. `CivicSight-Municipal-Dev`) or select an existing one.
+3. Link an active billing account to the project (Google Cloud requires billing enablement to activate Maps Platform APIs, even for free tier usage).
+4. Navigate to **APIs & Services > Credentials** and click **Create Credentials > API Key**.
+5. Copy your newly created API key. **Never commit, hardcode, or paste this key into chat, repositories, or public tickets.**
+
+#### Step 2: Enable Required APIs
+Enable the following two APIs in **APIs & Services > Library**:
+1. **Maps JavaScript API** — Powers interactive map rendering, dynamic loader (`importLibrary`), `AdvancedMarkerElement`, circles, and InfoWindows.
+2. **Geocoding API** — Powers client-side reverse geocoding (translating pinpoint coordinates into human-readable street addresses).
+
+#### Step 3: Create a Map ID (Required for AdvancedMarkerElement)
+Modern Google Maps pins (`AdvancedMarkerElement`) require a registered Map ID:
+1. In the Google Cloud Console, navigate to **Google Maps Platform > Map Management**.
+2. Click **Create Map ID**.
+3. Set **Map Type** to **JavaScript** and choose **Raster** or **Vector**.
+4. Save the Map ID (e.g., `DEMO_MAP_ID` or your custom 16-character alphanumeric string).
+
+#### Step 4: Security Best Practices & API Key Restrictions
+> [!CAUTION]
+> An unrestricted API key is a severe security vulnerability. If an unrestricted key is discovered by malicious actors, it can be abused across any web origin and incur unexpected billing charges. Always apply both API restrictions and Application (HTTP Referrer) restrictions before deploying.
+
+1. **API Restrictions (Restrict key usage to only selected APIs):**
+   - Under **Credentials > Edit API Key**, select **Restrict key**.
+   - Check **ONLY**:
+     - `Maps JavaScript API`
+     - `Geocoding API`
+   - Save changes.
+2. **Application Restrictions (HTTP Referrers):**
+   - Under **Set application restrictions**, choose **Websites (HTTP referrers)**.
+   - For **Local Development**, allow:
+     - `http://localhost:*/*`
+     - `http://127.0.0.1:*/*`
+     - `http://localhost:*`
+     - `http://127.0.0.1:*`
+   - For **Staging / Production**, allow your exact domains:
+     - `https://yourdomain.com/*`
+     - `https://*.yourdomain.com/*`
+
+#### Step 5: Environment Variable Configuration
+CivicSight plain HTML/JS frontend reads configuration from either `frontend/js/config.local.js` or `frontend/.env`. Both are explicitly gitignored to guarantee zero credential leaks.
+
+1. Copy the configuration template:
+   ```bash
+   cp frontend/js/config.example.js frontend/js/config.local.js
+   ```
+2. Edit `frontend/js/config.local.js` with your real keys:
+   ```javascript
+   window.CIVICSIGHT_CONFIG = {
+     GOOGLE_MAPS_API_KEY: "AIzaSyYourRealKeyHere",
+     GOOGLE_MAPS_MAP_ID: "YOUR_MAP_ID_HERE",
+     API_BASE: "http://127.0.0.1:8000"
+   };
+   ```
+3. Alternatively, copy `frontend/.env.example` to `frontend/.env`:
+   ```bash
+   cp frontend/.env.example frontend/.env
+   ```
+   and define:
+   ```env
+   VITE_GOOGLE_MAPS_API_KEY=AIzaSyYourRealKeyHere
+   VITE_GOOGLE_MAPS_MAP_ID=YOUR_MAP_ID_HERE
+   ```
+4. **Gitignored Files:**
+   - `.gitignore` contains `frontend/js/config.local.js`, `*.local.js`, and `frontend/.env`.
+   - Never remove these entries from `.gitignore`.
+
+#### Step 6: Local Development Workflow
+Run the FastAPI backend (which serves the frontend statically at `http://127.0.0.1:8000/frontend/`):
+```powershell
+# Activate Python virtual environment and start backend
+.venv\Scripts\uvicorn.exe app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
+```
+Open your browser to:
+- Citizen Report: [http://127.0.0.1:8000/frontend/pages/report.html](http://127.0.0.1:8000/frontend/pages/report.html)
+- Municipal Center: [http://127.0.0.1:8000/frontend/pages/dashboard.html](http://127.0.0.1:8000/frontend/pages/dashboard.html)
+- Maintenance Portal: [http://127.0.0.1:8000/frontend/pages/maintenance.html](http://127.0.0.1:8000/frontend/pages/maintenance.html)
+
+#### Step 7: Verification Checklist
+To confirm your Google Maps Platform setup is functioning properly:
+- [x] **Map Canvas:** Renders smoothly without grey boxes or watermark tiles.
+- [x] **Console:** Zero `Google Maps JavaScript API error: ApiNotActivatedMapError` or `RefererNotAllowedMapError` logs.
+- [x] **Markers:** Custom SVG priority pins (High red, Medium amber, Low green) render at exact incident coordinates.
+- [x] **Clustering:** `@googlemaps/markerclusterer` clusters medium/low priority pins, while High-Priority pins remain permanently unclustered and visible.
+- [x] **Reverse Geocoding:** Moving the pinpoint on the Citizen Report page populates the address input after 800ms debounce.
+
+#### Step 8: Resilient Failure & Fallback Behavior
+> [!IMPORTANT]
+> CivicSight guarantees **zero blocking failures**. If the API key is missing, invalid, expired, restricted incorrectly, or quota-exceeded:
+> 1. The map container renders an accessible inline fallback card:
+>    ```
+>    Map unavailable: API key not configured
+>    Provide GOOGLE_MAPS_API_KEY in frontend/js/config.local.js or frontend/.env.
+>    ```
+> 2. `window.gm_authFailure` is intercepted to prevent invasive browser `alert()` modal dialogs or white-screen crashes.
+> 3. **Citizen Reporting is NEVER blocked:** Coordinates can still be acquired via automatic browser GPS or typed manually into the Latitude/Longitude fields.
+> 4. **Municipal Triage is NEVER blocked:** The Incident Triage queue table, status transitions, AI detection review, and verification workflows remain 100% operational.
+
+#### Step 9: Cost Control & Billing Guardrails
+- **Monthly Free Credit:** Google Cloud provides a recurring **$200 monthly credit** on your billing account, which covers approximately **28,000 Map loads** each month at zero cost.
+- **Client-Side Debouncing & Caching:** Reverse geocoding in CivicSight is debounced at **800ms** and cached in-memory by rounded coordinates (`lat.toFixed(4), lng.toFixed(4)`) to eliminate redundant requests.
+- **Triage Lists Avoid Geocoding:** Municipal triage queues and dashboard tables fetch pre-stored coordinates directly from PostgreSQL without making per-row Geocoder API calls.
+- **Budget Alerts:** Configure a budget alert in Google Cloud Console (**Billing > Budgets & alerts**) set to \$10 or \$50 to receive automated email notifications before any charges occur.
+
+---
+
+### 2. Automatic Browser Location Detection
+
+- **Trigger:** On page load of the Citizen Damage Reporting interface (`frontend/pages/report.html`), the browser automatically invokes `navigator.geolocation.getCurrentPosition`.
+- **Configuration:**
+  - `enableHighAccuracy: true` (engages hardware GPS on mobile devices).
+  - `timeout: 10000` (10 seconds timeout limit).
+  - `maximumAge: 0` (forces an immediate live location fix).
+- **Visual Feedback:** While waiting for the GPS fix, an animated Lottie radar icon and "Finding location..." indicator display in the location toolbar.
+- **Accuracy Handling:**
+  - On success, the map centers on the detected coordinates (zoom level 17) and drops a draggable `AdvancedMarkerElement`.
+  - A dynamic semi-transparent **accuracy circle** (`google.maps.Circle`) renders around the pin displaying the exact accuracy radius (`±Xm`) returned by the browser.
+  - If accuracy is coarse (> 100 meters, common on desktop Wi-Fi positioning), a visible warning advises: *"Location accuracy is low (±Xm). Drag the pin to the exact spot."*
+- **Correction & Fine-Tuning:** Citizens can drag the marker or click anywhere on the map to adjust the position. Coordinates and address update instantly.
+- **Privacy & Security Constraints:**
+  - User location is **never stored on disk or in the database** until the user explicitly clicks "Submit Road Report".
+  - **Secure Context Requirement:** Geolocation APIs are strictly restricted by modern browsers to secure contexts (`window.isSecureContext === true`, i.e., HTTPS or `http://localhost` / `http://127.0.0.1`). On insecure origins, a clear warning explains the requirement and falls back to manual pin placement.
+  - **Zero-Failure Fallback:** If permission is denied, GPS times out, or positioning is unavailable, the reporting form populates safe municipal default coordinates (`[37.7749, -122.4194]`), leaving the user free to click the map or drag the pin. Location errors **never block report creation**.
+
+---
+
+## 🧪 Testing & Quality Gate (Week 10)
+
+CivicSight includes automated unit, integration, security/RBAC, state-machine, ML, responsive UI, accessibility, and real-browser end-to-end tests across Chromium and Firefox.
+
+### Reset / Seed Clean Demo Database
+```powershell
+# Wipe reports/evidence and seed 7 demo role accounts + 8 canonical lifecycle reports
+.venv\Scripts\python.exe backend\scripts\seed_demo.py --reset
+```
+
+### Run Automated Test Suites
+```powershell
+# 1. Backend & ML regression suite with code coverage (56 tests, 83% backend coverage)
+.venv\Scripts\pytest.exe backend\test_auth.py backend\test_crud.py backend\test_reports_api.py backend\test_municipal_reports_api.py backend\test_lifecycle_api.py backend\test_priority_and_relations.py backend\test_week9_lifecycle.py tests\test_week10_backend.py tests\test_week10_ml.py --cov=backend/app --cov-report=term-missing -v
+
+# 2. Frontend UI, responsive (8 viewports), Firefox, and 5 End-to-End Scenarios (9 Playwright tests)
+.venv\Scripts\pytest.exe tests\test_week10_frontend_and_scenarios.py -v
+
+# 3. Independent held-out ML evaluation (160 multi-domain RDD2022 test images)
+.venv\Scripts\python.exe scripts\eval_week10_ml.py
+```
+
+Full quality gate evidence is documented in:
+- [`TEST_REPORT.md`](TEST_REPORT.md) — full 35×7 auth matrix, 324-cell state matrix, coverage, responsive matrix, 5 scenario records, and 2,000-row DB performance
+- [`BUG_LOG.md`](BUG_LOG.md) — all 22 bugs found, fixed, and regression-tested
+- [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) — honest operational, security, and ML limitations
+- [`ml/experiments/results.md`](ml/experiments/results.md) — real ML evaluation metrics, confusion matrix, CPU timings, and failure analysis
+
+---
+
+## 🎬 Live Demo Script & Risk Fallbacks
+
+### Pre-Demo Preparation (2 Minutes)
+1. Ensure `backend/.env` has valid `DATABASE_URL` and `SECRET_KEY`, and `frontend/.env` (or `frontend/js/config.local.js`) has `VITE_GOOGLE_MAPS_API_KEY` and `VITE_GOOGLE_MAPS_MAP_ID` (never commit secrets).
+2. Seed clean demo data:
+   ```powershell
+   .venv\Scripts\python.exe backend\scripts\seed_demo.py --reset
+   ```
+3. Start the server:
+   ```powershell
+   .venv\Scripts\uvicorn.exe app.main:app --app-dir backend --host 127.0.0.1 --port 8000
+   ```
+4. Open `http://127.0.0.1:8000/frontend/index.html`.
+
+### Demo Accounts (Throwaway Credentials — Password: `Password123!`)
+| Role | Email | Landing Portal |
+|:---|:---|:---|
+| Citizen 1 | `citizen1@civicsight.org` | `/frontend/pages/report.html` |
+| Citizen 2 | `citizen2@civicsight.org` | `/frontend/pages/report.html` |
+| Municipal Officer 1 | `officer1@civicsight.gov` | `/frontend/pages/dashboard.html` |
+| Municipal Officer 2 | `officer2@civicsight.gov` | `/frontend/pages/dashboard.html` |
+| Maintenance Staff 1 | `staff1@civicsight.gov` | `/frontend/pages/maintenance.html` |
+| Maintenance Staff 2 | `staff2@civicsight.gov` | `/frontend/pages/maintenance.html` |
+| Admin | `admin1@civicsight.gov` | `/frontend/pages/dashboard.html` |
+
+### Demo Flow (6–8 Minutes)
+1. **Citizen Submission (`citizen1@civicsight.org`):** Open `report.html`, allow geolocation (or drag pin), upload `tests/fixtures/sample_pothole_d40.jpg`, add description, submit. Show live report ID badge, ML `D40` pothole detection (~130 ms CPU), and High priority assignment.
+2. **Officer Triage & Spatial Deduplication (`officer1@civicsight.gov`):** Log in to `dashboard.html`, toggle Light/Dark monochrome theme, filter by status/priority, open the seeded nearby pothole pair (`Related & Nearby Reports`), confirm duplicate once (original stays intact, newer becomes `duplicate`), then verify & assign the new report to `staff1`.
+3. **Maintenance Field Workflow & Rework Loop (`staff1@civicsight.gov`):** Log in to `maintenance.html`, start repair, show that `Submit for Verification` stays disabled until an `AFTER` photo is uploaded, upload `tests/fixtures/after_repair.jpg`, submit. Show `staff2` does NOT see `staff1`'s work order.
+4. **Officer Final Verification & Citizen Closure View (`officer1` → `staff1` → `officer2` → `citizen1`):** Open Final Verification modal with side-by-side Before/After photos (served via authenticated Blob URLs, never publicly exposed), demonstrate Send Back with rework note, resubmit, approve & close as `officer2`. Open `report.html?id=<id>` as `citizen1` to show `CLOSED` status and Before/After evidence (and show `citizen2` gets `403 Access Denied`).
+
+### Top 3 Riskiest Demo Points & Fallbacks
+1. **Google Maps API Key / Billing / Wi-Fi Blocking:** If Google Maps tiles fail to load or quota/referer errors appear, the map canvas automatically displays a non-blocking fallback notice. **Fallback:** Continue seamlessly using manual Latitude/Longitude inputs on `report.html` and the Incident Triage table on `dashboard.html` (every button and modal works without live map tiles).
+2. **Slow First ML Inference / Cold PyTorch Load:** First inference after server boot loads YOLOv8s weights (~1.5–2.5s cold; ~130 ms warm). **Fallback:** Warm up the model once during Pre-Demo Prep by submitting one quick photo or calling `POST /api/v1/reports/detect` before presenting. Even if ML fails (`ML_FAILED`), report creation and the full municipal lifecycle still complete normally.
+3. **Venue Network / Offline Interruption or Geolocation Denied:** Desktop Wi-Fi or venue portals may block browser GPS or drop requests briefly. **Fallback:** The backend and frontend run 100% locally on `127.0.0.1:8000` (zero external runtime dependency beyond optional Google Maps tiles); if GPS is denied, type coordinates directly (`37.7749, -122.4194`) and submit.
+
+---
+
+## ❄️ Feature Freeze Declaration & Frozen Dependency Versions
+
+CivicSight entered **Feature Freeze** on **November 18, 2026** following completion of the Week 10 Quality Gate. Only verified bug fixes are permitted prior to final demonstration.
+
+### Deliberately Excluded (Out of Scope / Post-Demo)
+- Login/upload rate limiting & server-side JWT blocklist (documented in `KNOWN_LIMITATIONS.md`)
+- Email/SMS citizen push notifications & dedicated citizen multi-report history dashboard
+- Distributed Celery/Redis ML worker queue & cloud object storage (S3/GCS)
+- Spline 3D hero scene (monochrome GSAP + Lottie animations retained)
+
+### Frozen Runtime & Test Versions
+| Component | Pinned Version |
+|:---|:---|
+| Python | `3.14.8` |
+| FastAPI / Uvicorn | `0.142.2` / `0.54.0` |
+| SQLAlchemy / Pydantic / psycopg2-binary | `2.1.3` / `2.13.5` / `2.9.13` |
+| bcrypt / PyJWT | `5.0.0` / `2.12.1` |
+| Ultralytics / PyTorch (CPU) | `8.4.173` / `2.14.1+cpu` |
+| OpenCV / Pillow | `5.0.0` / `12.3.0` |
+| PostgreSQL (installed) | `18.6` |
+| Pytest / pytest-cov / Playwright | `9.1.1` / `7.1.0` / `1.65.2` (Chromium 159, Firefox 159) |
+
 
 
 
