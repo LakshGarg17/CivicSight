@@ -138,7 +138,7 @@
         let geocoderLib = null;
         try {
           geocoderLib = await google.maps.importLibrary("geocoding");
-        } catch (_) {}
+        } catch (_) { }
 
         return {
           available: true,
@@ -218,23 +218,23 @@
 
       const initialLat = options.initialLat || DEFAULT_LAT;
       const initialLng = options.initialLng || DEFAULT_LNG;
-      const onLocationChange = options.onLocationChange || (() => {});
+      const onLocationChange = options.onLocationChange || (() => { });
 
       const loaded = await loadGoogleMaps();
 
       if (!loaded.available) {
         const isUnconfigured = loaded.reason === "unconfigured";
         const title = isUnconfigured ? "Map unavailable: API key not configured" : "Map service unavailable";
-        const msg = isUnconfigured 
+        const msg = isUnconfigured
           ? "Set GOOGLE_MAPS_API_KEY and GOOGLE_MAPS_MAP_ID in frontend/js/config.local.js to enable the interactive map."
           : "Google Maps could not be initialized. You can still submit reports using manual or GPS coordinates.";
         renderFallback(container, title, msg);
 
         return {
           isAvailable: false,
-          setPosition: () => {},
-          setAccuracy: () => {},
-          clearAccuracy: () => {},
+          setPosition: () => { },
+          setAccuracy: () => { },
+          clearAccuracy: () => { },
           reverseGeocode: async () => null,
         };
       }
@@ -387,8 +387,8 @@
         renderFallback(container, title, msg);
         return {
           isAvailable: false,
-          updateReports: () => {},
-          setMode: () => {}
+          updateReports: () => { },
+          setMode: () => { }
         };
       }
 
