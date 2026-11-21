@@ -1,0 +1,19 @@
+{
+  "settings_version": "0.0.8",
+  "datasets_dir": "D:\\Projects\\datasets",
+  "weights_dir": "D:\\Projects\\CivicSight\\weights",
+  "runs_dir": "D:\\Projects\\CivicSight\\runs",
+  "uuid": "c10d509ffade86c4d28fb404eca6945c958c592e59c05a75795f05adc56afe57",
+  "sync": true,
+  "api_key": "",
+  "openai_api_key": "",
+  "clearml": true,
+  "comet": true,
+  "dvc": true,
+  "mlflow": true,
+  "raytune": true,
+  "tensorboard": false,
+  "wandb": false,
+  "vscode_msg": true,
+  "openvino_msg": true
+}
