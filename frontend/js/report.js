@@ -687,8 +687,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <div class="status-actions" style="margin-top: 1.25rem;">
+          <a href="my-reports.html" class="btn btn-primary btn-sm">Track in My Reports &rarr;</a>
           <button type="button" class="btn btn-secondary btn-sm" id="newReportBtn">Submit Another Report</button>
-          ${isOfficerOrAdmin ? '<a href="dashboard.html" class="btn btn-primary btn-sm">View in Municipal Dashboard &rarr;</a>' : ''}
+          ${isOfficerOrAdmin ? '<a href="dashboard.html" class="btn btn-secondary btn-sm">View in Municipal Dashboard &rarr;</a>' : ''}
         </div>
       `;
 

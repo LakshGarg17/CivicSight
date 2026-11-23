@@ -87,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Modal Action Buttons
   const modalVerifyBtn = document.getElementById('modalVerifyBtn');
+  const modalReverseVerificationBtn = document.getElementById('modalReverseVerificationBtn');
+  const modalReverseRejectionBtn = document.getElementById('modalReverseRejectionBtn');
   const modalAssignBtn = document.getElementById('modalAssignBtn');
   const modalDuplicateBtn = document.getElementById('modalDuplicateBtn');
   const modalRejectBtn = document.getElementById('modalRejectBtn');
@@ -94,6 +96,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalUnassignBtn = document.getElementById('modalUnassignBtn');
   const modalFinalVerifyBtn = document.getElementById('modalFinalVerifyBtn');
   const pendingFinalVerificationBtn = document.getElementById('pendingFinalVerificationBtn');
+
+  // Sub-Modal: Verify Confirmation
+  const verifyConfirmModal = document.getElementById('verifyConfirmModal');
+  const closeVerifyConfirmBtn = document.getElementById('closeVerifyConfirmBtn');
+  const cancelVerifyConfirmBtn = document.getElementById('cancelVerifyConfirmBtn');
+  const executeVerifyConfirmBtn = document.getElementById('executeVerifyConfirmBtn');
+  const verifyConfirmDetails = document.getElementById('verifyConfirmDetails');
+  const verifyConfirmNote = document.getElementById('verifyConfirmNote');
+
+  // Sub-Modal: Decision Reversal (Mistake Recovery)
+  const reverseDecisionModal = document.getElementById('reverseDecisionModal');
+  const closeReverseDecisionBtn = document.getElementById('closeReverseDecisionBtn');
+  const cancelReverseDecisionBtn = document.getElementById('cancelReverseDecisionBtn');
+  const reverseDecisionForm = document.getElementById('reverseDecisionForm');
+  const reverseDecisionTitle = document.getElementById('reverseDecisionTitle');
+  const reverseDecisionWarning = document.getElementById('reverseDecisionWarning');
+  const reverseReasonInput = document.getElementById('reverseReasonInput');
 
   // Sub-Modal: Reassign
   const reassignModal = document.getElementById('reassignModal');
@@ -882,6 +901,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalFinalVerifyBtn) {
       modalFinalVerifyBtn.style.display = isEvidenceSubmittedState ? 'inline-flex' : 'none';
     }
+
+    // Mistake Recovery (Reversibility): Reversal of verification or rejection
+    if (modalReverseVerificationBtn) {
+      // Allowed if VERIFIED and not assigned to a crew
+      const canReverseVerification = isVerified && !report.current_assignee_id && !report.assigned_to;
+      modalReverseVerificationBtn.style.display = canReverseVerification ? 'inline-flex' : 'none';
+    }
+
+    if (modalReverseRejectionBtn) {
+      // Allowed if REJECTED
+      const canReverseRejection = (status === 'rejected');
+      modalReverseRejectionBtn.style.display = canReverseRejection ? 'inline-flex' : 'none';
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -1031,9 +1063,41 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --------------------------------------------------------------------------
-  // Lifecycle Action 1: PATCH /reports/{id}/verify
+  // Lifecycle Action 1: PATCH /reports/{id}/verify (with Confirmation Dialog)
   // --------------------------------------------------------------------------
-  async function verifyReport(reportId) {
+  function openVerifyConfirmModal(reportId) {
+    const report = activeReports.find(r => r.id === reportId);
+    if (!report) return;
+
+    if (verifyConfirmDetails) {
+      const priorityClass = report.priority ? `severity-${report.priority.toLowerCase()}` : 'severity-unknown';
+      verifyConfirmDetails.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <span style="font-weight: 700; color: var(--text-primary); font-size: 0.95rem;">Work Order #${report.id}</span>
+          <span class="badge-pill ${priorityClass}" style="text-transform: uppercase; font-size: 0.72rem; font-weight: 700;">
+            ${escapeHtml(report.priority || 'UNKNOWN')}
+          </span>
+        </div>
+        <div><strong>Damage Type:</strong> ${escapeHtml(report.damage_type || report.defect_type || 'Road Defect')}</div>
+        <div><strong>Location:</strong> ${escapeHtml(report.address_text || `${Number(report.latitude).toFixed(4)}°, ${Number(report.longitude).toFixed(4)}°`)}</div>
+        <div><strong>Submitted:</strong> ${new Date(report.created_at).toLocaleString()}</div>
+      `;
+    }
+    if (verifyConfirmNote) verifyConfirmNote.value = '';
+    if (verifyConfirmModal) verifyConfirmModal.classList.add('open');
+  }
+
+  function closeVerifyConfirmModal() {
+    if (verifyConfirmModal) verifyConfirmModal.classList.remove('open');
+  }
+
+  closeVerifyConfirmBtn?.addEventListener('click', closeVerifyConfirmModal);
+  cancelVerifyConfirmBtn?.addEventListener('click', closeVerifyConfirmModal);
+  verifyConfirmModal?.addEventListener('click', (e) => {
+    if (e.target === verifyConfirmModal) closeVerifyConfirmModal();
+  });
+
+  async function verifyReport(reportId, customNote) {
     if (!reportId) return;
 
     try {
@@ -1044,7 +1108,7 @@ document.addEventListener('DOMContentLoaded', () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ note: 'Verified by Municipal Officer from operations center.' })
+        body: JSON.stringify({ note: customNote || 'Verified by Municipal Officer from operations center.' })
       });
 
       if (!res.ok) {
@@ -1062,6 +1126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (updatedReport.priority) target.priority = updatedReport.priority;
       }
 
+      closeVerifyConfirmModal();
       renderMarkers();
       renderTriageTable();
       updateMetrics();
@@ -1080,7 +1145,116 @@ document.addEventListener('DOMContentLoaded', () => {
 
   modalVerifyBtn?.addEventListener('click', () => {
     if (currentlyInspectedReportId) {
-      verifyReport(currentlyInspectedReportId);
+      openVerifyConfirmModal(currentlyInspectedReportId);
+    }
+  });
+
+  executeVerifyConfirmBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) {
+      const note = verifyConfirmNote ? verifyConfirmNote.value.trim() : '';
+      verifyReport(currentlyInspectedReportId, note);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Mistake Recovery (Reversibility): POST /reports/{id}/reverse-decision
+  // --------------------------------------------------------------------------
+  let activeReversalType = null; // 'verification' | 'rejection'
+
+  function openReverseDecisionModal(reversalType) {
+    const reportId = currentlyInspectedReportId;
+    const report = activeReports.find(r => r.id === reportId);
+    if (!report) return;
+
+    activeReversalType = reversalType;
+    if (reverseDecisionTitle) {
+      reverseDecisionTitle.textContent = reversalType === 'verification'
+        ? `Undo Verification — Report #${reportId}`
+        : `Undo Rejection — Report #${reportId}`;
+    }
+
+    if (reverseDecisionWarning) {
+      reverseDecisionWarning.innerHTML = reversalType === 'verification'
+        ? `<strong>Consequences of Undo:</strong> Report #${reportId} will safely revert from <strong>VERIFIED</strong> back to <strong>Under Verification (Pending)</strong>. It will be removed from dispatch queues until re-evaluated. A full audit log entry with your identity and reason will be preserved.`
+        : `<strong>Consequences of Undo:</strong> Report #${reportId} will safely revert from <strong>REJECTED</strong> back to <strong>Under Verification (Pending)</strong> for reconsideration. A full audit log entry with your identity and reason will be preserved.`;
+    }
+
+    if (reverseReasonInput) reverseReasonInput.value = '';
+    if (reverseDecisionModal) reverseDecisionModal.classList.add('open');
+  }
+
+  function closeReverseDecisionModal() {
+    if (reverseDecisionModal) reverseDecisionModal.classList.remove('open');
+    activeReversalType = null;
+  }
+
+  closeReverseDecisionBtn?.addEventListener('click', closeReverseDecisionModal);
+  cancelReverseDecisionBtn?.addEventListener('click', closeReverseDecisionModal);
+  reverseDecisionModal?.addEventListener('click', (e) => {
+    if (e.target === reverseDecisionModal) closeReverseDecisionModal();
+  });
+
+  modalReverseVerificationBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) {
+      openReverseDecisionModal('verification');
+    }
+  });
+
+  modalReverseRejectionBtn?.addEventListener('click', () => {
+    if (currentlyInspectedReportId) {
+      openReverseDecisionModal('rejection');
+    }
+  });
+
+  reverseDecisionForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reportId = currentlyInspectedReportId;
+    if (!reportId) return;
+
+    const reason = reverseReasonInput ? reverseReasonInput.value.trim() : '';
+    if (!reason || reason.length < 3) {
+      showToast('A mandatory reason (at least 3 characters) is required to undo a decision.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/reports/${reportId}/reverse-decision`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ reason: reason })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        showToast(errorData.detail || `Decision reversal failed (${res.status})`, 'error');
+        return;
+      }
+
+      const updatedReport = await res.json();
+      const target = activeReports.find(r => r.id === reportId);
+      if (target) {
+        target.status = updatedReport.status || 'pending_verification';
+        if (target.rejection_reason) delete target.rejection_reason;
+      }
+
+      closeReverseDecisionModal();
+      renderMarkers();
+      renderTriageTable();
+      updateMetrics();
+
+      if (currentlyInspectedReportId === reportId) {
+        updateModalVerificationState(updatedReport);
+        await loadReportHistory(reportId);
+      }
+
+      showToast(`Decision reversed for Report #${reportId}. Reverted to pending verification.`, 'success');
+    } catch (err) {
+      console.error('Error reversing decision:', err);
+      showToast('Network error while reversing decision.', 'error');
     }
   });
 
@@ -1267,7 +1441,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // --------------------------------------------------------------------------
   function openAssignModal(reportId) {
     currentlyInspectedReportId = reportId;
-    if (assignStaffSelect) assignStaffSelect.value = 'Metro Asphalt Crew Alpha';
+    if (assignStaffSelect) {
+      // Pre-select the first real staff member (falls back to the first option if the list is empty)
+      assignStaffSelect.value = staffUsersList.length > 0 ? String(staffUsersList[0].id) : (assignStaffSelect.options[0]?.value || '');
+    }
     if (assignCustomWrap) assignCustomWrap.style.display = 'none';
     if (assignCustomInput) assignCustomInput.value = '';
     if (assignNoteInput) assignNoteInput.value = '';
@@ -1507,7 +1684,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function populateStaffSelects() {
     const optionsHtml = staffUsersList.map(s => 
-      `<option value="${s.id}">${escapeHtml(s.name)} (${s.active_workload} active)</option>`
+      `<option value="${s.id}">${escapeHtml(s.name)} (${s.open_workload_count ?? s.active_assignments_count ?? 0} active)</option>`
     ).join('');
 
     if (assignStaffSelect) {
@@ -1849,6 +2026,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.CivicSightDashboard = {
     openInspection: openInspectionModal,
     verifyReport: verifyReport,
+    openVerifyConfirmModal: openVerifyConfirmModal,
+    openReverseDecisionModal: openReverseDecisionModal,
     openAssignModal: openAssignModal,
     openReassignModal: openReassignModal,
     openUnassignModal: openUnassignModal,
@@ -1862,7 +2041,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Keyboard Escape support for all dashboard dialogs
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (relationConfirmModal?.classList.contains('open')) closeRelationConfirmModal();
+    if (reverseDecisionModal?.classList.contains('open')) closeReverseDecisionModal();
+    else if (verifyConfirmModal?.classList.contains('open')) closeVerifyConfirmModal();
+    else if (relationConfirmModal?.classList.contains('open')) closeRelationConfirmModal();
     else if (finalVerifyModal?.classList.contains('open')) closeFinalVerifyModal();
     else if (rejectModal?.classList.contains('open')) closeRejectModal();
     else if (duplicateModal?.classList.contains('open')) closeDuplicateModal();

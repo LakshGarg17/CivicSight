@@ -240,7 +240,10 @@ const CivicSightAuth = (() => {
         } else if (user.role === 'Maintenance Staff') {
           roleBadgeContent = `<a href="${basePath}maintenance.html" class="nav-link role-active-link">[Staff Portal]</a>`;
         } else {
-          roleBadgeContent = `<a href="${basePath}report.html" class="nav-link role-active-link">[Citizen Portal]</a>`;
+          roleBadgeContent = `
+            <a href="${basePath}report.html" class="nav-link">Report Damage</a>
+            <a href="${basePath}my-reports.html" class="nav-link role-active-link">[Track My Reports]</a>
+          `;
         }
         roleLi.innerHTML = roleBadgeContent;
         navLinks.appendChild(roleLi);
@@ -269,7 +272,7 @@ const CivicSightAuth = (() => {
   // Prevent browser back-button from revealing cached protected pages after logout
   window.addEventListener('pageshow', (event) => {
     const path = window.location.pathname || '';
-    const isProtected = path.endsWith('/dashboard.html') || path.endsWith('/maintenance.html');
+    const isProtected = path.endsWith('/dashboard.html') || path.endsWith('/maintenance.html') || path.endsWith('/my-reports.html');
     if (isProtected && !isAuthenticated()) {
       window.location.replace('login.html');
     } else if (event.persisted) {
