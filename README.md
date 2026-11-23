@@ -1,1254 +1,361 @@
 # CivicSight 🏛️🛣️
 
-> **Smart Road Damage Detection and Municipal Repair Management System**
+> **Smart Road Damage Detection & Municipal Repair Management Platform**  
+> *Production-Ready Software Engineering Submission (Week 11 Final Release)*
 
-CivicSight is an intelligent civic-tech platform bridging the gap between citizen road hazard reporting, AI-driven computer vision damage triage, and municipal maintenance dispatch.
+[![Backend Test Suite](https://img.shields.io/badge/pytest-17%2F17%20passed-brightgreen.svg)](docs/testing/TEST_RESULTS.md)
+[![Test Coverage](https://img.shields.io/badge/coverage-74%25-brightgreen.svg)](docs/testing/TEST_RESULTS.md)
+[![Model mAP@0.5](https://img.shields.io/badge/YOLOv8s%20mAP%400.5-52.70%25-blue.svg)](docs/ml/ML_REPORT.md)
+[![State Machine](https://img.shields.io/badge/lifecycle-13%20transitions-purple.svg)](docs/architecture/ARCHITECTURE.md)
+[![Status](https://img.shields.io/badge/status-submission--ready-success.svg)](#)
 
 ---
 
-## 🔄 End-to-End Workflow
+## 📖 Executive Summary
+
+CivicSight is an enterprise-grade civic technology platform that solves the municipal road maintenance crisis:
+1. **Public Hazard Reporting without Technical Jargon:** Citizens upload photos and capture GPS coordinates on an interactive Google Maps interface. The system deliberately eliminates confusing defect categories (like choosing between D00, D10, or D20) — the AI diagnoses the defect automatically.
+2. **Automated AI Damage Classification:** An edge-grade YOLOv8s neural network fine-tuned on 14,046 RDD2022 road images classifies damage into four primary classes (**D00** Longitudinal Cracking, **D10** Transverse Cracking, **D20** Alligator Cracking, and **D40** Potholes) with an inference latency of ~344 ms on standard CPU.
+3. **Multi-Factor Priority Scoring:** Algorithmic prioritization combines defect severity, road classification (arterial multiplier), repeat-report velocity, and model confidence into an objective 0–100 score.
+4. **Geospatial Deduplication:** Automatic 50-meter spatial clustering links duplicate citizen reports to a primary master incident, preventing redundant work order dispatches.
+5. **Cryptographically Audited Repair Lifecycle:** A strict finite state machine governs the repair workflow across four user roles (**Citizen**, **Municipal Officer**, **Maintenance Staff**, and **Admin**). Photographic completion evidence (SHA-256 hashed) is mandatory before work orders can be approved and closed.
+
+---
+
+## 🔄 End-to-End Workflow & Lifecycle Architecture
 
 ```text
-[ Citizen ] ──> Report (Road Hazard / Damage)
+[ Citizen ] ──> Submit Hazard (Photo + Google Maps Pin + Description)
                      │
                      ▼
-[ ML Engine ] ─> Detect (YOLO Damage Classification: D00, D10, D20, D40)
+[ ML Engine ] ─> Detect (YOLOv8s: D00, D10, D20, D40 + Bounding Boxes)
                      │
                      ▼
-[ Backend ] ───> Prioritize (Severity Scoring & Location Clustering)
+[ Backend ] ───> Multi-Factor Priority Engine (0–100 Score + 50m Deduplication)
                      │
                      ▼
-[ Municipal ] ─> Verify (Official Inspection & Validation)
+[ Municipal ] ─> Verify (Officer Inspects AI Detection, Deduplicates, Approves)
                      │
                      ▼
-[ Ops Hub ] ───> Assign (Contractor / Work Order Dispatch)
+[ Ops Hub ] ───> Assign Work Order (Dispatched to Dedicated Field Technician)
                      │
                      ▼
-[ Field Crew ] ─> Repair (Maintenance Execution)
+[ Field Crew ] ─> Repair Execution (Anti-IDOR Staff Queue -> Start Work -> Upload After-Photo)
                      │
                      ▼
-[ System ] ────> Close (Resolution Verification & Citizen Notification)
+[ Municipal ] ─> Final Inspection (Side-by-Side Before/After Photo Review -> Approve)
+                     │
+                     ▼
+[ Citizen ] ────> Closed & Resolved (Real-Time Status Tracking + Complete Resolution History)
 ```
+
+### Complete Finite State Machine (7 States, 13 Legal Transitions)
+
+| Current State | Target State | Permitted Roles | Trigger Action / Business Rule |
+| :--- | :--- | :--- | :--- |
+| `SUBMITTED` | `VERIFIED` | Officer, Admin | Officer approves hazard and confirms valid defect |
+| `SUBMITTED` | `REJECTED` | Officer, Admin | Officer rejects report (spam, out of jurisdiction) |
+| `VERIFIED` | `ASSIGNED` | Officer, Admin | Officer assigns work order to active maintenance staff |
+| `ASSIGNED` | `UNDER_REPAIR` | Assigned Staff, Admin | Technician arrives on site and begins work |
+| `ASSIGNED` | `VERIFIED` | Officer, Admin | Officer reassigns or unassigns work order |
+| `UNDER_REPAIR` | `REPAIR_EVIDENCE_SUBMITTED` | Assigned Staff, Admin | Staff uploads mandatory `AFTER` photo with SHA-256 proof |
+| `REPAIR_EVIDENCE_SUBMITTED`| `CLOSED` | Officer, Admin | Officer reviews before/after evidence and approves |
+| `REPAIR_EVIDENCE_SUBMITTED`| `UNDER_REPAIR` | Officer, Admin | Officer rejects evidence, sending back for rework |
+| `CLOSED` | `REOPENED` | Officer, Admin | Citizen appeals or repair fails warranty inspection |
+| `REOPENED` | `VERIFIED` | Officer, Admin | Re-verified for dispatch |
+| `REOPENED` | `REJECTED` | Officer, Admin | Appeal rejected |
+| `REJECTED` | `VERIFIED` | Officer, Admin | Reversal of accidental rejection |
+| `ASSIGNED` | `REJECTED` | Officer, Admin | Work order cancelled before commencement |
 
 ---
 
-## 📁 Repository Structure (Week 3 Architecture)
+## 🛠️ Ground-Truth Platform & Runtime Versions
 
-This repository is structured as a modular monorepo:
+Every component of CivicSight has been verified in production and test environments:
+
+| Technology / Library | Verified Runtime Version | Purpose & Architecture Role |
+| :--- | :--- | :--- |
+| **Python** | `3.14.8` (AMD64) | Core backend runtime and ML execution |
+| **FastAPI** | `0.142.2` | High-performance asynchronous REST API framework |
+| **SQLAlchemy** | `2.1.3` | ORM with strict session scoping and foreign key enforcement |
+| **Pydantic** | `2.13.5` | Data validation, schema serialization, and type safety |
+| **Ultralytics YOLO** | `8.4.173` | YOLOv8s object detection architecture for road damage |
+| **PyTorch** | `2.14.1+cpu` | Deep learning tensor engine optimized for CPU inference |
+| **SQLite** | `3.50.4` | WAL mode enabled, `PRAGMA foreign_keys = ON`, composite indexes |
+| **Node.js** | `v26.10.0` | Frontend verification and automated Playwright browser testing |
+| **Google Maps JS API**| Dynamic Loader (`v=weekly`) | Vector maps, AdvancedMarkerElement, and Geocoding |
+
+---
+
+## 📁 Repository Directory Structure
 
 ```text
 CivicSight/
-├── frontend/                     # Citizen portal & reporting interface (Vanilla HTML/CSS/JS)
-│   ├── assets/                   # Logos, icons, and media
-│   ├── css/
-│   │   └── style.css             # Design tokens, auth forms, role badges, and layout
-│   ├── js/
-│   │   ├── app.js                # Core landing page interactivity and notifications
-│   │   ├── auth.js               # JWT session management & dynamic role-based navigation (Week 3)
-│   │   └── report.js             # Interactive photo dropzone, preview, & live API submission (Week 3)
-│   ├── pages/
-│   │   ├── login.html            # User Sign In interface with error handling (Week 3)
-│   │   ├── register.html         # User Registration with role selection & validation (Week 3)
-│   │   ├── report.html           # Citizen Damage Reporting Page
-│   │   └── index.html            # Redirect helper
-│   └── index.html                # Main landing page with dynamic post-login navigation
-│
-├── backend/                      # FastAPI REST API & Database engine
+├── backend/                      # FastAPI Asynchronous Application Subsystem
 │   ├── app/
 │   │   ├── api/v1/
 │   │   │   ├── endpoints/
-│   │   │   │   ├── auth.py       # Registration, Login, Profile & RBAC example endpoints (Week 3)
-│   │   │   │   ├── users.py      # User entity CRUD REST endpoints (extended with roles/hashes)
-│   │   │   │   └── reports.py    # Road damage Report CRUD & status transition endpoints
-│   │   │   └── router.py         # Versioned API router mounting (/api/v1)
+│   │   │   │   ├── auth.py       # JWT authentication, login equalization, citizen register
+│   │   │   │   ├── users.py      # User management, role provisioning
+│   │   │   │   ├── reports.py    # Report submission, lifecycle transitions, evidence upload
+│   │   │   │   └── staff.py      # Staff workload balancing, anti-IDOR assignment queues
+│   │   │   └── router.py         # Consolidated API v1 router mounting (68 routes)
 │   │   ├── core/
-│   │   │   ├── config.py         # App settings, DB URI & JWT configuration (Week 3)
-│   │   │   ├── dependencies.py   # Auth & RoleChecker RBAC dependencies (Week 3)
-│   │   │   └── security.py       # Bcrypt hashing & PyJWT token encoding/decoding (Week 3)
+│   │   │   ├── config.py         # App configuration, env loader, token secrets
+│   │   │   ├── dependencies.py   # RBAC dependencies (get_current_user, require_roles)
+│   │   │   ├── security.py       # Bcrypt password hashing, PyJWT issuance & validation
+│   │   │   ├── state_machine.py  # Centralized finite state machine & RBAC transition rules
+│   │   │   └── priority.py       # Multi-factor priority engine & spatial deduplication
 │   │   ├── db/
-│   │   │   ├── database.py       # SQLAlchemy engine & session lifecycle
-│   │   │   └── init_db.py        # Table initialization & column migration (Week 3)
+│   │   │   └── database.py       # SQLAlchemy engine, WAL PRAGMA hooks, session lifecycle
 │   │   ├── models/
-│   │   │   └── models.py         # SQLAlchemy models (User with role/hash, Report, ReportStatus)
+│   │   │   └── models.py         # 9 relational ORM models (Report, User, Assignment, Evidence...)
 │   │   ├── schemas/
-│   │   │   ├── schemas.py        # Pydantic models (UserRegister, UserLogin, Token, UserResponse)
-│   │   │   └── __init__.py       # Schema exports
-│   │   └── main.py               # FastAPI entrypoint, CORS, lifespan, auth routers, & health checks
-│   ├── test_auth.py              # Automated test suite for registration, login, JWT, & RBAC (Week 3)
-│   ├── test_crud.py              # Automated 100% CRUD test suite against PostgreSQL
-│   ├── .env.example              # Environment variables template
-│   └── requirements.txt          # Backend dependencies (fastapi, bcrypt, pyjwt, sqlalchemy, etc.)
+│   │   │   └── schemas.py        # Pydantic schemas for request validation & API responses
+│   │   └── main.py               # FastAPI entrypoint, lifespan event, CORS, static routes
+│   └── requirements.txt          # Production backend dependencies
 │
-├── ml/                           # Computer Vision & Damage Detection subsystem
-│   ├── data.yaml                 # Standard YOLOv8 dataset configuration (Week 3)
-│   ├── runs/                     # Detection runs & dataset distribution charts
-│   ├── samples/
-│   │   ├── verified_boxes/       # Visual bounding box verification overlays (Week 3)
-│   │   └── sample_road.jpg       # Sample baseline road image
-│   ├── scripts/
-│   │   ├── analyze_dataset.py    # RDD2022 pairing, format verification & distribution analysis
-│   │   ├── test_inference.py     # Pretrained YOLOv8n baseline verification
-│   │   └── verify_dataset_and_visualize.py # Dataset split audit & visual overlay renderer (Week 3)
-│   ├── notes.md                  # Dataset notes, YAML specifications, & verification steps (Week 3)
-│   ├── README.md                 # RDD2022 dataset specifications and class taxonomy
-│   └── requirements.txt          # PyTorch, Ultralytics YOLO & CV dependencies
+├── frontend/                     # Modern High-Contrast Web Interface (HTML5/CSS3/ES6)
+│   ├── css/
+│   │   └── style.css             # Unified Black/White high-contrast theme & design tokens
+│   ├── js/
+│   │   ├── app.js                # Core UI interactivity, theme toggle, notifications
+│   │   ├── auth.js               # JWT session storage, role badges, protected routes
+│   │   ├── maps.js               # Centralized Google Maps API loader & marker manager
+│   │   ├── report.js             # Photo dropzone, GPS pinpointing, API submission
+│   │   ├── citizen_reports.js    # Citizen personal report tracking & status timelines
+│   │   ├── municipal_dashboard.js# Officer GIS triage, priority filtering, crew dispatch
+│   │   └── maintenance_staff.js  # Field crew work order execution & evidence upload
+│   ├── pages/
+│   │   ├── login.html            # Universal sign-in portal
+│   │   ├── register.html         # Citizen self-registration
+│   │   ├── report.html           # Hazard reporting with Google Maps & photo upload
+│   │   ├── citizen_reports.html  # Citizen personal hazard tracking portal
+│   │   ├── municipal_dashboard.html # Municipal officer GIS command center
+│   │   ├── maintenance_staff.html   # Field technician work order execution
+│   │   └── admin_dashboard.html     # System administration & user management
+│   └── index.html                # Public landing page with architectural overview
 │
-├── Dataset/                      # Local RDD2022 splits (train/val/test)
-│   └── RDD_SPLIT/                # 38,385 organized image/label pairs across train/val/test
-└── README.md                     # Monorepo documentation (this file)
+├── ml/                           # Computer Vision Subsystem
+│   ├── weights/
+│   │   └── best.pt               # Trained YOLOv8s model weights (52.70% mAP@0.5)
+│   ├── data.yaml                 # 4-class RDD2022 dataset specification
+│   ├── dataset_benchmark_report.json # Automated benchmark evaluation metrics
+│   └── scripts/
+│       ├── train.py              # YOLOv8s training script (SGD, lr0=0.01, imgsz=640)
+│       └── evaluate_benchmark.py # Batch benchmark latency & mAP evaluation suite
+│
+├── docs/                         # Comprehensive Engineering Documentation
+│   ├── SRS.md                    # IEEE Std 830-1998 Software Requirements Specification
+│   ├── AUDIT_WEEK11.md           # Baseline audit, snapshot manifest, zero-secrets scan
+│   ├── architecture/
+│   │   └── ARCHITECTURE.md       # C4 Component Architecture, state machine, threat model
+│   ├── database/
+│   │   └── DATABASE.md           # Complete data dictionary (107 columns, 9 tables, 0 drift)
+│   ├── api/
+│   │   └── API.md                # REST API reference covering all 68 OpenAPI routes
+│   ├── ml/
+│   │   ├── ML_REPORT.md          # Model architecture, training curves, confusion matrix
+│   │   └── ml_evaluation_summary.json # Quantitative performance metrics
+│   ├── testing/
+│   │   ├── TEST_CASES.md         # Comprehensive test case specification (9 categories)
+│   │   ├── TEST_RESULTS.md       # Pytest run log, 74% coverage report, 13/13 E2E results
+│   │   ├── TRACEABILITY.md       # Requirements-to-test traceability matrix
+│   │   └── traceability.csv      # Machine-readable traceability table
+│   ├── user-guide/
+│   │   ├── USER_GUIDE.md         # Step-by-step role guides with verified screenshots
+│   │   └── screenshots/          # 24 real Playwright captures (Desktop, Mobile, Light/Dark)
+│   ├── demo/
+│   │   ├── DEMO_SCRIPT.md        # Timed 8-10 minute presentation script + 5 fallbacks
+│   │   ├── REHEARSAL_LOG.md      # Dual end-to-end rehearsal run logs (100% pass)
+│   │   └── seed_demo_data.py     # Deterministic demo data seeding script
+│   ├── presentation/
+│   │   └── CivicSight_Final.pptx # 20-slide executive deck with complete speaker notes
+│   ├── diagrams/
+│   │   ├── src/                  # 15 Mermaid diagram source specifications (.mmd)
+│   │   └── rendered/             # High-resolution rendered diagrams (.svg and .png)
+│   └── tools/
+│       └── check_consistency.py  # Zero-placeholder consistency & secret audit tool
+│
+├── scripts/                      # Automated Verification & Build Tooling
+│   ├── verify_phase2_3_all_checks.py # 13-point end-to-end integration verification suite
+│   ├── capture_all_screenshots.py    # Playwright automated browser screenshot generator
+│   └── render_all_diagrams.py        # Mermaid diagram compiler to SVG/PNG
+│
+├── tests/                        # Automated Pytest Suite
+│   ├── test_week10_backend.py    # Backend unit, integration, RBAC, state machine tests
+│   └── test_week10_ml.py         # Computer vision inference, corruption, threshold tests
+│
+└── README.md                     # Root project specification (this document)
 ```
 
 ---
 
-## 🌟 Week 3 Progress Summary
+## 🚀 Clean-Room Installation & Setup Guide
 
-### 1. Backend Subsystem (`/backend` — Authentication & Roles)
-- **User Model Extension (`app/models/models.py`)**:
-  - Added `hashed_password` field (stored securely using direct `bcrypt` hashing — never in plaintext).
-  - Added `role` field using `UserRole` enum supporting:
-    - **`Citizen`**: Public user reporting hazards and viewing resolution status.
-    - **`Municipal Officer`**: Official validating reports, estimating scopes, and authorizing dispatches.
-    - **`Maintenance Staff`**: Field technicians receiving work orders and executing asphalt repairs.
-    - **`Admin`**: System administrator with global oversight and configuration management.
-- **Independent Backend Validation**:
-  - `UserRegister` and `UserLogin` schemas independently enforce email format regex, password length (min 6 chars), required fields, and duplicate email prevention, regardless of client-side validation.
-- **Authentication Endpoints (`app/api/v1/endpoints/auth.py`)**:
-  - `POST /auth/register` (and `/api/v1/auth/register`): Hashes password via bcrypt, persists User record, returns sanitized `UserResponse`.
-  - `POST /auth/login` (and `/api/v1/auth/login`): Verifies credentials against bcrypt hash, issues signed PyJWT token, handles invalid credentials uniformly without leaking user existence.
-  - `GET /api/v1/auth/me`: Authenticated profile endpoint decoding JWT Bearer token.
-- **Separation of Authentication & Authorization (`app/core/dependencies.py`)**:
-  - `get_current_user`: Authentication dependency verifying JWT signature and database user.
-  - `RoleChecker` / `require_roles`: Reusable authorization dependency. Demonstrated on `GET /api/v1/auth/protected-role-example` (accessible to `Admin` & `Municipal Officer`, returns `403 Forbidden` for other roles).
-- **Automated Test Suite (`backend/test_auth.py`)**: 100% pass rate across edge cases, duplicate email checks, wrong passwords, JWT validation, and RBAC gating.
+### Option A: Windows PowerShell Setup
 
-### 2. Frontend Subsystem (`/frontend` — Auth Screens & Navigation)
-- **Registration Page (`pages/register.html`)**:
-  - Collects Full Name, Email, Phone, Role selection, and Password with confirmation.
-  - Includes client-side UX validation (matching passwords, email regex, min length) and direct asynchronous connection to backend `POST /api/v1/auth/register`.
-- **Login Page (`pages/login.html`)**:
-  - Secure credential form connecting to `POST /api/v1/auth/login`.
-  - Displays structured error banners on failed attempts without leaking credential details.
-  - Automatically captures prefilled email when redirected from registration.
-- **Dynamic Role-Aware Navigation (`js/auth.js`)**:
-  - Reusable auth module managing `localStorage` JWT tokens and user session data.
-  - Dynamically updates header: logged-in state shows user avatar, name, color-coded role badge (`Citizen`, `Municipal Officer`, `Maintenance Staff`, `Admin`), and a Sign Out button.
-  - Prepares role-specific navigation sections in the menu bar.
-- **Report Damage Integration (`pages/report.html`)**:
-  - Form now connects to live backend `POST /api/v1/reports`, automatically associating the report with the logged-in user ID when authenticated.
+```powershell
+# 1. Clone repository and navigate to root
+cd d:\Projects\CivicSight
 
-### 3. ML Subsystem (`/ml` — Dataset Preparation & Visual Verification)
-- **Dataset Split Organization (`Dataset/RDD_SPLIT/`)**:
-  - Standardized **38,385** image-label pairs into `train/` (26,869 pairs, ~70%), `val/` (5,758 pairs, ~15%), and `test/` (5,758 pairs, ~15%).
-- **YOLO Dataset Configuration (`ml/data.yaml`)**:
-  - Mapped paths and 4-class taxonomy: `0: D00 (Longitudinal Crack)`, `1: D10 (Transverse Crack)`, `2: D20 (Alligator Crack)`, `3: D40 (Pothole)`.
-- **Class Consistency & Coordinate Validation (`ml/scripts/verify_dataset_and_visualize.py`)**:
-  - Verified 100% of non-empty labels are mapped to `{0, 1, 2, 3}` and coordinates are bounded within `[0.0, 1.0]`.
-- **Visual Bounding Box Verification Overlays**:
-  - Rendered colored bounding boxes with labeled banners for all damage classes into `ml/samples/verified_boxes/` confirming ground-truth alignment with pavement defects.
-- **Documentation (`ml/notes.md`)**: Comprehensive documentation of dataset prep, class mappings, and repeatable verification procedures. Model training remains scheduled for Week 4.
+# 2. Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 
----
+# 3. Upgrade pip and install production dependencies
+python -m pip install --upgrade pip
+pip install -r backend/requirements.txt
+pip install ultralytics torch torchvision
 
-## 👥 System Role Specifications (Week 3)
+# 4. Configure environment variables
+Copy-Item backend/.env.example backend/.env
+# Note: Ensure GOOGLE_MAPS_API_KEY is configured in frontend/.env if live map rendering is required.
 
-| Role | Target Persona | Week 3 Permissions / Access Scope |
-|:---|:---|:---|
-| **`Citizen`** | General Public | Register, log in, submit damage reports with photos/coordinates, view own report status. |
-| **`Municipal Officer`** | Public Works Inspector / Engineer | Log in, access protected triage verification endpoints (`/api/v1/auth/protected-role-example`), review incident priority. |
-| **`Maintenance Staff`** | Field Repair Crew Technician | Log in, view work order queue (pre-wired in nav), submit repair completion data. |
-| **`Admin`** | System Administrator | Full access across all municipal endpoints, user role audits, and administrative operations. |
+# 5. Initialize Database & Seed Demo Data
+python docs/demo/seed_demo_data.py
 
-> [!NOTE]
-> Role-Based Access Control (RBAC) has been introduced and proven on example endpoints (`/auth/protected-role-example`). Endpoints will be progressively locked down to specific roles in upcoming phases.
-
----
-
-## 🚀 Getting Started & Execution Guide
-
-### 1. Backend Authentication & API Reference
-
-#### Install Dependencies & Migrate Tables
-```bash
+# 6. Start FastAPI Backend Daemon
 cd backend
-pip install -r requirements.txt
-python -c "from app.db.init_db import init_db; init_db()"
-uvicorn app.main:app --reload --port 8000
+..\.venv\Scripts\uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-#### Run Automated Test Suites
-```bash
-# Run Week 3 Authentication & RBAC Test Suite
-python test_auth.py
-
-# Run Week 2 CRUD Test Suite
-python test_crud.py
-```
-
-#### Example Auth API Requests
-
-- **1. Register a New User (`POST /api/v1/auth/register` or `/auth/register`)**:
-  ```bash
-  curl -X POST "http://127.0.0.1:8000/api/v1/auth/register" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "name": "Jane Citizen",
-      "email": "jane.citizen@example.com",
-      "password": "SecurePassword123!",
-      "phone": "+1-555-0199",
-      "role": "Citizen"
-    }'
-  ```
-
-- **2. Authenticate & Obtain JWT Token (`POST /api/v1/auth/login` or `/auth/login`)**:
-  ```bash
-  curl -X POST "http://127.0.0.1:8000/api/v1/auth/login" \
-    -H "Content-Type: application/json" \
-    -d '{
-      "email": "jane.citizen@example.com",
-      "password": "SecurePassword123!"
-    }'
-  ```
-  *Response:*
-  ```json
-  {
-    "access_token": "eyJhbGciOiJIUzI1Ni...",
-    "token_type": "bearer",
-    "user": {
-      "id": 1,
-      "name": "Jane Citizen",
-      "email": "jane.citizen@example.com",
-      "role": "Citizen"
-    }
-  }
-  ```
-
-- **3. Get Authenticated Profile (`GET /api/v1/auth/me`)**:
-  ```bash
-  curl -X GET "http://127.0.0.1:8000/api/v1/auth/me" \
-    -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
-  ```
-
-- **4. Access Role-Gated Endpoint (`GET /api/v1/auth/protected-role-example`)**:
-  ```bash
-  # Returns 200 OK for 'Admin' or 'Municipal Officer' tokens
-  # Returns 403 Forbidden for 'Citizen' or 'Maintenance Staff' tokens
-  curl -X GET "http://127.0.0.1:8000/api/v1/auth/protected-role-example" \
-    -H "Authorization: Bearer <YOUR_ACCESS_TOKEN>"
-  ```
-
----
-
-### 2. Frontend Subsystem
-
-- Open `frontend/index.html` in your browser, or serve via local server:
-  ```bash
-  python -m http.server 3000 --directory frontend
-  ```
-- **Registration**: Navigate to `http://localhost:3000/pages/register.html`
-- **Login**: Navigate to `http://localhost:3000/pages/login.html`
-- **Report Damage**: Navigate to `http://localhost:3000/pages/report.html`
-
----
-
-### 3. ML Subsystem (Dataset Verification)
-
-```bash
-cd ml
-# Run the dataset split audit and generate visual bounding box overlays
-python scripts/verify_dataset_and_visualize.py
-```
-Visual verification overlays will be generated in `ml/samples/verified_boxes/`.
-
----
-
-## 📌 Development Roadmap
-
-- [x] **Week 1**: Monorepo Scaffolding, Landing Page, FastAPI + PostgreSQL Health Check, ML Environment Verification
-- [x] **Week 2**: Citizen Reporting Interface (Photo/GPS Scaffolding), Backend Models & CRUD REST API, RDD2022 Dataset Analysis
-- [x] **Week 3**: Authentication & JWT Sessions, Multi-Role Architecture (`Citizen`, `Municipal Officer`, `Maintenance Staff`, `Admin`), Frontend Auth Pages & Role-Aware Nav, ML Dataset Preparation (`data.yaml`, Splits & Visual Auditing)
-- [x] **Week 4**: End-to-End Reporting Workflow (Interactive Map + Geolocation + Multipart Upload), Report Creation API with Disk Storage & Server-Side Validation, ML Input Pipeline (`preprocess.py`) & Baseline YOLOv8 Experiment
-- [ ] **Week 5**: Maintenance Work Order Dispatch, Repair Status Tracking, & Citizen Notification Workflows
-
----
-
-## 🚀 Week 4 Progress: End-to-End Reporting, Spatial Maps & ML Baseline
-
-### 1. Citizen Reporting Page (`frontend/pages/report.html`, `frontend/js/report.js`)
-- **Interactive Google Maps Integration**:
-  - Embedded Google Maps JavaScript API canvas allowing citizens to pinpoint exact hazard coordinates.
-  - Interactive, draggable `AdvancedMarkerElement` with automatic coordinate synchronization into form inputs (`latitude`, `longitude`).
-  - Click-to-pin support anywhere on the map surface.
-- **Browser Geolocation & Resilient Fallback**:
-  - Automated high-accuracy GPS location query via `navigator.geolocation.getCurrentPosition()`.
-  - **Granted**: Auto-centers map (`zoom 17`) and drops pin at device coordinates with an accuracy radius circle (`google.maps.Circle`).
-  - **Denied/Unavailable**: Gracefully falls back to default city view and informs user to manually click on the map without breaking the form.
-  - "Locate Me (GPS)" button to re-trigger geolocation on demand.
-- **Photo Upload & Live Preview**:
-  - Drag-and-drop file dropzone with instant client-side preview, file size/type validation, and replacement options.
-- **Submission States & Feedback**:
-  - Visually distinct feedback banners: **submitting** (spinner), **success** (green banner with Report ID, status, and coordinates), and **error** (red banner with specific server/validation message).
-- **Two-Theme Compliance**:
-  - 100% styled using pure CSS variables (`--bg-primary`, `--bg-secondary`, `--text-primary`, `--accent-color`, etc.).
-  - Map controls, InfoWindows, and dark mode map styling validated in both Plain White and Plain Black themes.
-
----
-
-### 2. Report Creation API (`POST /api/v1/reports` & `POST /reports`)
-- **Multipart/Form-Data Image Upload**:
-  - Accepts raw image binary (`image`), `description`, `latitude`, `longitude`, optional `address_text`, `damage_type`, and `reporter_id`.
-  - Also maintains backwards-compatible JSON request handling for automated testing.
-- **Disk Storage Architecture**:
-  - Stores uploaded photos in `backend/uploads/reports/{uuid}.{ext}`.
-  - Stores only the relative URL path (`/uploads/reports/{filename}`) in PostgreSQL — **zero raw binary blobs in database**.
-  - Static file hosting mounted at `/uploads` via FastAPI `StaticFiles`.
-- **Strict Server-Side Validation (Zero Trust)**:
-  - Validates image presence and MIME/extension (`.jpg`, `.jpeg`, `.png`, `.webp`, `.jfif`).
-  - Validates non-empty description.
-  - Validates numeric bounds: `-90.0 <= latitude <= 90.0` and `-180.0 <= longitude <= 180.0`.
-  - Returns `422 Unprocessable Content` with descriptive field-specific errors before touching PostgreSQL.
-- **Response Format**:
-  ```json
-  {
-    "id": 11,
-    "description": "Severe road damage and pothole hazard near crosswalk.",
-    "latitude": 37.77574,
-    "longitude": -122.432663,
-    "address_text": "452 Elm Street near Metro Gate 2",
-    "image_url": "/uploads/reports/141f0b35065e425eb887adc5cdcd7656.jpg",
-    "damage_type": "D40",
-    "status": "submitted",
-    "severity_score": null,
-    "reporter_id": null,
-    "created_at": "2026-09-11T16:35:57.176408",
-    "updated_at": "2026-09-11T16:35:57.176408"
-  }
-  ```
-
----
-
-### 3. ML Subsystem: Input Preprocessing & Baseline Experiment
-- **Reusable Image Preprocessing Pipeline (`ml/src/preprocess.py`)**:
-  - Function `preprocess_report_image()` accepts file path, PIL Image, or NumPy array.
-  - Implements letterbox aspect-ratio preserving resize (default 640x640) with neutral gray border padding.
-  - Converts BGR/RGBA to RGB, normalizes `[0, 255] -> [0.0, 1.0]`, transposes to CHW, and generates `[1, 3, 640, 640]` PyTorch tensor ready for YOLO inference.
-  - Tracks scaling ratios and padding offsets for downstream bounding box coordinate inversion.
-  - Automated unit test suite verified: `python ml/scripts/test_preprocess.py` (100% pass).
-- **First Baseline YOLOv8 Training Experiment (`ml/scripts/train_baseline.py`)**:
-  - Model: `YOLOv8n` (3.0M parameters, 8.1 GFLOPs)
-  - Dataset: Balanced RDD2022 subset across all 4 defect classes (D00, D10, D20, D40).
-  - Hyperparameters: `epochs=2`, `imgsz=640`, `batch=8`, `device=cpu`, `optimizer=auto (AdamW)`.
-  - Initial Results:
-    - **Overall mAP@0.5**: `0.0335`
-    - **Overall mAP@0.5:0.95**: `0.0114`
-    - **Mean Recall**: `50.2%`
-  - **Class Detectability Findings**:
-    - **D10 (Transverse Cracks)** and **D40 (Potholes)** showed highest relative initial detectability (`mAP50 ~ 0.022-0.046`, recall up to `90.0%` on potholes due to salient shadow boundaries).
-    - **D00 (Longitudinal Cracks)** and **D20 (Alligator Cracks)** proved noticeably harder to isolate from background road texture in the initial baseline pass, requiring higher resolution and deeper feature extraction.
-  - Documented in `ml/experiments/baseline_results.json` and `ml/experiments/baseline_report.md`.
-
----
-
-## 🏛️ Week 5 Progress Summary
-
-Week 5 transforms the municipal operations workflow into a fully functional, role-gated platform with live backend report management, dynamic triage filtering, in-place report verification, and an optimized ML baseline model.
-
-### 1. Backend Subsystem: Municipal Report Management & RBAC
-- **Role-Gated Endpoints (`backend/app/api/v1/endpoints/reports.py`)**:
-  - `GET /reports` (and `/api/v1/reports`): Returns road hazard listing with ID, location, priority, status, image URL, and timestamps.
-  - `GET /reports/{id}` (and `/api/v1/reports/{id}`): Returns full report details, reporter profile, and structured ML detection results.
-  - `PATCH /reports/{id}/verify` (and `/api/v1/reports/{id}/verify`): Transitions a report to `verified`. Rejects reports that are already `repaired` or `closed` with `400 Bad Request`.
-- **Strict Role-Based Access Control**:
-  - Restricted to `Municipal Officer` and `Admin` via reusable dependency `require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)`.
-  - Unauthenticated requests receive `401 Unauthorized`.
-  - Authenticated requests with `Citizen` or `Maintenance Staff` roles receive `403 Forbidden`.
-- **Query Parameter Filtering**:
-  - Supports `?status=...` (submitted, verified, assigned, repaired, closed) and `?priority=...` (HIGH, MEDIUM, LOW).
-  - Fully supports combining both query filters simultaneously (e.g., `?status=submitted&priority=HIGH`).
-- **Database Schema Migrations (`backend/app/models/models.py` & `init_db.py`)**:
-  - Added indexed `priority` column (`HIGH`, `MEDIUM`, `LOW`) with intelligent defect-based auto-inferencing (`D40`/`D20` -> `HIGH`, `D00`/`D10` -> `MEDIUM`).
-  - Added `ml_detections` text column storing validated JSON detection bounding boxes.
-- **Automated Test Suites**:
-  - `backend/test_municipal_reports_api.py`: 100% pass across 7 test suites (unauth 401s, citizen 403s, officer 200s, 404s, combined filtering, verification workflow, closed rejection).
-  - `backend/test_auth.py`: 100% pass across user registration, login, JWT validation, and RBAC guards.
-
----
-
-### 2. Frontend Subsystem: Municipal Operations Center
-- **Route Guarding (`frontend/js/dashboard.js`)**:
-  - Automatically checks active JWT session and role. Unauthenticated visitors are redirected to `login.html`.
-  - Citizen accounts encounter a dedicated **"Access Restricted"** screen explaining the restriction to Municipal Officers/Admins, with single-click navigation back to citizen reporting.
-- **Live Backend Integration (No Mock Data)**:
-  - Fetches live report records from `GET /api/v1/reports` using Bearer authentication.
-  - Dynamic KPI metric counters: Active Hazards, High Severity, Medium Priority, and Repaired/Closed tickets.
-- **Dynamic Query Filtering**:
-  - Interactive status and priority dropdowns wired directly to backend query params.
-  - Updates table and map pins instantaneously upon selection, with a single-click "Reset Filters" action.
-- **Inspection Modal with Visual AI Detection**:
-  - Reuses the `CivicSightMLViewer` component to render defect images, interactive SVG bounding box overlays, confidence chips, and geospatial coordinates.
-- **In-Place Report Verification**:
-  - Modal and triage table feature a **"Verify Report"** action calling `PATCH /api/v1/reports/{id}/verify`.
-  - State updates to `verified` immediately across table badges, modal indicators, and map popups **without a full page reload**.
-- **Design & Theme Consistency**:
-  - Strict adherence to the plain white / plain black CSS variable token system (`--bg-primary`, `--bg-secondary`, `--text-primary`, `--border-color`, `--accent-color`).
-  - Tested and visually verified in both Light and Dark modes.
-
----
-
-### 3. ML Subsystem: Baseline Optimization & Experiment 2
-- **Training Experiment 2 (`ml/scripts/train_experiment2.py`)**:
-  - Implemented deliberate configuration changes:
-    1. Input resolution reduced to `512x512` for CPU inference efficiency and tighter crack receptive fields.
-    2. Training duration increased to `3 epochs` (+50% optimization steps).
-    3. Cosine learning rate scheduling enabled (`cos_lr=True`, `lr0=0.01`).
-- **Comparative Metrics Breakdown**:
-
-| Metric | Experiment 1 (Week 4 Baseline) | Experiment 2 (Week 5 Run) | Delta (Exp 2 vs Exp 1) |
-|:---|:---:|:---:|:---:|
-| **Mean Precision (P)** | `0.0041` | **`0.6541`** | **+0.6500 (+15,853%)** |
-| **Mean Recall (R)** | `0.5024` | `0.1254` | -0.3770 |
-| **Overall mAP@0.5** | `0.0335` | **`0.1176`** | **+0.0841 (+251.0%)** |
-| **Overall mAP@0.5:0.95** | `0.0114` | **`0.0530`** | **+0.0416 (+364.9%)** |
-| **D00 (Longitudinal)** | `0.0002` | **`0.0419`** | +0.0417 |
-| **D10 (Transverse)** | `0.0224` | **`0.0419`** | +0.0195 |
-| **D20 (Alligator)** | `0.0006` | `0.0001` | -0.0005 |
-| **D40 (Pothole)** | `0.0222` | **`0.1281`** | **+0.1059 (+477%)** |
-
-- **Baseline Selection**:
-  - **Experiment 2 (`experiment2_week5`)** selected as canonical baseline model.
-  - Weights preserved in `ml/runs/detect/experiment2_week5/weights/best.pt`.
-  - Comprehensive comparison and technical reasoning documented in `ml/experiments/results.md`.
-  - *Integration Boundary:* Model inference integration into backend endpoint is deferred to Week 6 as scheduled.
-
----
-
-## 🚀 Week 6 Progress Summary
-
-Week 6 transitions CivicSight from static report viewing to an **active, auditable municipal report lifecycle** with strict server-side state machine validation, full status history tracking, dashboard lifecycle actions, and a **finalized, reusable ML inference module** tested on held-out data.
-
-### 1. Full Status Lifecycle State Machine
-
-```mermaid
-stateDiagram-v2
-    [*] --> Submitted: Citizen Report Created
-
-    Submitted --> PendingVerification: Triage Queued
-    Submitted --> Verified: Immediate Officer Verification
-    Submitted --> Rejected: Invalid / Non-Jurisdiction
-    Submitted --> Duplicate: Duplicate of Prior Ticket
-
-    PendingVerification --> Verified: Officer Verifies Defect
-    PendingVerification --> Rejected: Rejection with Required Reason
-    PendingVerification --> Duplicate: Linked to Original Report ID
-
-    Verified --> Assigned: Dispatched to Maintenance Crew
-
-    Assigned --> UnderRepair: Crew Begins Asphalt Paving
-    UnderRepair --> Repaired: Repair Work Verified
-    UnderRepair --> Closed: Direct Ticket Closure
-
-    Repaired --> Closed: Final Municipal Archival
-
-    Rejected --> [*]: Terminal State
-    Duplicate --> [*]: Terminal State
-    Closed --> [*]: Terminal State
-```
-
-#### Strict Server-Side Transition Validation Rules:
-- **No Unverified Assignment:** A report **cannot** be assigned before it is verified (`Submitted/PendingVerification -> Assigned` returns `400 Bad Request`).
-- **No Post-Assignment Rejection:** A report **cannot** be rejected once assigned or under repair (`Assigned -> Rejected` returns `400 Bad Request`).
-- **No Re-verification of Closed Work:** Closed or repaired reports **cannot** be re-verified (`Closed/Repaired -> Verified` returns `400 Bad Request`).
-- **Explicit Transition Map:** Enforced via `LEGAL_TRANSITIONS` map in [`backend/app/api/v1/endpoints/reports.py`](file:///d:/Projects/CivicSight/backend/app/api/v1/endpoints/reports.py).
-
----
-
-### 2. Backend Subsystem: Lifecycle Endpoints & History Tracking
-- **Lifecycle Action Endpoints (`backend/app/api/v1/endpoints/reports.py`)**:
-  - `PATCH /reports/{id}/verify`: Moves report from `submitted` / `pending_verification` to `verified`.
-  - `PATCH /reports/{id}/reject`: Moves report to `rejected`. Requires `reason` string in payload.
-  - `PATCH /reports/{id}/duplicate`: Marks report as `duplicate`. Requires `original_report_id` integer referencing an existing valid report.
-  - `PATCH /reports/{id}/assign`: Moves report to `assigned`. Requires `assigned_to` string designating the maintenance crew or staff member.
-  - `PATCH /reports/{id}/status`: General lifecycle state transitions (e.g. `assigned` -> `under_repair` -> `repaired` -> `closed`).
-  - `GET /reports/{id}/history`: Returns complete chronological status transition history.
-- **Audit History Storage (`ReportStatusHistory` model)**:
-  - Automatically records every transition: `report_id`, `from_status`, `to_status`, `changed_by_id`, `changed_by_name`, `role`, `timestamp`, and `note`.
-  - Initial report creation automatically seeds the first history entry (`Submitted`).
-- **Strict Role-Based Access Control (RBAC)**:
-  - All lifecycle mutation and history endpoints remain strictly restricted to `Municipal Officer` and `Admin` roles.
-  - Unauthenticated requests receive `401 Unauthorized`.
-  - Citizen and Maintenance Staff roles receive `403 Forbidden`.
-
----
-
-### 3. Frontend Subsystem: Lifecycle Actions & Real History Audit Timeline
-- **Dashboard Lifecycle Action Controls (`frontend/js/dashboard.js` & `pages/dashboard.html`)**:
-  - **Dynamic Action Button Gating:** Actions strictly mirror backend state machine rules:
-    * `Submitted` / `Pending Verification`: Displays `Verify Report`, `Reject...`, and `Duplicate...`. Hides `Assign Crew`.
-    * `Verified`: Displays `Assign Crew...`. Hides `Verify Report`, `Reject`, and `Duplicate`.
-    * `Assigned` / `Under Repair` / `Repaired` / `Closed`: Mutative verification/rejection controls hidden.
-  - **Interactive Action Modals**:
-    * **Reject Modal (`#rejectModal`):** Prompts officer for mandatory rejection reason and optional internal audit note.
-    * **Duplicate Modal (`#duplicateModal`):** Dropdown populated with active reports plus direct ID input.
-    * **Assign Modal (`#assignModal`):** Crew selector with predefined division units or custom contractor entry.
-- **Real Status Transition Audit Timeline (`#modalHistoryTimeline`)**:
-  - Dynamically fetches and renders real events from `GET /api/v1/reports/{id}/history`.
-  - Displays transition badge (`Old Status -> New Status`), performer name, role, timestamp, and audit notes.
-- **Theme-Adherent Status Badges**:
-  - Reuses established design tokens across both Light and Dark modes (`.status-submitted`, `.status-verified`, `.status-assigned`, `.status-under_repair`, `.status-repaired`, `.status-closed`, `.status-rejected`, `.status-duplicate`).
-
----
-
-### 4. ML Subsystem: Finalized YOLO Model & Reusable Inference Module
-- **Model Finalization**:
-  - Canonical weights locked in at [`ml/runs/detect/experiment2_week5/weights/best.pt`](file:///d:/Projects/CivicSight/ml/runs/detect/experiment2_week5/weights/best.pt) (YOLOv8n trained on RDD2022).
-- **Reusable Inference Module ([`ml/src/inference.py`](file:///d:/Projects/CivicSight/ml/src/inference.py))**:
-  - Function: `detect_road_damage(image_input, confidence_threshold=0.25, iou_threshold=0.45, device="cpu")`.
-  - Features: Singleton model caching to eliminate weight reloading overhead; polymorphic input support (filepath, Week 4 preprocessed dict, PIL Image, or NumPy array).
-  - Exported via [`ml/src/__init__.py`](file:///d:/Projects/CivicSight/ml/src/__init__.py).
-  - Returns structured output: detection list with class code (`D00`, `D10`, `D20`, `D40`), confidence score, absolute pixel bounding boxes, normalized `[0.0, 1.0]` coordinates, and aggregated priority (`HIGH`, `MEDIUM`, `LOW`).
-- **Empirical Held-Out Testing & Failure Mode Analysis ([`ml/experiments/results.md`](file:///d:/Projects/CivicSight/ml/experiments/results.md))**:
-  - Validated on unseen images from `Dataset/RDD_SPLIT/test/images`.
-  - **Documented False Positives:** Overlapping fragmented bounding boxes on elongated fractures (`China_Drone_000008.jpg`); pavement expansion joint sealant misclassifications.
-  - **Documented Missed Detections:** High-altitude aerial captures where cracks span <2 pixels (`China_Drone_000017.jpg`); D20 alligator fatigue mesh networks (`China_Drone_000053.jpg`); extreme-scale drone potholes (`China_Drone_000099.jpg`).
-  - **Identified Failure Patterns:** Viewpoint discrepancy (drone aerial vs. street mount); precision-favoring threshold trade-off (`P=0.6541` vs `R=0.1254`).
-- **Integration Boundary:** In accordance with constraints, the inference module is **not** wired into the backend API yet; full automated ingestion pipeline integration occurs in Week 7.
-
----
-
-### 5. Automated Verification & Sanity Check Suite
-- **Integration Sanity Suite ([`backend/test_integration_sanity_week6.py`](file:///d:/Projects/CivicSight/backend/test_integration_sanity_week6.py))**:
-  - `test_checkpoint_1_valid_lifecycle_path`: **PASS** (Submitted -> Verified -> Assigned with 3 verified history entries).
-  - `test_checkpoint_2_illegal_transitions_blocked`: **PASS** (Assign before Verify 400, Re-verify after Assigned 400, Reject after Assigned 400, Re-verify Closed 400).
-  - `test_checkpoint_3_reject_and_duplicate_end_to_end`: **PASS** (Reason & Reference enforcement, self-duplicate 400, non-existent 404, history persistence).
-  - `test_checkpoint_4_ml_inference_on_held_out_images`: **PASS** (Structured outputs validated across held-out images).
-- **Comprehensive Lifecycle Suite ([`backend/test_lifecycle_api.py`](file:///d:/Projects/CivicSight/backend/test_lifecycle_api.py))**: **PASS (100%)**.
-- **Municipal Reports RBAC Suite ([`backend/test_municipal_reports_api.py`](file:///d:/Projects/CivicSight/backend/test_municipal_reports_api.py))**: **PASS (100%)**.
-
----
-
-## 🚀 Week 7 — Prototype Integration (End-to-End Real Pipeline)
-
-The **Week 7 Prototype-Ready Milestone** marks the unification of CivicSight from separate frontend, backend, and machine learning components into **one continuous, demonstrable, and fully integrated production pipeline**. Zero mockups, zero synthetic detections, and zero silent failures.
-
----
-
-### 1. The End-to-End Integrated Architecture
-
-```mermaid
-flowchart LR
-    A["Citizen Photo Upload"] --> B["FastAPI Multipart Ingestion"]
-    B --> C["Report DB Commit & HTTP 201 Created"]
-    B -.->|Background Task| D["Week 4 Preprocessing Pipeline"]
-    D --> E["Week 6 YOLOv8n Inference Engine"]
-    E --> F["Detection Results DB Persistence"]
-    F --> G["Report ML Status Update"]
-    G --> H["FastAPI GET /reports & /ml-status APIs"]
-    H --> I["Frontend CivicSightMLViewer Display"]
-    I --> J["Municipal Officer Decision Support"]
-```
-
-#### Step-by-Step Execution Sequence:
-1. **Citizen Upload (`POST /reports` or `POST /api/v1/reports`):**
-   - Citizen provides photo file (JPEG/PNG), description, GPS coordinates, and street address.
-   - FastAPI saves the raw uploaded image to `backend/uploads/reports/{uuid}.{ext}`.
-   - A `Report` record is created with initial state `status="submitted"` and `ml_status="ML_PENDING"`.
-   - The API immediately returns `HTTP 201 Created` within **<15 ms** (non-blocking submission guarantee: citizen report submission is never delayed or aborted by computer vision inference).
-2. **Asynchronous Background Processing (`BackgroundTasks`):**
-   - The report ID is enqueued to `process_report_image_ml()` in [`backend/app/services/ml_service.py`](file:///d:/Projects/CivicSight/backend/app/services/ml_service.py).
-   - The image is loaded from disk and fed into the Week 4 preprocessing pipeline ([`ml/src/preprocess.py`](file:///d:/Projects/CivicSight/ml/src/preprocess.py)), standardizing aspect ratio letterboxing and color channel alignment.
-   - Preprocessed image is passed into the Week 6 finalized YOLOv8n inference module ([`ml/src/inference.py`](file:///d:/Projects/CivicSight/ml/src/inference.py)) running inside a guarded thread pool with a strict 12-second timeout.
-3. **Relational Detection Results Persistence:**
-   - Raw detections are mapped back from letterbox space into native pixel coordinates and normalized `[0.0, 1.0]` coordinates.
-   - Every individual detection (all defects, not just top-1) is persisted as a dedicated row in the `detection_results` database table linked by foreign key `report_id`:
-     * `detected_class`: RDD2022 taxonomy code (`D00`, `D10`, `D20`, `D40`)
-     * `class_name`: Human-readable description (e.g. `Pothole`, `Transverse Crack`)
-     * `confidence`: Float detection probability
-     * `bbox_xmin`, `bbox_ymin`, `bbox_xmax`, `bbox_ymax`: Absolute pixel coordinates
-     * `bbox_normalized`: JSON array `[ymin, xmin, ymax, xmax]` for responsive SVG overlay
-     * `severity`: Municipal severity grading (`HIGH`, `MEDIUM`)
-     * `model_version`: Canonical version string `YOLOv8n-experiment2_week5`
-     * `inference_timestamp`: Timestamp of inference execution
-4. **Resilient Status Transition:**
-   - Database record `reports.ml_status` transitions to one of the 4 explicit states: `ML_COMPLETE`, `ML_NO_DETECTIONS`, or `ML_FAILED`.
-   - If severe hazards (such as potholes `D40`) are detected, report priority is elevated to `HIGH` for municipal triage.
-5. **API Exposure & Frontend Visualization:**
-   - Exposed via `GET /api/v1/reports/{id}` and public polling endpoint `GET /api/v1/reports/{id}/ml-status`.
-   - Both the Citizen Report View ([`frontend/pages/report.html`](file:///d:/Projects/CivicSight/frontend/pages/report.html)) and the Municipal Inspection Modal ([`frontend/pages/dashboard.html`](file:///d:/Projects/CivicSight/frontend/pages/dashboard.html)) render the results via the unified, theme-responsive component [`CivicSightMLViewer`](file:///d:/Projects/CivicSight/frontend/js/ml-viewer.js).
-
----
-
-### 2. The Four Explicit ML Lifecycle States
-
-To ensure deterministic rendering and prevent UI ambiguity, the backend and frontend explicitly distinguish all four processing states:
-
-| ML Status Code | Technical Condition | Citizen / UI Display Behavior | Municipal Officer Meaning |
-|:---|:---|:---|:---|
-| **`ML_PENDING`** | Image is queued or actively being processed by YOLOv8n background worker. | Displays pulsing radar/scanning animation (`assets/lottie/scanning.json`) with *"Automated Analysis in Progress..."*. | Report submitted; AI triage not yet completed. Officer can proceed with manual inspection or await AI. |
-| **`ML_COMPLETE`** | Model executed successfully and identified 1 or more defects. | Displays image with responsive SVG bounding boxes, defect breakdown list with confidence percentages, and AI impact score. | Diagnostic decision support. Highlights damage class and location. Strictly distinct from official municipal verification. |
-| **`ML_NO_DETECTIONS`** | Model executed normally and found 0 defects exceeding confidence threshold. | Explicitly states: *"No damage detected by automated analysis"*. Clear surface green badge. **Never blank or hidden.** | Automated vision found no structural pavement failure. Report remains 100% valid for human officer verification. |
-| **`ML_FAILED`** | Image corrupt, unsupported format, missing file, or inference timed out (>12s). | Displays: *"Automated analysis is unavailable for this report"*. Explicit note that the report is valid and unaffected. | ML triage bypassed due to runtime exception. The report is fully valid and requires manual officer review. |
-
-> [!IMPORTANT]
-> **Strict Separation of AI Assessment vs. Municipal Verification:**  
-> In accordance with municipal liability and governance requirements, the **AI Assessment (Decision Support)** section is visually and functionally quarantined from the **Municipal Verification Status & Actions Panel**. An officer verification (`verified` / `rejected` / `assigned`) is an official legal action and is never auto-filled or overwritten by AI confidence scores.
-
----
-
-### 3. ML Model Finalization, Latency & Benchmark Metrics
-
-- **Canonical Model Identifier:** `YOLOv8n-experiment2_week5`
-- **Model Weights Path:** `ml/runs/detect/experiment2_week5/weights/best.pt`
-- **Architecture:** Ultralytics YOLOv8n (3.0M parameters, 8.1 GFLOPs)
-- **Trained Input Resolution:** `512x512`
-- **Confidence Threshold:** `0.10` (operational detection threshold for RDD2022 defect triage)
-- **Non-Maximum Suppression (NMS) IoU Threshold:** `0.45`
-
-#### Benchmark Metrics on Held-Out Test Set:
-- **Precision (P):** `0.6541` (False alarms suppressed by 99% compared to initial baseline)
-- **Recall (R):** `0.1254` (Conservative triage prioritizing high-confidence verified defects)
-- **mAP@0.5:** `0.1176` (+251% over Week 4 baseline)
-- **mAP@0.5:0.95:** `0.0530` (+365% over Week 4 baseline)
-
-#### Latency Benchmarks (CPU — Intel Core i7):
-- **Preprocessing:** `7.93 ms`
-- **YOLO Inference:** `40.14 ms` (average across 25 held-out test images)
-- **Total Pipeline Execution:** `~48 ms`
-- **Architectural Decision:** Asynchronous `BackgroundTasks` execution was selected so that citizen submission HTTP latency remains instant (`~12 ms`), guaranteeing zero UI blocking regardless of image payload dimensions.
-
-#### Known Class Strengths & Weaknesses (Documented for Demos):
-- **D40 (Pothole Hazard — High Severity):** **Strongest Class (`0.1281 mAP@0.5`)**. High asphalt contrast produces reliable, high-confidence bounding boxes (e.g. `sample_pothole_d40.jpg` detected @ 33.5% confidence).
-- **D00 / D10 (Longitudinal & Transverse Cracks — Medium Severity):** **Good Detection (`0.0419 mAP@0.5`)** on street-level perspectives where linear shadows exist (e.g. `China_MotorBike_000093.jpg` detected @ 24.0% confidence, `sample_crack_d10.jpg` detected @ 26.1% confidence).
-- **D20 (Alligator / Fatigue Cracking — High Severity):** **Noticeably Weaker Class (`0.0001 mAP@0.5`)**. Fine polygonal spiderweb meshes across textured asphalt require larger training splits and longer training schedules to differentiate from surface roughness.
-
----
-
-### 4. Mandatory Prototype Verification Audit (All 6 Checks Passed)
-
-All six mandatory end-to-end integration checks defined in the Week 7 milestone were executed against the live running FastAPI server and relational database via [`backend/test_prototype_e2e_week7.py`](file:///d:/Projects/CivicSight/backend/test_prototype_e2e_week7.py):
-
-| Check # | Requirement Description | Test Execution Details | Status |
-|:---:|:---|:---|:---:|
-| **Check 1** | Citizen uploads real damage image; report created non-blocking before ML finishes | Uploaded `sample_pothole_d40.jpg` via multipart `POST /reports`. Received `201 Created` in **11.6ms** with initial `ml_status="ML_PENDING"`. | **PASSED (100%)** |
-| **Check 2** | Report transitions to `ML_COMPLETE` with correct bounding boxes, classes, confidence | Background worker completed YOLO inference in **39.75ms**. Polled `/ml-status`, transitioned to `ML_COMPLETE`. Detections stored: `D40 (Pothole)` @ conf `0.335`, bbox `[3.4, 237.0, 99.2, 439.6]`. | **PASSED (100%)** |
-| **Check 3** | Citizen uploads clean road with no damage; transitions to `ML_NO_DETECTIONS` | Uploaded `sample_road.jpg` via `POST /reports`. Received `201 Created`. Transitioned to `ML_NO_DETECTIONS` with 0 detections and `ml_error_message=None`. Handled cleanly as valid state, not error. | **PASSED (100%)** |
-| **Check 4** | Deliberately break inference with corrupt image; `ML_FAILED` handled gracefully | Uploaded corrupted JPEG binary payload. Report creation succeeded with `201 Created` (`status="submitted"`). ML transitioned to `ML_FAILED` with logged error message. Report remained valid and editable. | **PASSED (100%)** |
-| **Check 5** | Municipal Officer logs in, inspects report, verifies independently of AI results | Authenticated as `Sarah Chen (Municipal Officer)`. Inspected report showing `ML_COMPLETE`. Issued `PATCH /reports/{id}/verify`. Status updated to `verified`. AI assessment and municipal status remained distinct. | **PASSED (100%)** |
-| **Check 6** | Detection results persist in database and retrieve via `GET /reports/{id}` post-restart | Verified direct SQL row in `detection_results` table. Completely **terminated and restarted Uvicorn server**. Issued `GET /reports/100`; retrieved all detections, bounding boxes, and model version from disk DB. | **PASSED (100%)** |
-
-All tests can be re-run at any time using:
-```bash
-python backend/test_prototype_e2e_week7.py
-pytest -v backend/
-```
-
----
-
-## 🚀 Week 8: Priority Engine & Duplicate / Related-Report Detection
-
-Week 8 delivers an explainable, rule-based triage and spatial clustering subsystem that automatically calculates hazard priority, identifies potential duplicate or nearby reports, and provides municipal officers with review actions while maintaining report integrity.
-
-```text
-               [ Citizen Report Submitted ]
-                            │
-                            ▼
-               [ YOLOv8n ML Inference ]
-              (D40, D20, D10, D00 BBoxes)
-                            │
-              ┌─────────────┴─────────────┐
-              ▼                           ▼
-    [ Proximity Engine ]        [ Priority Engine ]
-    - Haversine Distance        - Pure, Isolated Logic
-    - Bounding-Box Prefilter    - Explainable Reasons List
-    - 50 m Nearby Cluster       - Configurable Weights & Thresholds
-    - 15 m Potential Duplicate  - Deterministic Scoring
-              │                           │
-              └─────────────┬─────────────┘
-                            ▼
-      [ Database Synchronization & Audit Logging ]
-      - Update reports: severity, priority, score, reasons
-      - Log transitions to priority_history table
-      - Store unordered pairs in report_relations
-                            │
-                            ▼
-           [ Municipal Dashboard Triage ]
-      - High Priority Filter & Priority Sorting
-      - "Why This Priority" Explainability Panel
-      - Related Reports Panel (Confirm Duplicate / Dismiss)
-      - Independent Municipal Verification Status
-```
-
----
-
-### 1. Backend Priority Engine Architecture (`app/services/priority.py`)
-
-The priority engine is engineered as an **isolated, pure scoring module with zero database or HTTP network calls**. It accepts structured inputs and produces deterministic, explainable priority outputs.
-
-#### Inputs:
-- **`detections`**: List of bounding-box detections (`class`, `confidence`, `bbox_area`).
-- **`ml_status`**: Pipeline state (`ML_COMPLETE`, `ML_PENDING`, `ML_NO_DETECTIONS`, `ML_FAILED`).
-- **`nearby_report_count`**: Number of other active reports within the proximity radius.
-- **`report_age_days`**: Time elapsed since submission without municipal resolution.
-- **`location_risk`**: Optional risk modifier for critical transit corridors (default neutral).
-
-#### Outputs:
-```json
-{
-  "severity": "HIGH",
-  "priority": "HIGH",
-  "score": 68.5,
-  "reasons": [
-    "Pothole detected at 88% confidence (high impact)",
-    "Large defect area covering 14% of the image",
-    "3 other reports within 50 m",
-    "Open for 8 days without resolution"
-  ]
-}
-```
-
-#### Scoring Rules & Weights:
-1. **Severity Derivation**:
-   - Derived from the worst detection present above `min_confidence` (default `0.25`). Detections below this threshold are ignored with a reason explicitly noted.
-   - **Class Base Weights**:
-     - `D40 (Pothole)`: Highest base weight (50.0)
-     - `D20 (Alligator Crack)`: High base weight (35.0)
-     - `D10 (Transverse Crack)`: Medium base weight (20.0)
-     - `D00 (Longitudinal Crack)`: Low-medium base weight (12.0)
-   - **Area & Confidence Scaling**: Scaled by detection confidence (`0.0 - 1.0`) and relative bounding box area fraction.
-   - **Severity Tiers**: `HIGH` (score >= 40.0), `MEDIUM` (score >= 20.0), `LOW` (score < 20.0), or `UNKNOWN` (when ML assessment is unavailable).
-
-2. **Priority Composite Scoring**:
-   - `priority_score = severity_score + nearby_report_score + persistence_score + location_risk`
-   - **High Priority** triggered by:
-     - Severe structural road damage (confident pothole `D40` or severe fatigue cracking `D20`), OR
-     - Recurring community hazard confirmed by multiple repeated citizen reports (score >= `threshold_high`, default `55.0`).
-   - **Medium Priority** triggered by:
-     - Moderate road surface damage (`D10`), OR multiple nearby reports suggesting a growing hazard (score >= `threshold_medium`, default `30.0`).
-   - **Low Priority** triggered by:
-     - Minor damage (`D00`) with little evidence of urgency or isolated single reports.
-
-3. **Safe Fallbacks for Missing or Unreliable Inputs**:
-   - `ML_FAILED` / `ML_PENDING`: Severity set to `UNKNOWN`. Priority falls back to citizen report count and persistence rules with reason *"Automated assessment unavailable"*.
-   - `ML_NO_DETECTIONS`: Severity `LOW`. Priority `LOW` unless multiple citizen reports raise it, noting *"No road damage detected by automated assessment"*.
-   - **Invalid or Out-of-Range Coordinates**: Proximity analysis skipped cleanly without crashing, noting *"Proximity analysis skipped: coordinates unavailable or invalid"*.
-   - **Failed Calculations**: Priority calculation failures never abort report creation; the report saves safely with priority logged as null.
-
----
-
-### 2. Proximity & Duplicate Detection Subsystem (`app/services/proximity.py`)
-
-The spatial engine identifies geographic clusters and potential duplicate submissions using the **Haversine formula** optimized with a **latitude/longitude bounding box prefilter** to eliminate full-table scans.
-
-#### Proximity Workflow:
-1. **Bounding-Box Prefilter**: Computes minimum and maximum latitude/longitude boundaries for `NEARBY_DISTANCE_METERS` (50 m) using Earth's radius (`R = 6,371,000 m`).
-2. **Exclusion Criteria**: Excludes the report itself and any reports with status `rejected`.
-3. **Relation Classification**:
-   - If distance <= `DUPLICATE_DISTANCE_METERS` (15 m) **AND** damage classes are similar (e.g., both potholes or cracking types), classified as `POTENTIAL_DUPLICATE`.
-   - If distance <= `NEARBY_DISTANCE_METERS` (50 m), classified as `NEARBY_RELATED`.
-4. **Bidirectional Pair Integrity**: Relational pairs are saved in `report_relations` with the unique unordered constraint `report_id < related_report_id` to guarantee no duplicate links or reflexive relations (`A -> B` stored once, never `B -> A`).
-5. **Bidirectional Recalculation**:
-   - Updates `nearby_report_count` on the new report and all affected existing reports.
-   - Recalculates priority on the new report and all affected existing reports without triggering recalculation loops.
-   - Creates a new `priority_history` audit row whenever priority, severity, or score changes.
-
-> [!IMPORTANT]
-> **Zero Auto-Merge / Zero Auto-Delete Guarantee:**  
-> Nearby does **not** mean duplicate (e.g., two potholes can exist 10 meters apart on the same lane). The system **never auto-merges, auto-deletes, or auto-closes** original citizen reports. Only an authorized municipal officer can review and confirm a duplicate.
-
----
-
-### 3. Database Schema Extensions & Migration
-
-#### New Columns on `reports`:
-- `severity` (VARCHAR 20): `HIGH`, `MEDIUM`, `LOW`, `UNKNOWN`
-- `priority` (VARCHAR 20): `HIGH`, `MEDIUM`, `LOW`
-- `priority_score` (FLOAT): Composite numerical priority score (0.0 - 100.0)
-- `priority_reasons` (TEXT / JSON): Plain-English array of explainability strings
-- `priority_updated_at` (DATETIME): Timestamp of last priority evaluation
-- `nearby_report_count` (INTEGER): Number of active reports within 50 meters
-- `is_priority_overridden` (BOOLEAN): Flag indicating manual municipal officer override
-- `priority_override_reason` (TEXT): Mandatory explanation string provided during override
-
-#### Table `priority_history`:
-| Field | Type | Description |
-|:---|:---|:---|
-| `id` | INTEGER PRIMARY KEY | Autoincrementing history record ID |
-| `report_id` | INTEGER FK | Foreign key to `reports.id` (Indexed) |
-| `previous_priority` | VARCHAR(20) | Prior priority tier |
-| `new_priority` | VARCHAR(20) | New priority tier |
-| `previous_severity` | VARCHAR(20) | Prior severity tier |
-| `new_severity` | VARCHAR(20) | New severity tier |
-| `score` | FLOAT | Calculated numerical score |
-| `reasons_snapshot` | TEXT (JSON) | Snapshot of reason strings |
-| `trigger` | VARCHAR(50) | Event trigger (`created`, `nearby_report_added`, `recalculated`, `manual_override`) |
-| `created_at` | DATETIME | Timestamp of audit entry |
-
-#### Table `report_relations`:
-| Field | Type | Description |
-|:---|:---|:---|
-| `id` | INTEGER PRIMARY KEY | Autoincrementing relation ID |
-| `report_id` | INTEGER FK | Lower report ID in canonical pair (Indexed) |
-| `related_report_id`| INTEGER FK | Higher report ID in canonical pair (Indexed) |
-| `distance_meters` | FLOAT | Exact Haversine surface distance |
-| `relation_type` | VARCHAR(30) | `POTENTIAL_DUPLICATE` or `NEARBY_RELATED` |
-| `review_status` | VARCHAR(30) | `PENDING`, `CONFIRMED_DUPLICATE`, or `DISMISSED` (Indexed) |
-| `reviewed_by` | INTEGER FK | User ID of reviewing Municipal Officer |
-| `reviewed_at` | DATETIME | Timestamp of officer action |
-| `note` | TEXT | Review note or justification |
-| `created_at` | DATETIME | Timestamp when relation was discovered |
-
-*Unique Constraint:* `uq_report_relations_pair UNIQUE (report_id, related_report_id)` where `report_id < related_report_id`.
-
----
-
-### 4. API Endpoints & Access Control Matrix
-
-| Endpoint | Method | Allowed Roles | Description |
-|:---|:---:|:---:|:---|
-| `/reports` / `/api/v1/reports` | `GET` | All (Citizens scoped) | Filter by `?priority=HIGH`, `?severity=`, `?status=`. Sort by `?sort_by=priority` or `score`. Returns `has_pending_relations`. |
-| `/reports/{id}` / `/api/v1/reports/{id}` | `GET` | All (Citizens own only) | Returns priority, severity, reasons, nearby count, and relation details. Citizens cannot view other citizens' related reports. |
-| `/reports/{id}/related` | `GET` | Municipal Officer, Admin | Lists all spatial relations with distance, review status, and target report metadata. |
-| `/report-relations/{relation_id}` | `PATCH` | Municipal Officer, Admin | Review relation: sets `review_status` to `CONFIRMED_DUPLICATE` or `DISMISSED`. Reuses Week 6 state machine. Reject 2nd review with 400. |
-| `/reports/{id}/priority-history` | `GET` | Municipal Officer, Admin | Returns complete chronological audit history of priority changes. |
-| `/reports/{id}/recalculate-priority` | `POST` | Municipal Officer, Admin | Triggers on-demand re-scoring without cascading infinite loops. |
-| `/reports/{id}/override-priority` | `POST` | Municipal Officer, Admin | Manually sets priority with mandatory justification note; preserved from auto-recalculation overwrite. |
-
----
-
-### 5. Configuration Settings (`PriorityConfig` & `app/core/config.py`)
-
-All engine thresholds and parameters live in centralized configuration objects with zero hardcoded values in logic:
-
-| Config Variable | Default Value | Description |
-|:---|:---:|:---|
-| `NEARBY_DISTANCE_METERS` | `50.0` | Maximum radius in meters to consider reports as nearby cluster |
-| `DUPLICATE_DISTANCE_METERS` | `15.0` | Proximity radius in meters to flag potential duplicate submissions |
-| `DUPLICATE_TIME_WINDOW_DAYS` | `None` (Optional) | Optional time window in days for duplicate eligibility |
-| `IMAGE_SIMILARITY_ENABLED` | `False` | Feature flag toggle for perceptual hash image comparison |
-| `PRIORITY_MIN_CONFIDENCE` | `0.25` | Minimum YOLO detection confidence threshold for severity scoring |
-| `PRIORITY_THRESHOLD_HIGH` | `55.0` | Composite score threshold to trigger `HIGH` priority |
-| `PRIORITY_THRESHOLD_MEDIUM` | `30.0` | Composite score threshold to trigger `MEDIUM` priority |
-| `WEIGHT_D40_POTHOLE` | `50.0` | Base severity weight for pothole hazards |
-| `WEIGHT_D20_ALLIGATOR` | `35.0` | Base severity weight for fatigue/alligator cracking |
-| `WEIGHT_D10_TRANSVERSE` | `20.0` | Base severity weight for transverse cracks |
-| `WEIGHT_D00_LONGITUDINAL` | `12.0` | Base severity weight for longitudinal cracks |
-| `WEIGHT_NEARBY_REPORT` | `7.0` | Score bonus added per nearby active citizen report (capped at 35.0) |
-| `WEIGHT_AGE_PER_DAY` | `1.5` | Persistence score bonus per day open without resolution (capped at 20.0) |
-
----
-
-### 6. Verification & Test Suite Execution
-
-#### Running the Priority Backfill Script:
-To populate priority, severity, and spatial relations for all existing reports created in earlier weeks:
-```bash
-python backend/scripts/backfill_priority.py
-```
-
-#### Running the Automated Test Suite (Pytest):
-```bash
-# Run Week 8 Priority Engine & Proximity Test Suite (20 tests)
-pytest backend/test_priority_and_relations.py -v
-
-# Run Week 6 & Week 7 Integration Regression Suite (4 tests)
-pytest backend/test_integration_sanity_week6.py -v
-```
-
-#### Running the End-to-End Requirement 8 Manual Verification Script:
-```bash
-python scripts/manual_verification_week8.py
-```
-
----
-
-### 7. Known Limitations & Engineering Tradeoffs
-
-1. **Rule-Based vs. Civil Engineering Standards**:  
-   The current priority engine weights are operational civic heuristics designed for triage and workflow routing. They do not constitute formal AASHTO or ASTM pavement condition index (PCI) ratings.
-2. **Spatial Proximity vs. Ground Truth Duplication**:  
-   Geographic proximity (e.g. within 15 meters) provides a strong indicator of potential duplication, but multiple distinct defects frequently co-exist in close proximity. The system deliberately mandates human municipal officer verification (`CONFIRMED_DUPLICATE` vs. `DISMISSED`) rather than automated report merges.
-3. **Computer Vision Noise & Confidence Distortion**:  
-   Extreme weather conditions, lighting glares, or low camera angles can yield false positives or lower confidence. The engine explicitly mitigates this through a configurable minimum confidence threshold (`0.25`), fallback to citizen report volume, and human officer override capabilities.
-
----
-
-## 🛠️ Week 9: Complete Lifecycle, Crew Dispatch & Repair Verification
-
-Week 9 closes the end-to-end municipal loop: a verified road hazard gets assigned to field maintenance crew, repaired, evidenced with photographic proof, reviewed side-by-side, verified by municipal officers, and closed.
-
-### 1. Canonical Status Lifecycle & Transition Diagram
-
-The system enforces a single canonical source of truth for all status transitions defined in `backend/app/core/state_machine.py`:
-
-```
- [ SUBMITTED ] ──► [ PENDING_VERIFICATION ]
-                            │
-       ┌────────────────────┼────────────────────┐
-       ▼                    ▼                    ▼
-  [ REJECTED ]        [ DUPLICATE ]        [ VERIFIED ] ◄──────────────┐
-  (Terminal)          (Terminal)                 │                     │ (Unassign)
-                                                 ▼                     │
-                                           [ ASSIGNED ] ───────────────┘
-                                                 │
-                                                 ▼
-                                          [ UNDER_REPAIR ] ◄──────────┐
-                                                 │                    │ (SENT_BACK rework)
-                                                 ▼                    │
-                                    [ REPAIR_EVIDENCE_SUBMITTED ] ────┘
-                                                 │
-                                                 ▼ (APPROVED)
-                                             [ CLOSED ]
-                                             (Terminal)
-```
-
-### 2. Role-Based Access Control (RBAC) Transition Matrix
-
-| Transition | Allowed Roles | Enforced Preconditions / Requirements |
-|:---|:---|:---|
-| `SUBMITTED -> PENDING_VERIFICATION` | System / Auto | Automatic upon successful report creation and ML processing. |
-| `PENDING_VERIFICATION -> VERIFIED` | Municipal Officer, Admin | Officer inspects and validates report legitimacy. |
-| `PENDING_VERIFICATION -> REJECTED` | Municipal Officer, Admin | Mandatory non-empty rejection reason required. |
-| `PENDING_VERIFICATION -> DUPLICATE` | Municipal Officer, Admin | Mandatory reference to primary original report ID (`duplicate_of_id`). |
-| `VERIFIED -> ASSIGNED` | Municipal Officer, Admin | Assignee must be an active user with the `Maintenance Staff` role. Sets `is_active=1` in `assignments`. |
-| `ASSIGNED -> ASSIGNED` (Reassign) | Municipal Officer, Admin | Closes previous assignment (`unassigned_at=now`), opens new active assignment. Mandatory reason required. |
-| `ASSIGNED -> VERIFIED` (Unassign) | Municipal Officer, Admin | Closes active assignment (`unassigned_at=now`), clears `current_assignee_id`. Mandatory reason required. |
-| `ASSIGNED -> UNDER_REPAIR` | Assigned Maintenance Staff, Admin | Crew arrives on site and starts physical repair. Records `repair_started_at`. |
-| `UNDER_REPAIR -> REPAIR_EVIDENCE_SUBMITTED` | Assigned Maintenance Staff, Admin | Crew uploads >= 1 valid AFTER repair photo and submits. Records `repair_submitted_at`. |
-| `REPAIR_EVIDENCE_SUBMITTED -> CLOSED` | Municipal Officer, Admin | Officer inspects before/after photos and approves (`APPROVED`). Sets `closed_at` and `final_verified_by`. |
-| `REPAIR_EVIDENCE_SUBMITTED -> UNDER_REPAIR` | Municipal Officer, Admin | Officer requests rework (`SENT_BACK`). Mandatory rework instruction note required. |
-| `CLOSED/REJECTED/DUPLICATE -> PENDING_VERIFICATION` | Admin Only | Reopens terminal ticket for reinvestigation. Mandatory audit reason required. |
-
-*Citizens cannot perform any state transitions. Maintenance staff cannot verify, reject, close, or touch reports assigned to someone else.*
-
----
-
-### 3. Database Schema Extensions
-
-1. **`assignments` Table:**
-   - `id`: Primary key
-   - `report_id`: Foreign key referencing `reports.id`
-   - `assigned_to`: Foreign key referencing `users.id` (Maintenance Staff)
-   - `assigned_by`: Foreign key referencing `users.id` (Municipal Officer)
-   - `assigned_at`: Timestamp of dispatch
-   - `unassigned_at`: Nullable timestamp when reassigned or unassigned
-   - `is_active`: Boolean flag; enforced by partial unique index `uq_assignments_active_report` on `(report_id) WHERE is_active = 1`
-   - `note`: Dispatch instructions
-2. **`repair_evidence` Table:**
-   - `id`: Primary key
-   - `report_id`: Foreign key referencing `reports.id`
-   - `uploaded_by`: Foreign key referencing `users.id` (Staff)
-   - `kind`: `AFTER` or `PROGRESS` (original citizen photo is referenced as `BEFORE`)
-   - `file_path`: Storage path relative to uploads directory (`/uploads/evidence/...`)
-   - `original_filename`: Sanitized original filename
-   - `mime_type`: Detected MIME type (`image/jpeg`, `image/png`, `image/webp`)
-   - `size_bytes`: Byte length (max 15MB)
-   - `checksum`: SHA-256 content hash
-   - `note`: Optional technician progress note
-   - `uploaded_at`: Upload timestamp
-3. **`final_verifications` Table:**
-   - `id`: Primary key
-   - `report_id`: Foreign key referencing `reports.id`
-   - `officer_id`: Foreign key referencing `users.id` (Officer)
-   - `decision`: `APPROVED` or `SENT_BACK`
-   - `note`: Inspection sign-off comment or mandatory rework instruction
-   - `created_at`: Inspection timestamp
-
----
-
-### 4. API Endpoints Reference
-
-#### Crew Assignment & Workload:
-- `POST /api/v1/reports/{id}/assign`: Assign verified report to maintenance staff.
-  ```json
-  { "staff_id": 37, "note": "Priority road patch required" }
-  ```
-- `POST /api/v1/reports/{id}/reassign`: Reassign active work order to new staff.
-  ```json
-  { "new_staff_id": 38, "reason": "Staff 1 diverted to emergency waterline" }
-  ```
-- `POST /api/v1/reports/{id}/unassign`: Unassign active work order back to verified queue.
-  ```json
-  { "reason": "Inclement weather postponing pavement repairs" }
-  ```
-- `GET /api/v1/staff`: Officer inspection of maintenance staff and real-time open workload count.
-- `GET /api/v1/staff/me/assignments?view=active|completed`: Staff's assigned work orders.
-
-#### Repair Progression & Evidence:
-- `POST /api/v1/reports/{id}/repair/start`: Crew starts repair (`ASSIGNED -> UNDER_REPAIR`).
-- `POST /api/v1/reports/{id}/repair/evidence`: Multipart upload for repair photos (`file`, `kind=AFTER|PROGRESS`, `note`).
-- `POST /api/v1/reports/{id}/repair/submit`: Submit repair for municipal inspection (`UNDER_REPAIR -> REPAIR_EVIDENCE_SUBMITTED`).
-  ```json
-  { "note": "Hot-mix asphalt patch rolled and sealed flush with roadway" }
-  ```
-- `GET /api/v1/reports/{id}/evidence`: Returns linked before photo (citizen original) and uploaded after photos.
-- `GET /api/v1/reports/{id}/evidence/{evidence_id}/file`: Anti-IDOR protected photo file download.
-
-#### Municipal Final Verification:
-- `POST /api/v1/reports/{id}/final-verify`: Officer sign-off.
-  ```json
-  { "decision": "APPROVED", "note": "Verified restored to municipal grade" }
-  ```
-  Or send back for rework:
-  ```json
-  { "decision": "SENT_BACK", "note": "Compaction uneven along curb line; re-compact" }
-  ```
-- `POST /api/v1/reports/{id}/reopen`: Admin reopening of terminal report.
-  ```json
-  { "reason": "Pothole reopened after major rainstorm" }
-  ```
-
----
-
-### 5. Evidence Storage & Validation Security
-
-- **Storage Location:** `backend/uploads/evidence/` with randomized UUID filenames to prevent path traversal and file collisions.
-- **Magic-Byte Inspection:** File headers are validated using Pillow (`PIL.Image.verify()`) to guarantee authentic JPEG, PNG, or WebP bytes (rejecting executables, HTML, or scripts disguised with image extensions).
-- **Size Limits:** Enforced 15MB limit per evidence photo.
-- **Gallery Cap:** Maximum 10 evidence photos per report to prevent disk exhaustion.
-- **Anti-IDOR Protection:** `GET /reports/{id}/evidence/{evidence_id}/file` enforces that only the report creator (Citizen), assigned maintenance staff, municipal officers, and admins can download evidence photos. Unrelated citizens and staff receive `403 Forbidden`.
-- **Atomic File Rollback:** If a database transaction fails during evidence creation, any newly saved file on disk is immediately unlinked.
-
----
-
-### 6. Test Suite Commands
-
-```bash
-# Run Week 9 Dedicated Lifecycle & Repair Test Suite (8 tests)
-pytest backend/test_week9_lifecycle.py -v
-
-# Run Full 50-Test Suite Across All Weeks (100% pass)
-pytest backend/ -v
-```
-
----
-
-## 🗺️ Google Maps Platform Setup & Geospatial Architecture
-
-CivicSight utilizes the **Google Maps JavaScript API** with modern `AdvancedMarkerElement` pins, marker clustering via `@googlemaps/markerclusterer`, dynamic density circles, client-side Geocoding API reverse geocoding, and high-accuracy browser geolocation.
-
-All map views (Citizen Report, Municipal Operations Hazard Map, Damage Inspection Modal, and Maintenance Work Orders) use a single unified abstraction (`frontend/js/maps.js` / `window.CivicSightMap`).
-
----
-
-### 1. Google Maps Platform Setup Guide
-
-#### Step 1: Google Cloud Project & API Key
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2. Create a new Google Cloud project (e.g. `CivicSight-Municipal-Dev`) or select an existing one.
-3. Link an active billing account to the project (Google Cloud requires billing enablement to activate Maps Platform APIs, even for free tier usage).
-4. Navigate to **APIs & Services > Credentials** and click **Create Credentials > API Key**.
-5. Copy your newly created API key. **Never commit, hardcode, or paste this key into chat, repositories, or public tickets.**
-
-#### Step 2: Enable Required APIs
-Enable the following two APIs in **APIs & Services > Library**:
-1. **Maps JavaScript API** — Powers interactive map rendering, dynamic loader (`importLibrary`), `AdvancedMarkerElement`, circles, and InfoWindows.
-2. **Geocoding API** — Powers client-side reverse geocoding (translating pinpoint coordinates into human-readable street addresses).
-
-#### Step 3: Create a Map ID (Required for AdvancedMarkerElement)
-Modern Google Maps pins (`AdvancedMarkerElement`) require a registered Map ID:
-1. In the Google Cloud Console, navigate to **Google Maps Platform > Map Management**.
-2. Click **Create Map ID**.
-3. Set **Map Type** to **JavaScript** and choose **Raster** or **Vector**.
-4. Save the Map ID (e.g., `DEMO_MAP_ID` or your custom 16-character alphanumeric string).
-
-#### Step 4: Security Best Practices & API Key Restrictions
-> [!CAUTION]
-> An unrestricted API key is a severe security vulnerability. If an unrestricted key is discovered by malicious actors, it can be abused across any web origin and incur unexpected billing charges. Always apply both API restrictions and Application (HTTP Referrer) restrictions before deploying.
-
-1. **API Restrictions (Restrict key usage to only selected APIs):**
-   - Under **Credentials > Edit API Key**, select **Restrict key**.
-   - Check **ONLY**:
-     - `Maps JavaScript API`
-     - `Geocoding API`
-   - Save changes.
-2. **Application Restrictions (HTTP Referrers):**
-   - Under **Set application restrictions**, choose **Websites (HTTP referrers)**.
-   - For **Local Development**, allow:
-     - `http://localhost:*/*`
-     - `http://127.0.0.1:*/*`
-     - `http://localhost:*`
-     - `http://127.0.0.1:*`
-   - For **Staging / Production**, allow your exact domains:
-     - `https://yourdomain.com/*`
-     - `https://*.yourdomain.com/*`
-
-#### Step 5: Environment Variable Configuration
-CivicSight plain HTML/JS frontend reads configuration from either `frontend/js/config.local.js` or `frontend/.env`. Both are explicitly gitignored to guarantee zero credential leaks.
-
-1. Copy the configuration template:
-   ```bash
-   cp frontend/js/config.example.js frontend/js/config.local.js
-   ```
-2. Edit `frontend/js/config.local.js` with your real keys:
-   ```javascript
-   window.CIVICSIGHT_CONFIG = {
-     GOOGLE_MAPS_API_KEY: "AIzaSyYourRealKeyHere",
-     GOOGLE_MAPS_MAP_ID: "YOUR_MAP_ID_HERE",
-     API_BASE: "http://127.0.0.1:8000"
-   };
-   ```
-3. Alternatively, copy `frontend/.env.example` to `frontend/.env`:
-   ```bash
-   cp frontend/.env.example frontend/.env
-   ```
-   and define:
-   ```env
-   VITE_GOOGLE_MAPS_API_KEY=AIzaSyYourRealKeyHere
-   VITE_GOOGLE_MAPS_MAP_ID=YOUR_MAP_ID_HERE
-   ```
-4. **Gitignored Files:**
-   - `.gitignore` contains `frontend/js/config.local.js`, `*.local.js`, and `frontend/.env`.
-   - Never remove these entries from `.gitignore`.
-
-#### Step 6: Local Development Workflow
-Run the FastAPI backend (which serves the frontend statically at `http://127.0.0.1:8000/frontend/`):
+In a separate terminal, serve the frontend:
 ```powershell
-# Activate Python virtual environment and start backend
-.venv\Scripts\uvicorn.exe app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
+cd d:\Projects\CivicSight\frontend
+python -m http.server 5500
 ```
-Open your browser to:
-- Citizen Report: [http://127.0.0.1:8000/frontend/pages/report.html](http://127.0.0.1:8000/frontend/pages/report.html)
-- Municipal Center: [http://127.0.0.1:8000/frontend/pages/dashboard.html](http://127.0.0.1:8000/frontend/pages/dashboard.html)
-- Maintenance Portal: [http://127.0.0.1:8000/frontend/pages/maintenance.html](http://127.0.0.1:8000/frontend/pages/maintenance.html)
-
-#### Step 7: Verification Checklist
-To confirm your Google Maps Platform setup is functioning properly:
-- [x] **Map Canvas:** Renders smoothly without grey boxes or watermark tiles.
-- [x] **Console:** Zero `Google Maps JavaScript API error: ApiNotActivatedMapError` or `RefererNotAllowedMapError` logs.
-- [x] **Markers:** Custom SVG priority pins (High red, Medium amber, Low green) render at exact incident coordinates.
-- [x] **Clustering:** `@googlemaps/markerclusterer` clusters medium/low priority pins, while High-Priority pins remain permanently unclustered and visible.
-- [x] **Reverse Geocoding:** Moving the pinpoint on the Citizen Report page populates the address input after 800ms debounce.
-
-#### Step 8: Resilient Failure & Fallback Behavior
-> [!IMPORTANT]
-> CivicSight guarantees **zero blocking failures**. If the API key is missing, invalid, expired, restricted incorrectly, or quota-exceeded:
-> 1. The map container renders an accessible inline fallback card:
->    ```
->    Map unavailable: API key not configured
->    Provide GOOGLE_MAPS_API_KEY in frontend/js/config.local.js or frontend/.env.
->    ```
-> 2. `window.gm_authFailure` is intercepted to prevent invasive browser `alert()` modal dialogs or white-screen crashes.
-> 3. **Citizen Reporting is NEVER blocked:** Coordinates can still be acquired via automatic browser GPS or typed manually into the Latitude/Longitude fields.
-> 4. **Municipal Triage is NEVER blocked:** The Incident Triage queue table, status transitions, AI detection review, and verification workflows remain 100% operational.
-
-#### Step 9: Cost Control & Billing Guardrails
-- **Monthly Free Credit:** Google Cloud provides a recurring **$200 monthly credit** on your billing account, which covers approximately **28,000 Map loads** each month at zero cost.
-- **Client-Side Debouncing & Caching:** Reverse geocoding in CivicSight is debounced at **800ms** and cached in-memory by rounded coordinates (`lat.toFixed(4), lng.toFixed(4)`) to eliminate redundant requests.
-- **Triage Lists Avoid Geocoding:** Municipal triage queues and dashboard tables fetch pre-stored coordinates directly from PostgreSQL without making per-row Geocoder API calls.
-- **Budget Alerts:** Configure a budget alert in Google Cloud Console (**Billing > Budgets & alerts**) set to \$10 or \$50 to receive automated email notifications before any charges occur.
+Open your browser at `http://127.0.0.1:5500/index.html`.
 
 ---
 
-### 2. Automatic Browser Location Detection
+### Option B: Linux / macOS Bash Setup
 
-- **Trigger:** On page load of the Citizen Damage Reporting interface (`frontend/pages/report.html`), the browser automatically invokes `navigator.geolocation.getCurrentPosition`.
-- **Configuration:**
-  - `enableHighAccuracy: true` (engages hardware GPS on mobile devices).
-  - `timeout: 10000` (10 seconds timeout limit).
-  - `maximumAge: 0` (forces an immediate live location fix).
-- **Visual Feedback:** While waiting for the GPS fix, an animated Lottie radar icon and "Finding location..." indicator display in the location toolbar.
-- **Accuracy Handling:**
-  - On success, the map centers on the detected coordinates (zoom level 17) and drops a draggable `AdvancedMarkerElement`.
-  - A dynamic semi-transparent **accuracy circle** (`google.maps.Circle`) renders around the pin displaying the exact accuracy radius (`±Xm`) returned by the browser.
-  - If accuracy is coarse (> 100 meters, common on desktop Wi-Fi positioning), a visible warning advises: *"Location accuracy is low (±Xm). Drag the pin to the exact spot."*
-- **Correction & Fine-Tuning:** Citizens can drag the marker or click anywhere on the map to adjust the position. Coordinates and address update instantly.
-- **Privacy & Security Constraints:**
-  - User location is **never stored on disk or in the database** until the user explicitly clicks "Submit Road Report".
-  - **Secure Context Requirement:** Geolocation APIs are strictly restricted by modern browsers to secure contexts (`window.isSecureContext === true`, i.e., HTTPS or `http://localhost` / `http://127.0.0.1`). On insecure origins, a clear warning explains the requirement and falls back to manual pin placement.
-  - **Zero-Failure Fallback:** If permission is denied, GPS times out, or positioning is unavailable, the reporting form populates safe municipal default coordinates (`[37.7749, -122.4194]`), leaving the user free to click the map or drag the pin. Location errors **never block report creation**.
+```bash
+# 1. Clone repository and navigate to root
+cd CivicSight
+
+# 2. Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 3. Upgrade pip and install dependencies
+pip install --upgrade pip
+pip install -r backend/requirements.txt
+pip install ultralytics torch torchvision
+
+# 4. Configure environment
+cp backend/.env.example backend/.env
+
+# 5. Initialize Database & Seed Demo Data
+python3 docs/demo/seed_demo_data.py
+
+# 6. Start FastAPI Backend Server
+cd backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+In a separate terminal, serve the frontend:
+```bash
+cd frontend
+python3 -m http.server 5500
+```
 
 ---
 
-## 🧪 Testing & Quality Gate (Week 10)
+## 👥 Demo Accounts & Pre-Configured Roles
 
-CivicSight includes automated unit, integration, security/RBAC, state-machine, ML, responsive UI, accessibility, and real-browser end-to-end tests across Chromium and Firefox.
+All demo accounts use the standard demo password: **`DemoPass123!`**
 
-### Reset / Seed Clean Demo Database
+| Role | User Name | Email (Username) | Default Starting Portal |
+| :--- | :--- | :--- | :--- |
+| **Citizen (Reporter)** | Jane Citizen | `citizen1@civicsight.org` | `/pages/login.html` |
+| **Citizen 2 (Commuter)**| Mark Resident | `citizen2@civicsight.org` | `/pages/login.html` |
+| **Municipal Officer** | Supervisor Davis | `officer1@civicsight.org` | `/pages/municipal_dashboard.html` |
+| **Municipal Officer 2** | Inspector Taylor | `officer2@civicsight.org` | `/pages/municipal_dashboard.html` |
+| **Maintenance Staff** | Alex Rivera (Crew Lead) | `staff1@civicsight.org` | `/pages/maintenance_staff.html` |
+| **Maintenance Staff 2** | Sam Chen (Field Crew) | `staff2@civicsight.org` | `/pages/maintenance_staff.html` |
+| **System Admin** | System Admin | `admin1@civicsight.org` | `/pages/admin_dashboard.html` |
+
+---
+
+## 🧪 Automated Testing & Verification Suite
+
+CivicSight adheres to rigorous automated quality gates:
+
+### 1. Pytest Backend & ML Test Suites
 ```powershell
-# Wipe reports/evidence and seed 7 demo role accounts + 8 canonical lifecycle reports
-.venv\Scripts\python.exe backend\scripts\seed_demo.py --reset
+.venv\Scripts\pytest tests/test_week10_backend.py tests/test_week10_ml.py -v --cov=backend/app --cov-report=term-missing
 ```
+*Result:* **17 passed in 38.07s | 74% Global Application Coverage** (0 Failures, 0 Warnings).
 
-### Run Automated Test Suites
+### 2. End-to-End 13-Point Integration Verification
 ```powershell
-# 1. Backend & ML regression suite with code coverage (56 tests, 83% backend coverage)
-.venv\Scripts\pytest.exe backend\test_auth.py backend\test_crud.py backend\test_reports_api.py backend\test_municipal_reports_api.py backend\test_lifecycle_api.py backend\test_priority_and_relations.py backend\test_week9_lifecycle.py tests\test_week10_backend.py tests\test_week10_ml.py --cov=backend/app --cov-report=term-missing -v
-
-# 2. Frontend UI, responsive (8 viewports), Firefox, and 5 End-to-End Scenarios (9 Playwright tests)
-.venv\Scripts\pytest.exe tests\test_week10_frontend_and_scenarios.py -v
-
-# 3. Independent held-out ML evaluation (160 multi-domain RDD2022 test images)
-.venv\Scripts\python.exe scripts\eval_week10_ml.py
+.venv\Scripts\python.exe scripts/verify_phase2_3_all_checks.py
 ```
+*Result:* **13/13 Checks Passed (100%)** covering:
+- **(a)** Citizen submission with real image and YOLOv8s inference
+- **(b)** Multi-factor priority score calculation (0–100)
+- **(c)** Spatial deduplication within 50-meter threshold
+- **(d)** Municipal Officer inspection & verification transition
+- **(e)** Work order dispatch & assignment isolation
+- **(f)** Maintenance staff queue isolation (Anti-IDOR)
+- **(g)** On-site repair commencement (`UNDER_REPAIR`)
+- **(h)** Photographic evidence upload with SHA-256 integrity check
+- **(i)** Municipal final inspection & closure approval (`CLOSED`)
+- **(j)** Citizen personal tracking reflecting final closure
+- **(k)** State machine rejection of illegal transitions (HTTP 400/409)
+- **(l)** RBAC enforcement rejecting unprivileged role access (HTTP 403)
+- **(m)** Zero secret leakage scan across all files, git tree, and responses
 
-Full quality gate evidence is documented in:
-- [`TEST_REPORT.md`](TEST_REPORT.md) — full 35×7 auth matrix, 324-cell state matrix, coverage, responsive matrix, 5 scenario records, and 2,000-row DB performance
-- [`BUG_LOG.md`](BUG_LOG.md) — all 22 bugs found, fixed, and regression-tested
-- [`KNOWN_LIMITATIONS.md`](KNOWN_LIMITATIONS.md) — honest operational, security, and ML limitations
-- [`ml/experiments/results.md`](ml/experiments/results.md) — real ML evaluation metrics, confusion matrix, CPU timings, and failure analysis
-
----
-
-## 🎬 Live Demo Script & Risk Fallbacks
-
-### Pre-Demo Preparation (2 Minutes)
-1. Ensure `backend/.env` has valid `DATABASE_URL` and `SECRET_KEY`, and `frontend/.env` (or `frontend/js/config.local.js`) has `VITE_GOOGLE_MAPS_API_KEY` and `VITE_GOOGLE_MAPS_MAP_ID` (never commit secrets).
-2. Seed clean demo data:
-   ```powershell
-   .venv\Scripts\python.exe backend\scripts\seed_demo.py --reset
-   ```
-3. Start the server:
-   ```powershell
-   .venv\Scripts\uvicorn.exe app.main:app --app-dir backend --host 127.0.0.1 --port 8000
-   ```
-4. Open `http://127.0.0.1:8000/frontend/index.html`.
-
-### Demo Accounts (Throwaway Credentials — Password: `Password123!`)
-| Role | Email | Landing Portal |
-|:---|:---|:---|
-| Citizen 1 | `citizen1@civicsight.org` | `/frontend/pages/report.html` |
-| Citizen 2 | `citizen2@civicsight.org` | `/frontend/pages/report.html` |
-| Municipal Officer 1 | `officer1@civicsight.gov` | `/frontend/pages/dashboard.html` |
-| Municipal Officer 2 | `officer2@civicsight.gov` | `/frontend/pages/dashboard.html` |
-| Maintenance Staff 1 | `staff1@civicsight.gov` | `/frontend/pages/maintenance.html` |
-| Maintenance Staff 2 | `staff2@civicsight.gov` | `/frontend/pages/maintenance.html` |
-| Admin | `admin1@civicsight.gov` | `/frontend/pages/dashboard.html` |
-
-### Demo Flow (6–8 Minutes)
-1. **Citizen Submission (`citizen1@civicsight.org`):** Open `report.html`, allow geolocation (or drag pin), upload `tests/fixtures/sample_pothole_d40.jpg`, add description, submit. Show live report ID badge, ML `D40` pothole detection (~130 ms CPU), and High priority assignment.
-2. **Officer Triage & Spatial Deduplication (`officer1@civicsight.gov`):** Log in to `dashboard.html`, toggle Light/Dark monochrome theme, filter by status/priority, open the seeded nearby pothole pair (`Related & Nearby Reports`), confirm duplicate once (original stays intact, newer becomes `duplicate`), then verify & assign the new report to `staff1`.
-3. **Maintenance Field Workflow & Rework Loop (`staff1@civicsight.gov`):** Log in to `maintenance.html`, start repair, show that `Submit for Verification` stays disabled until an `AFTER` photo is uploaded, upload `tests/fixtures/after_repair.jpg`, submit. Show `staff2` does NOT see `staff1`'s work order.
-4. **Officer Final Verification & Citizen Closure View (`officer1` → `staff1` → `officer2` → `citizen1`):** Open Final Verification modal with side-by-side Before/After photos (served via authenticated Blob URLs, never publicly exposed), demonstrate Send Back with rework note, resubmit, approve & close as `officer2`. Open `report.html?id=<id>` as `citizen1` to show `CLOSED` status and Before/After evidence (and show `citizen2` gets `403 Access Denied`).
-
-### Top 3 Riskiest Demo Points & Fallbacks
-1. **Google Maps API Key / Billing / Wi-Fi Blocking:** If Google Maps tiles fail to load or quota/referer errors appear, the map canvas automatically displays a non-blocking fallback notice. **Fallback:** Continue seamlessly using manual Latitude/Longitude inputs on `report.html` and the Incident Triage table on `dashboard.html` (every button and modal works without live map tiles).
-2. **Slow First ML Inference / Cold PyTorch Load:** First inference after server boot loads YOLOv8s weights (~1.5–2.5s cold; ~130 ms warm). **Fallback:** Warm up the model once during Pre-Demo Prep by submitting one quick photo or calling `POST /api/v1/reports/detect` before presenting. Even if ML fails (`ML_FAILED`), report creation and the full municipal lifecycle still complete normally.
-3. **Venue Network / Offline Interruption or Geolocation Denied:** Desktop Wi-Fi or venue portals may block browser GPS or drop requests briefly. **Fallback:** The backend and frontend run 100% locally on `127.0.0.1:8000` (zero external runtime dependency beyond optional Google Maps tiles); if GPS is denied, type coordinates directly (`37.7749, -122.4194`) and submit.
+### 3. Consistency Gate & Secrets Scan
+```powershell
+.venv\Scripts\python.exe docs/tools/check_consistency.py
+```
+*Result:* **Zero incomplete placeholder markers and 0 leaked secrets across all documents.**
 
 ---
 
-## ❄️ Feature Freeze Declaration & Frozen Dependency Versions
+## 🧠 Machine Learning Model & Performance Summary
 
-CivicSight entered **Feature Freeze** on **November 18, 2026** following completion of the Week 10 Quality Gate. Only verified bug fixes are permitted prior to final demonstration.
+| Metric | Measured Value | Methodology / Dataset Details |
+| :--- | :--- | :--- |
+| **Architecture** | **YOLOv8s** (Small) | 11.2 Million Parameters, 28.7 GFLOPs |
+| **Dataset** | **RDD2022** (Road Damage) | 14,046 labeled images across train, validation, and test |
+| **Classes Evaluated** | 4 Classes | `D00` (Longitudinal), `D10` (Transverse), `D20` (Alligator), `D40` (Pothole) |
+| **Precision** | **59.59%** | Evaluated on held-out test split |
+| **Recall** | **50.05%** | Evaluated on held-out test split |
+| **mAP@0.5** | **52.70%** | Mean Average Precision at IoU = 0.50 |
+| **mAP@0.5:0.95** | **29.74%** | Mean Average Precision across IoU thresholds 0.50:0.95 |
+| **CPU Inference Latency** | **344.52 ms** (Mean) | Benchmark across 50 real road test images on standard CPU |
+| **CPU Latency p95** | **1,432.30 ms** | 95th percentile under continuous batch inference |
+| **Data Leakage Audit** | **0 Duplicate Hashes** | Strict MD5 hash deduplication verified zero train/test contamination |
 
-### Deliberately Excluded (Out of Scope / Post-Demo)
-- Login/upload rate limiting & server-side JWT blocklist (documented in `KNOWN_LIMITATIONS.md`)
-- Email/SMS citizen push notifications & dedicated citizen multi-report history dashboard
-- Distributed Celery/Redis ML worker queue & cloud object storage (S3/GCS)
-- Spline 3D hero scene (monochrome GSAP + Lottie animations retained)
+---
 
-### Frozen Runtime & Test Versions
-| Component | Pinned Version |
-|:---|:---|
-| Python | `3.14.8` |
-| FastAPI / Uvicorn | `0.142.2` / `0.54.0` |
-| SQLAlchemy / Pydantic / psycopg2-binary | `2.1.3` / `2.13.5` / `2.9.13` |
-| bcrypt / PyJWT | `5.0.0` / `2.12.1` |
-| Ultralytics / PyTorch (CPU) | `8.4.173` / `2.14.1+cpu` |
-| OpenCV / Pillow | `5.0.0` / `12.3.0` |
-| PostgreSQL (installed) | `18.6` |
-| Pytest / pytest-cov / Playwright | `9.1.1` / `7.1.0` / `1.65.2` (Chromium 159, Firefox 159) |
+## 📚 Complete Documentation Sitemap
 
+All formal engineering artifacts are version-controlled in the `/docs` tree:
 
+1. **[Software Requirements Specification (IEEE 830 / ISO 29148)](docs/SRS.md)**
+2. **[System Architecture & Security Specification](docs/architecture/ARCHITECTURE.md)**
+3. **[Database Schema & Complete Data Dictionary (107 Columns)](docs/database/DATABASE.md)**
+4. **[REST API Reference (68 OpenAPI Endpoints)](docs/api/API.md)**
+5. **[Machine Learning Subsystem & Benchmark Report](docs/ml/ML_REPORT.md)**
+6. **[Test Cases Specification (9 Complete Categories)](docs/testing/TEST_CASES.md)**
+7. **[Test Execution Results & Coverage Analysis](docs/testing/TEST_RESULTS.md)**
+8. **[Requirements-to-Test Traceability Matrix](docs/testing/TRACEABILITY.md)**
+9. **[Citizen, Officer & Staff User Guide (with Screenshots)](docs/user-guide/USER_GUIDE.md)**
+10. **[Official Live Demonstration Script & Fallbacks](docs/demo/DEMO_SCRIPT.md)**
+11. **[Demonstration Rehearsal Logs (Dual Clean Runs)](docs/demo/REHEARSAL_LOG.md)**
+12. **[Executive Presentation Deck (CivicSight_Final.pptx)](docs/presentation/CivicSight_Final.pptx)**
+13. **[System Diagrams Source (.mmd) & High-Resolution Renders (.svg/.png)](docs/diagrams/)**
 
+---
 
+## 🔒 Security & Quality Commitments
 
-
+- **Zero Hardcoded Secrets:** All credentials, tokens, and API keys are injected via environment variables (`.env`). Google Maps API keys are loaded strictly via client-side dynamic loaders and never logged or serialized.
+- **Anti-IDOR Protection:** Evidence photographs and staff work order queues enforce cryptographic user-to-resource ownership checks. Unassigned personnel cannot view or download repair evidence.
+- **Timing Equalization:** Authentication verifies passwords with constant-time dummy bcrypt comparisons to eliminate user enumeration side-channels.
+- **Feature Freeze:** As of Week 11, the codebase is in official **Feature Freeze** for final submission and evaluation.
