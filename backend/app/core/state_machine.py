@@ -94,6 +94,7 @@ LEGAL_TRANSITIONS: Dict[ReportStatus, Set[ReportStatus]] = {
     },
     ReportStatus.VERIFIED: {
         ReportStatus.ASSIGNED,
+        ReportStatus.PENDING_VERIFICATION,  # Mistake recovery / undo verification
     },
     ReportStatus.ASSIGNED: {
         ReportStatus.UNDER_REPAIR,
@@ -106,9 +107,11 @@ LEGAL_TRANSITIONS: Dict[ReportStatus, Set[ReportStatus]] = {
         ReportStatus.CLOSED,        # Officer approved
         ReportStatus.UNDER_REPAIR,  # Officer rejected / sent back for rework
     },
-    # Terminal states
+    # Terminal states (Reversal permitted with logged audit reason)
     ReportStatus.CLOSED: set(),
-    ReportStatus.REJECTED: set(),
+    ReportStatus.REJECTED: {
+        ReportStatus.PENDING_VERIFICATION,  # Mistake recovery / undo rejection
+    },
     ReportStatus.DUPLICATE: set(),
 }
 
@@ -124,6 +127,8 @@ ROLE_TRANSITIONS: Dict[str, Set[tuple[ReportStatus, ReportStatus]]] = {
         (ReportStatus.PENDING_VERIFICATION, ReportStatus.REJECTED),
         (ReportStatus.PENDING_VERIFICATION, ReportStatus.DUPLICATE),
         (ReportStatus.VERIFIED, ReportStatus.ASSIGNED),
+        (ReportStatus.VERIFIED, ReportStatus.PENDING_VERIFICATION),  # Mistake recovery: Reverse verification
+        (ReportStatus.REJECTED, ReportStatus.PENDING_VERIFICATION),  # Mistake recovery: Reverse rejection
         (ReportStatus.ASSIGNED, ReportStatus.VERIFIED),  # Unassign
         (ReportStatus.ASSIGNED, ReportStatus.UNDER_REPAIR),
         (ReportStatus.UNDER_REPAIR, ReportStatus.REPAIR_EVIDENCE_SUBMITTED),
@@ -139,6 +144,7 @@ ROLE_TRANSITIONS: Dict[str, Set[tuple[ReportStatus, ReportStatus]]] = {
         (ReportStatus.PENDING_VERIFICATION, ReportStatus.REJECTED),
         (ReportStatus.PENDING_VERIFICATION, ReportStatus.DUPLICATE),
         (ReportStatus.VERIFIED, ReportStatus.ASSIGNED),
+        (ReportStatus.VERIFIED, ReportStatus.PENDING_VERIFICATION),  # Mistake recovery
         (ReportStatus.ASSIGNED, ReportStatus.VERIFIED),
         (ReportStatus.ASSIGNED, ReportStatus.UNDER_REPAIR),
         (ReportStatus.UNDER_REPAIR, ReportStatus.REPAIR_EVIDENCE_SUBMITTED),

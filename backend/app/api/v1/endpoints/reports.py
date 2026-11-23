@@ -46,6 +46,7 @@ from app.schemas.schemas import (
     ReportResponse,
     ReportVerifyRequest,
     ReportRejectRequest,
+    DecisionReversalRequest,
     ReportDuplicateRequest,
     ReportAssignRequest,
     ReportStatusHistoryResponse,
@@ -204,7 +205,11 @@ def validate_transition(
                     detail="Report is already verified.",
                 )
 
-        if curr in TERMINAL_STATUSES and not (user_role == "Admin" and tgt == ReportStatus.PENDING_VERIFICATION):
+        if curr in TERMINAL_STATUSES and not (
+            user_role in ("Admin", "Municipal Officer")
+            and curr == ReportStatus.REJECTED
+            and tgt == ReportStatus.PENDING_VERIFICATION
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot transition report from terminal state '{curr.value}' to '{tgt.value}'.",
@@ -785,6 +790,41 @@ def list_reports(
 
 
 @router.get(
+    "/mine",
+    response_model=List[ReportResponse],
+    summary="List caller's submitted road damage reports (Citizen report tracking)",
+)
+def list_my_reports(
+    status_filter: Optional[ReportStatus] = Query(None, alias="status", description="Filter by lifecycle status"),
+    skip: int = Query(0, ge=0, description="Pagination skip offset"),
+    limit: int = Query(100, ge=1, le=200, description="Max results per page"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieves all incident reports submitted by the authenticated citizen.
+    
+    Enforces strict backend data isolation: citizens NEVER see other citizens' reports.
+    Results are returned in descending chronological order with full lifecycle tracking.
+    """
+    skip_val = skip if isinstance(skip, int) else (skip.default if hasattr(skip, "default") and isinstance(skip.default, int) else 0)
+    limit_val = limit if isinstance(limit, int) else (limit.default if hasattr(limit, "default") and isinstance(limit.default, int) else 100)
+    
+    query = db.query(Report).filter(Report.reporter_id == current_user.id)
+    if status_filter and not hasattr(status_filter, "default"):
+        query = query.filter(Report.status == status_filter)
+
+    query = query.order_by(Report.created_at.desc())
+    reports = query.offset(skip_val).limit(limit_val).all()
+
+    for rep in reports:
+        rep.has_pending_relations = False
+        rep.related_reports = []
+        populate_report_lifecycle_details(rep, db)
+
+    return reports
+
+
+@router.get(
     "/{report_id}",
     response_model=ReportResponse,
     summary="Get report by ID (Municipal/Admin or owning Citizen or assigned Staff)",
@@ -1228,6 +1268,92 @@ def reject_report(
         report_id=report.id,
         from_status=prev_status,
         to_status=ReportStatus.REJECTED.value,
+        user=current_user,
+        note=note_text,
+    )
+    db.commit()
+    db.refresh(report)
+    populate_report_lifecycle_details(report, db)
+    populate_report_relations(report, db, is_privileged=True)
+    return report
+
+
+@router.post(
+    "/{report_id}/reverse-decision",
+    response_model=ReportResponse,
+    summary="Reverse a mistaken verification or rejection decision (Officer/Admin only)",
+)
+@router.patch(
+    "/{report_id}/reverse-decision",
+    response_model=ReportResponse,
+    summary="Reverse a mistaken verification or rejection decision (compat)",
+)
+def reverse_report_decision(
+    report_id: int,
+    body: DecisionReversalRequest,
+    current_user: User = Depends(require_roles(UserRole.MUNICIPAL_OFFICER, UserRole.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    """Safely reverses a mistaken verification or rejection with mandatory reason and full audit trail.
+    
+    - If VERIFIED: checks that report is not currently assigned to a maintenance crew. Reverts status to 'pending_verification'.
+    - If REJECTED: clears active rejection reason and reverts status to 'pending_verification'.
+    - Restores the report to the active triage queue without deleting previous audit entries.
+    - Appends an audit entry recording who reversed the decision, when, and why.
+    """
+    try:
+        report = db.query(Report).filter(Report.id == report_id).with_for_update().first()
+    except Exception:
+        report = db.query(Report).filter(Report.id == report_id).first()
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found.",
+        )
+
+    prev_status = report.status.value
+    now = datetime.utcnow()
+    expected_version = report.version or 1
+
+    if report.status == ReportStatus.VERIFIED:
+        # Ensure not currently assigned
+        active_assignment = (
+            db.query(Assignment)
+            .filter(Assignment.report_id == report.id, Assignment.is_active == True)
+            .first()
+        )
+        if active_assignment or report.current_assignee_id or report.status == ReportStatus.ASSIGNED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot reverse verification: Report is currently assigned to a maintenance crew. Please unassign the work order first.",
+            )
+
+        validate_transition(report.status, ReportStatus.PENDING_VERIFICATION, user_role=current_user.role.value)
+        report.status = ReportStatus.PENDING_VERIFICATION
+        report.version = expected_version + 1
+        report.updated_at = now
+        note_text = f"Verification reversed by {current_user.name}. Reason: {body.reason.strip()}"
+
+    elif report.status == ReportStatus.REJECTED:
+        validate_transition(report.status, ReportStatus.PENDING_VERIFICATION, user_role=current_user.role.value)
+        report.status = ReportStatus.PENDING_VERIFICATION
+        report.rejection_reason = None
+        report.version = expected_version + 1
+        report.updated_at = now
+        note_text = f"Rejection reversed by {current_user.name}. Reason: {body.reason.strip()}"
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot reverse decision on report with status '{report.status.value}'. Mistake recovery is only applicable to 'verified' or 'rejected' reports.",
+        )
+
+    record_status_history(
+        db=db,
+        report_id=report.id,
+        from_status=prev_status,
+        to_status=ReportStatus.PENDING_VERIFICATION.value,
         user=current_user,
         note=note_text,
     )
@@ -1717,7 +1843,7 @@ def start_repair(
     report.version = (report.version or 1) + 1
     report.updated_at = datetime.utcnow()
 
-    note_text = note.strip() if note and note.strip() else f"Repair commenced on-site by {current_user.name}"
+    note_text = note.strip() if note and isinstance(note, str) and note.strip() else f"Repair commenced on-site by {current_user.name}"
     record_status_history(
         db=db,
         report_id=report.id,
@@ -1919,7 +2045,7 @@ async def submit_repair_evidence(
     report.version = (report.version or 1) + 1
     report.updated_at = datetime.utcnow()
 
-    note_text = note.strip() if note and note.strip() else f"Repair completed and evidence submitted by {current_user.name}"
+    note_text = note.strip() if note and isinstance(note, str) and note.strip() else f"Repair completed and evidence submitted by {current_user.name}"
     record_status_history(
         db=db,
         report_id=report.id,

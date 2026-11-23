@@ -99,9 +99,10 @@ def get_my_assignments(
     Enforces strict access isolation: staff members NEVER see reports assigned to other staff.
     Results are sorted by priority (HIGH first), then creation timestamp.
     """
+    view_val = view if isinstance(view, str) else (getattr(view, "default", "active") or "active")
     query = db.query(Report)
 
-    if view == "completed":
+    if view_val == "completed":
         # Completed/closed reports where this staff was assigned
         query = query.filter(
             or_(
@@ -112,7 +113,7 @@ def get_my_assignments(
             ),
             Report.status == ReportStatus.CLOSED,
         )
-    elif view == "active":
+    elif view_val == "active":
         # Active assignments currently under this staff's responsibility
         query = query.filter(
             or_(
@@ -140,7 +141,7 @@ def get_my_assignments(
             )
         )
 
-    if status_filter:
+    if status_filter and isinstance(status_filter, str):
         s_val = status_filter.strip().lower()
         query = query.filter(Report.status == s_val)
 

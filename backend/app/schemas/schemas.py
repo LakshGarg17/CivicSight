@@ -181,6 +181,18 @@ class ReportRejectRequest(BaseModel):
         return v
 
 
+class DecisionReversalRequest(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500, description="Mandatory reason explaining the reversal of the decision")
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 3:
+            raise ValueError("Reversal reason must be at least 3 characters")
+        return v
+
+
 class ReportDuplicateRequest(BaseModel):
     original_report_id: int = Field(..., ge=1, description="ID of the original report that this duplicates")
     note: Optional[str] = Field(None, description="Additional context or notes")
