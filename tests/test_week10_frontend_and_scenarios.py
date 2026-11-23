@@ -12,6 +12,8 @@ import subprocess
 import sys
 import time
 import urllib.request
+import urllib.error
+from typing import Any, Optional
 from pathlib import Path
 
 import pytest
@@ -104,7 +106,7 @@ def _db_query(db_path: Path, sql: str, params=()):
         conn.close()
 
 
-def _api_request(method: str, path: str, token=None, json_body=None):
+def _api_request(method: str, path: str, token: Optional[str] = None, json_body: Optional[Any] = None) -> tuple[int, Any]:
     data = json.dumps(json_body).encode("utf-8") if json_body is not None else None
     headers = {"Accept": "application/json"}
     if json_body is not None:
@@ -123,10 +125,11 @@ def _api_request(method: str, path: str, token=None, json_body=None):
             return e.code, {"detail": raw}
 
 
-def _api_login(email: str, password: str = "Password123!") -> tuple[str, dict]:
+def _api_login(email: str, password: str = "Password123!") -> tuple[str, Any]:
     st, body = _api_request("POST", "/api/v1/auth/login", json_body={"email": email, "password": password})
     assert st == 200, f"API login failed for {email}: {st} {body}"
-    return body["access_token"], body["user"]
+    assert isinstance(body, dict), f"API login did not return a dict: {body}"
+    return str(body["access_token"]), body["user"]
 
 
 def _ui_login(page, email: str, password: str = "Password123!"):
@@ -154,9 +157,15 @@ def test_phase2_auth_pages_routing_and_role_guards(live_server):
 
         # Empty submit -> validation errors
         page.click("#registerSubmitBtn")
-        assert page.locator("#nameError").text_content().strip() != ""
-        assert page.locator("#emailError").text_content().strip() != ""
-        assert page.locator("#passwordError").text_content().strip() != ""
+        name_err = page.locator("#nameError").text_content()
+        assert name_err is not None, "Missing #nameError text"
+        assert name_err.strip() != ""
+        email_err = page.locator("#emailError").text_content()
+        assert email_err is not None, "Missing #emailError text"
+        assert email_err.strip() != ""
+        pwd_err = page.locator("#passwordError").text_content()
+        assert pwd_err is not None, "Missing #passwordError text"
+        assert pwd_err.strip() != ""
 
         # Mismatched password confirmation
         page.fill("#regName", "Playwright Citizen")
@@ -164,7 +173,9 @@ def test_phase2_auth_pages_routing_and_role_guards(live_server):
         page.fill("#regPassword", "Password123!")
         page.fill("#regConfirmPassword", "Different123!")
         page.click("#registerSubmitBtn")
-        assert "do not match" in page.locator("#confirmPasswordError").text_content().lower()
+        confirm_err = page.locator("#confirmPasswordError").text_content()
+        assert confirm_err is not None, "Missing #confirmPasswordError text"
+        assert "do not match" in confirm_err.lower()
 
         # Valid registration
         page.fill("#regConfirmPassword", "Password123!")
@@ -180,7 +191,9 @@ def test_phase2_auth_pages_routing_and_role_guards(live_server):
         page.fill("#regConfirmPassword", "Password123!")
         page.click("#registerSubmitBtn")
         page.wait_for_selector("#authErrorBanner", state="visible", timeout=8000)
-        assert "already exists" in page.locator("#authErrorMessage").text_content().lower()
+        auth_err = page.locator("#authErrorMessage").text_content()
+        assert auth_err is not None, "Missing #authErrorMessage text"
+        assert "already exists" in auth_err.lower()
 
         # 2. Login errors + role-based routing
         page.goto(f"{BASE_URL}/frontend/pages/login.html", wait_until="networkidle")
@@ -255,7 +268,9 @@ def test_phase2_report_form_validation_offline_and_map_fallback(live_server):
         # Phase 2.2: Invalid file formats rejected client-side & clear input
         for bad_f in ("unsupported.gif", "unsupported.pdf", "empty.jpg"):
             page.set_input_files("#damageImage", str(FIXTURES_DIR / bad_f))
-            assert page.locator("#imageInputError").text_content().strip() != ""
+            img_err = page.locator("#imageInputError").text_content()
+            assert img_err is not None, f"Missing #imageInputError for {bad_f}"
+            assert img_err.strip() != ""
 
         # Fake .txt renamed to .jpg -> rejected by backend magic-byte validation with readable error
         page.set_input_files("#damageImage", str(FIXTURES_DIR / "fake_text.jpg"))
@@ -666,7 +681,8 @@ def test_phase4_scenario3_officer_rejects_report(live_server):
         )
         assert st_prox == 201
         _, rels = _api_request("GET", f"/api/v1/reports/{prox_rep['id']}/related", token=off_tok)
-        assert all(r["related_report_id"] != rep_id for r in rels)
+        assert isinstance(rels, list), f"Expected list of relations, got {type(rels)}"
+        assert all(isinstance(r, dict) and r["related_report_id"] != rep_id for r in rels)
 
         # Rejecting an already-assigned report must fail
         _, r_asgn = _api_request("POST", "/api/v1/reports", token=cit_tok, json_body={"description": "Assigned reject test", "latitude": 37.725, "longitude": -122.475})
@@ -690,7 +706,10 @@ def test_phase4_scenario4_nearby_and_duplicate_reports(live_server):
     _, r5 = _api_request("POST", "/api/v1/reports", token=cit_tok, json_body={"description": "S4 R5 Far away ~5km", "latitude": 37.85500, "longitude": -122.49000, "damage_type": "D40"})
 
     _, rels_r1 = _api_request("GET", f"/api/v1/reports/{r1['id']}/related", token=off_tok)
-    rel_map = {item["related_report_id"]: item for item in rels_r1}
+    assert isinstance(rels_r1, list), f"Expected list of relations, got {type(rels_r1)}"
+    rel_map: dict[int, dict[str, Any]] = {
+        item["related_report_id"]: item for item in rels_r1 if isinstance(item, dict)
+    }
     assert rel_map[r2["id"]]["relation_type"] == "POTENTIAL_DUPLICATE"
     assert rel_map[r3["id"]]["relation_type"] == "NEARBY_RELATED"
     assert rel_map[r4["id"]]["relation_type"] == "NEARBY_RELATED"

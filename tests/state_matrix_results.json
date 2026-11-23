@@ -951,7 +951,7 @@
     "from": "rejected",
     "to": "pending_verification",
     "role": "Municipal Officer",
-    "allowed": false
+    "allowed": true
   },
   {
     "from": "rejected",
@@ -1815,13 +1815,13 @@
     "from": "verified",
     "to": "pending_verification",
     "role": "Municipal Officer",
-    "allowed": false
+    "allowed": true
   },
   {
     "from": "verified",
     "to": "pending_verification",
     "role": "Admin",
-    "allowed": false
+    "allowed": true
   },
   {
     "from": "verified",

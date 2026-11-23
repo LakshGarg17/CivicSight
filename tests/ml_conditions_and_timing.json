@@ -10,7 +10,7 @@
         "D00"
       ],
       "max_conf": 0.3368,
-      "inference_time_ms": 389.12
+      "inference_time_ms": 207.46
     },
     {
       "condition": "D10_transverse",
@@ -20,7 +20,7 @@
         "D10"
       ],
       "max_conf": 0.4837,
-      "inference_time_ms": 420.37
+      "inference_time_ms": 223.59
     },
     {
       "condition": "D20_alligator",
@@ -28,7 +28,7 @@
       "num_detections": 0,
       "classes": [],
       "max_conf": 0.0,
-      "inference_time_ms": 397.82
+      "inference_time_ms": 206.11
     },
     {
       "condition": "D40_pothole_rdd",
@@ -38,7 +38,7 @@
         "D20"
       ],
       "max_conf": 0.2556,
-      "inference_time_ms": 447.75
+      "inference_time_ms": 204.46
     },
     {
       "condition": "D40_pothole_phone",
@@ -50,7 +50,7 @@
         "D00"
       ],
       "max_conf": 0.5105,
-      "inference_time_ms": 682.78
+      "inference_time_ms": 202.6
     },
     {
       "condition": "no_damage_road",
@@ -58,7 +58,7 @@
       "num_detections": 0,
       "classes": [],
       "max_conf": 0.0,
-      "inference_time_ms": 2509.6
+      "inference_time_ms": 202.93
     },
     {
       "condition": "non_road_scene",
@@ -66,7 +66,7 @@
       "num_detections": 0,
       "classes": [],
       "max_conf": 0.0,
-      "inference_time_ms": 864.26
+      "inference_time_ms": 203.87
     },
     {
       "condition": "blurry_dark_night",
@@ -74,7 +74,7 @@
       "num_detections": 0,
       "classes": [],
       "max_conf": 0.0,
-      "inference_time_ms": 504.04
+      "inference_time_ms": 197.89
     },
     {
       "condition": "exif_rotated_phone",
@@ -84,7 +84,7 @@
         "D40"
       ],
       "max_conf": 0.3978,
-      "inference_time_ms": 1293.42
+      "inference_time_ms": 211.91
     },
     {
       "condition": "very_large_4096x3072",
@@ -92,7 +92,7 @@
       "num_detections": 0,
       "classes": [],
       "max_conf": 0.0,
-      "inference_time_ms": 433.56
+      "inference_time_ms": 214.96
     },
     {
       "condition": "tiny_16x16",
@@ -100,12 +100,12 @@
       "num_detections": 0,
       "classes": [],
       "max_conf": 0.0,
-      "inference_time_ms": 446.5
+      "inference_time_ms": 207.71
     }
   ],
   "timing_samples": 16,
-  "cpu_mean_ms": 654.66,
-  "cpu_p95_ms": 1293.42,
-  "cpu_min_ms": 282.32,
-  "cpu_max_ms": 2509.6
+  "cpu_mean_ms": 216.2,
+  "cpu_p95_ms": 223.59,
+  "cpu_min_ms": 197.89,
+  "cpu_max_ms": 305.55
 }
