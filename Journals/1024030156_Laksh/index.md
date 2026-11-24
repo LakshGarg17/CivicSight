@@ -13,4 +13,6 @@ Name: Laksh Garg
 - [Week 8 — Priority Calculation and Duplicate Detection](./week-8.md)
 - [Week 9 — Final Model Evaluation and Workflow Testing](./week-9.md)
 - [Week 10 — ML Evaluation and System Integration Testing](./week-10.md)
+- [Week 11 — Backend Documentation and Final Evaluation](./week-11.md)
+
 

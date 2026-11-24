@@ -13,4 +13,6 @@ Name: Devansh Thapar
 - [Week 8 — Priority Display and Related Reports](./week-8.md)
 - [Week 9 — Maintenance Interface and Repair Tracking](./week-9.md)
 - [Week 10 — Frontend Testing and Bug Fixes](./week-10.md)
+- [Week 11 — ML Documentation and Final Evaluation](./week-11.md)
+
 

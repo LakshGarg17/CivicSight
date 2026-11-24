@@ -13,4 +13,5 @@ Name: Pranay Mittal
 - [Week 8 — ML Assessment and Priority Testing](./week-8.md)
 - [Week 9 — Maintenance APIs and Report Closure](./week-9.md)
 - [Week 10 — Backend Testing and Workflow Validation](./week-10.md)
+- [Week 11 — Frontend Finalization and Demo Preparation](./week-11.md)
 
